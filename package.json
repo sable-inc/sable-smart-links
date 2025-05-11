@@ -1,0 +1,39 @@
+{
+  "name": "sable-smart-links",
+  "version": "1.0.0",
+  "description": "Product walkthroughs triggered by a specified link, integrated directly with your platform.",
+  "homepage": "https://github.com/sable-inc/sable-smart-links#readme",
+  "bugs": {
+    "url": "https://github.com/sable-inc/sable-smart-links/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sable-inc/sable-smart-links.git"
+  },
+  "license": "MIT",
+  "author": "Sable",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "browser": "dist/index.umd.js",
+  "scripts": {
+    "test": "jest",
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "lint": "eslint src/**/*.js",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.22.5",
+    "@babel/preset-env": "^7.22.5",
+    "@rollup/plugin-babel": "^6.0.3",
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-node-resolve": "^15.1.0",
+    "@rollup/plugin-terser": "^0.4.3",
+    "eslint": "^8.43.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "rollup": "^3.25.1"
+  },
+  "files": ["dist", "LICENSE", "README.md"]
+}
