@@ -11,7 +11,7 @@
     "url": "git+https://github.com/sable-inc/sable-smart-links.git"
   },
   "license": "MIT",
-  "author": "Sable",
+  "author": "Sable (Leon Chen)",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
