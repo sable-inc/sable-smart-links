@@ -205,127 +205,131 @@
         });
         
         // Initialize Sable Smart Links
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             // Check if SableSmartLinks is available
             if (typeof window.SableSmartLinks !== 'undefined') {
-                console.log('Sable Smart Links found:', window.SableSmartLinks);
+                console.log('Sable Smart Links found:', window.SableSmartLinks);                
                 
-                // Use the default export which contains the instance
-                const smartLinks = window.SableSmartLinks.default;
-                
-                // Temporarily disable auto-start
-                const autoStartWasEnabled = smartLinks.config.autoStart;
-                smartLinks.config.autoStart = false;
-                
-                // Register the walkthrough
-                smartLinks.registerWalkthrough('welcome', [
-                    // Step 1: Welcome message with spotlight
-                    {
-                        selector: '#app-header',
-                        highlight: true,
-                        spotlight: true,
-                        tooltip: {
-                            title: 'Welcome to the Demo',
-                            content: 'This walkthrough will guide you through the main features of the application.',
-                            nextButton: 'Start Tour'
-                        }
-                    },
+                try {
+                    // Use the default export which contains the instance
+                    const smartLinks = window.SableSmartLinks.default;
+
+                    // // Authenticate user for Sable Smart Links
+                    // SableSmartLinks.initAuth({ environment: 'production' });
+                    // await smartLinks.login('test@example.com', 'Test123!');
                     
-                    // Step 2: Navigation menu
-                    {
-                        selector: '.sidebar-navigation',
-                        highlight: false,
-                        tooltip: {
-                            title: 'Navigation',
-                            content: 'Use this menu to navigate between different sections of the application.',
-                            nextButton: 'Next'
+                    // Temporarily disable auto-start
+                    const autoStartWasEnabled = smartLinks.config.autoStart;
+                    smartLinks.config.autoStart = false;
+                    
+                    // // Register walkthroughs from the backend
+                    // await smartLinks.registerActiveWalkthroughs('example_org');
+                    
+                    // Register manually welcome walkthrough
+                    smartLinks.registerWalkthrough('welcome', [
+                        // Step 1: Welcome message with spotlight
+                        {
+                            selector: '#app-header',
+                            highlight: true,
+                            spotlight: true,
+                            tooltip: {
+                                title: 'Welcome to the Demo',
+                                content: 'This walkthrough will guide you through the main features of the application.',
+                                nextButton: 'Start Tour'
+                            }
                         },
-                        position: 'right'
-                    },
-                    
-                    // Step 3: User profile with spotlight
-                    {
-                        selector: '.user-profile-icon',
-                        highlight: true,
-                        spotlight: true,
-                        spotlightPadding: 10,
-                        spotlightAnimate: true,
-                        tooltip: {
-                            title: 'Your Profile',
-                            content: 'Click here to access your profile settings, preferences, and account information.',
-                            nextButton: 'Next'
+                        
+                        // Step 2: Navigation menu
+                        {
+                            selector: '.sidebar-navigation',
+                            highlight: false,
+                            tooltip: {
+                                title: 'Navigation',
+                                content: 'Use this menu to navigate between different sections of the application.',
+                                nextButton: 'Next'
+                            },
+                            position: 'right'
                         },
-                        position: 'left'
-                    },
-                    
-                    // Step 4: Create new item button with action
-                    {
-                        selector: '#create-new-button',
-                        highlight: true,
-                        tooltip: {
-                            title: 'Create New Items',
-                            content: 'Click this button to create new projects, tasks, or other items.',
-                            nextButton: 'Try It'
+                        
+                        // Step 3: User profile with spotlight
+                        {
+                            selector: '.user-profile-icon',
+                            highlight: true,
+                            spotlight: true,
+                            spotlightPadding: 10,
+                            spotlightAnimate: true,
+                            tooltip: {
+                                title: 'Your Profile',
+                                content: 'Click here to access your profile settings, preferences, and account information.',
+                                nextButton: 'Next'
+                            },
+                            position: 'left'
                         },
-                        action: {
-                            type: 'click',
-                            autoAdvance: false,
-                            delay: 500
-                        }
-                    },
-                    
-                    // Step 5: Form input example with spotlight
-                    {
-                        selector: '#new-item-name',
-                        highlight: true,
-                        spotlight: true,
-                        overlayOpacity: 0.7,
-                        tooltip: {
-                            title: 'Name Your Item',
-                            content: 'Enter a name for your new item here.',
-                            nextButton: 'Continue'
+                        
+                        // Step 4: Create new item button with action
+                        {
+                            selector: '#create-new-button',
+                            highlight: true,
+                            tooltip: {
+                                title: 'Create New Items',
+                                content: 'Click this button to create new projects, tasks, or other items.',
+                                nextButton: 'Try It'
+                            },
+                            action: {
+                                type: 'click',
+                                autoAdvance: false,
+                                delay: 500
+                            }
                         },
-                        action: {
-                            type: 'input',
-                            value: 'My First Item',
-                            typeEffect: true,
-                            typeDelay: 50,
-                            autoAdvance: false
+                        
+                        // Step 5: Form input example with spotlight
+                        {
+                            selector: '#new-item-name',
+                            highlight: true,
+                            spotlight: true,
+                            overlayOpacity: 0.7,
+                            tooltip: {
+                                title: 'Name Your Item',
+                                content: 'Enter a name for your new item here.',
+                                nextButton: 'Continue'
+                            },
+                            action: {
+                                type: 'input',
+                                value: 'My First Item',
+                                typeEffect: true,
+                                typeDelay: 50,
+                                autoAdvance: false
+                            }
+                        },
+                        
+                        // Step 6: Final step
+                        {
+                            selector: '#save-button',
+                            highlight: true,
+                            tooltip: {
+                                title: 'Save Your Work',
+                                content: 'Click save to create your item. That completes our tour!',
+                                nextButton: 'Finish Tour'
+                            }
                         }
-                    },
+                    ]);
                     
-                    // Step 6: Final step
-                    {
-                        selector: '#save-button',
-                        highlight: true,
-                        tooltip: {
-                            title: 'Save Your Work',
-                            content: 'Click save to create your item. That completes our tour!',
-                            nextButton: 'Finish Tour'
-                        }
+                    // Re-enable auto-start if it was enabled
+                    smartLinks.config.autoStart = autoStartWasEnabled;
+                    
+                    // Manually check for URL parameters now that walkthroughs are registered
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const walkthroughParam = urlParams.get('walkthrough');
+                    
+                    // Start the walkthrough in the URL parameter if it is registered
+                    if (walkthroughParam) {
+                        smartLinks.start(walkthroughParam);
                     }
-                ]);
-                
-                // Start walkthrough when help button is clicked
-                document.getElementById('help-button').addEventListener('click', function() {
-                    smartLinks.start('welcome');
-                });
-                
-                // Re-enable auto-start if it was enabled
-                smartLinks.config.autoStart = autoStartWasEnabled;
-                
-                // Manually check for URL parameters now that walkthrough is registered
-                const urlParams = new URLSearchParams(window.location.search);
-                const walkthroughParam = urlParams.get('walkthrough');
-                
-                if (walkthroughParam === 'welcome') {
-                    // Start the walkthrough manually
-                    setTimeout(() => {
-                        smartLinks.start('welcome');
-                    }, 500); // Small delay to ensure DOM is fully ready
+                    
+                    console.log('Sable Smart Links initialized successfully');
+                } catch (error) {
+                    console.error('Error initializing Sable Smart Links:', error);
                 }
-                
-                console.log('Sable Smart Links initialized successfully');
             } else {
                 console.error('Sable Smart Links library not loaded. Check the console for errors.');
             }
