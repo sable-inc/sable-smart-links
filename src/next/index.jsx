@@ -1,7 +1,6 @@
 /**
  * Next.js integration for Sable Smart Links
  */
-'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
@@ -55,21 +54,16 @@ export function SmartLinksProvider({ children, walkthroughs = {}, config = {} })
  */
 export function useSmartLinks() {
   const [smartLinks, setSmartLinks] = useState(null);
-  const [isClient, setIsClient] = useState(false);
   const { useSmartLinks: useReactSmartLinks } = require('../react/SmartLinksProvider');
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
+  
   // Only use the hook on the client side
-  const links = useReactSmartLinks?.();
+  const links = typeof window !== 'undefined' ? useReactSmartLinks?.() : null;
 
   useEffect(() => {
-    if (isClient && links) {
+    if (links) {
       setSmartLinks(links);
     }
-  }, [isClient, links]);
+  }, [links]);
 
   return smartLinks;
 }
@@ -79,18 +73,13 @@ export function useSmartLinks() {
  * This is a client-side only hook
  */
 export function useWalkthrough(id, steps) {
-  const [isClient, setIsClient] = useState(false);
   const { useWalkthrough: useReactWalkthrough } = require('../react/SmartLinksProvider');
   
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
   // Only use the hook on the client side
-  const walkthrough = useReactWalkthrough?.(id, steps);
+  const walkthrough = typeof window !== 'undefined' ? useReactWalkthrough?.(id, steps) : null;
   
   // Return a no-op implementation on the server
-  if (!isClient) {
+  if (!walkthrough) {
     return {
       start: () => {},
       next: () => {},
@@ -98,5 +87,5 @@ export function useWalkthrough(id, steps) {
     };
   }
 
-  return walkthrough || {};
+  return walkthrough;
 }

@@ -5,6 +5,17 @@ import terser from '@rollup/plugin-terser';
 import typescript from '@rollup/plugin-typescript';
 import { readFileSync } from 'fs';
 
+// Plugin to add 'use client' directive
+const addUseClient = () => ({
+  name: 'add-use-client',
+  renderChunk(code) {
+    return {
+      code: `'use client';\n${code}`,
+      map: null
+    };
+  }
+});
+
 // Read package.json as ES module
 const packageJson = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf8')
@@ -154,7 +165,8 @@ export default [
     output: {
       file: 'dist/next.esm.js',
       format: 'esm',
-      sourcemap: true
+      sourcemap: true,
+      inlineDynamicImports: true
     },
     plugins: [
       ...sharedPlugins,
@@ -166,9 +178,9 @@ export default [
           ['@babel/preset-env', { targets: { esmodules: true } }],
           '@babel/preset-react'
         ]
-      })
-    ],
-    inlineDynamicImports: true
+      }),
+      addUseClient()
+    ]
   },
   
   // Next.js integration - CJS
@@ -178,7 +190,8 @@ export default [
     output: {
       file: 'dist/next.js',
       format: 'cjs',
-      sourcemap: true
+      sourcemap: true,
+      inlineDynamicImports: true
     },
     plugins: [
       ...sharedPlugins,
@@ -190,8 +203,8 @@ export default [
           ['@babel/preset-env', { targets: { node: '14' } }],
           '@babel/preset-react'
         ]
-      })
-    ],
-    inlineDynamicImports: true
+      }),
+      addUseClient()
+    ]
   }
 ];
