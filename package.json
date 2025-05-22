@@ -1,6 +1,6 @@
 {
   "name": "sable-smart-links",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "description": "Product walkthroughs triggered by a specified link, integrated directly with your platform.",
   "homepage": "https://github.com/sable-inc/sable-smart-links#readme",
   "bugs": {
@@ -26,12 +26,12 @@
     "./react": {
       "import": "./dist/react.esm.js",
       "require": "./dist/react.js",
-      "types": "./dist/react.d.ts"
+      "types": "./dist/react/index.d.ts"
     },
     "./next": {
       "import": "./dist/next.esm.js",
       "require": "./dist/next.js",
-      "types": "./dist/next.d.ts"
+      "types": "./dist/next/index.d.ts"
     }
   },
   "typesVersions": {

@@ -1,14 +1,18 @@
 /**
  * Next.js integration for Sable Smart Links
  */
-import React, { useEffect, useRef } from 'react';
-import { usePathname } from 'next/navigation';
+'use client';
+
+import React, { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 
 // Import base components with dynamic import to avoid SSR issues
 const ReactComponents = dynamic(
   () => import('../react/SmartLinksProvider'),
-  { ssr: false }
+  { 
+    ssr: false,
+    loading: () => null
+  }
 );
 
 /**
@@ -16,10 +20,12 @@ const ReactComponents = dynamic(
  * This component is safe to use in Next.js as it disables SSR for the library
  */
 export function SmartLinksProvider({ children, walkthroughs = {}, config = {} }) {
-  const pathname = usePathname();
+  const [isClient, setIsClient] = useState(false);
   const Provider = useRef(null);
 
   useEffect(() => {
+    // This effect only runs on the client
+    setIsClient(true);
     // Set the provider reference once the dynamic import resolves
     if (ReactComponents) {
       Provider.current = ReactComponents.SmartLinksProvider;
@@ -27,7 +33,7 @@ export function SmartLinksProvider({ children, walkthroughs = {}, config = {} })
   }, [ReactComponents]);
 
   // Only render the provider on the client side
-  if (typeof window === 'undefined' || !Provider.current) {
+  if (!isClient || !Provider.current) {
     return <>{children}</>;
   }
 
@@ -48,22 +54,22 @@ export function SmartLinksProvider({ children, walkthroughs = {}, config = {} })
  * This is a client-side only hook
  */
 export function useSmartLinks() {
-  const [smartLinks, setSmartLinks] = React.useState(null);
+  const [smartLinks, setSmartLinks] = useState(null);
+  const [isClient, setIsClient] = useState(false);
+  const { useSmartLinks: useReactSmartLinks } = require('../react/SmartLinksProvider');
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    // Import the hook dynamically
-    import('../react/SmartLinksProvider').then((mod) => {
-      const useSmartLinksHook = mod.useSmartLinks;
-      try {
-        const instance = useSmartLinksHook();
-        setSmartLinks(instance);
-      } catch (error) {
-        console.error('Error using SmartLinks hook:', error);
-      }
-    });
+    setIsClient(true);
   }, []);
+
+  // Only use the hook on the client side
+  const links = useReactSmartLinks?.();
+
+  useEffect(() => {
+    if (isClient && links) {
+      setSmartLinks(links);
+    }
+  }, [isClient, links]);
 
   return smartLinks;
 }
@@ -73,26 +79,24 @@ export function useSmartLinks() {
  * This is a client-side only hook
  */
 export function useWalkthrough(id, steps) {
-  const [controls, setControls] = React.useState({
-    start: () => false,
-    next: () => {},
-    end: () => {}
-  });
-
+  const [isClient, setIsClient] = useState(false);
+  const { useWalkthrough: useReactWalkthrough } = require('../react/SmartLinksProvider');
+  
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    setIsClient(true);
+  }, []);
 
-    // Import the hook dynamically
-    import('../react/SmartLinksProvider').then((mod) => {
-      const useWalkthroughHook = mod.useWalkthrough;
-      try {
-        const walkthroughControls = useWalkthroughHook(id, steps);
-        setControls(walkthroughControls);
-      } catch (error) {
-        console.error('Error using walkthrough hook:', error);
-      }
-    });
-  }, [id, steps]);
+  // Only use the hook on the client side
+  const walkthrough = useReactWalkthrough?.(id, steps);
+  
+  // Return a no-op implementation on the server
+  if (!isClient) {
+    return {
+      start: () => {},
+      next: () => {},
+      end: () => {}
+    };
+  }
 
-  return controls;
+  return walkthrough || {};
 }
