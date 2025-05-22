@@ -5,9 +5,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 
-// Import base components with dynamic import to avoid SSR issues
+// Use package-relative import that will work in the built package
 const ReactComponents = dynamic(
-  () => import('../react/SmartLinksProvider'),
+  () => import('sable-smart-links/react'),
   { 
     ssr: false,
     loading: () => null
@@ -54,10 +54,13 @@ export function SmartLinksProvider({ children, walkthroughs = {}, config = {} })
  */
 export function useSmartLinks() {
   const [smartLinks, setSmartLinks] = useState(null);
-  const { useSmartLinks: useReactSmartLinks } = require('../react/SmartLinksProvider');
+  
+  // Use dynamic import for the hook to ensure it only runs on the client
+  const { useSmartLinks: useReactSmartLinks } = 
+    typeof window !== 'undefined' ? require('sable-smart-links/react') : {};
   
   // Only use the hook on the client side
-  const links = typeof window !== 'undefined' ? useReactSmartLinks?.() : null;
+  const links = useReactSmartLinks?.();
 
   useEffect(() => {
     if (links) {
@@ -73,13 +76,15 @@ export function useSmartLinks() {
  * This is a client-side only hook
  */
 export function useWalkthrough(id, steps) {
-  const { useWalkthrough: useReactWalkthrough } = require('../react/SmartLinksProvider');
+  // Use dynamic import for the hook to ensure it only runs on the client
+  const { useWalkthrough: useReactWalkthrough } = 
+    typeof window !== 'undefined' ? require('sable-smart-links/react') : {};
   
   // Only use the hook on the client side
-  const walkthrough = typeof window !== 'undefined' ? useReactWalkthrough?.(id, steps) : null;
+  const walkthrough = useReactWalkthrough?.(id, steps);
   
   // Return a no-op implementation on the server
-  if (!walkthrough) {
+  if (typeof window === 'undefined' || !walkthrough) {
     return {
       start: () => {},
       next: () => {},
