@@ -58,7 +58,7 @@ export class WalkthroughEngine {
    */
   start(walkthroughId) {
     if (!this.walkthroughs[walkthroughId]) {
-      // console.error(`Walkthrough "${walkthroughId}" not found`);
+      console.error(`Walkthrough "${walkthroughId}" not found`);
       return false;
     }
     

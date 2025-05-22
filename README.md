@@ -2,11 +2,6 @@
 
 Product walkthroughs triggered by a specified link, integrated directly with your platform.
 
-[![npm version](https://img.shields.io/npm/v/sable-smart-links.svg)](https://www.npmjs.com/package/sable-smart-links)
-[![TypeScript](https://img.shields.io/badge/TypeScript-Supported-blue.svg)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-Compatible-61dafb.svg)](https://reactjs.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-Compatible-black.svg)](https://nextjs.org/)
-
 ## Overview
 
 Sable Smart Links is a JavaScript library that enables you to create interactive product walkthroughs that can be triggered via URL parameters. It's designed to help your users navigate and understand your web application through guided tours that highlight UI elements, display informative tooltips, and automate interactions.
@@ -22,9 +17,6 @@ Sable Smart Links is a JavaScript library that enables you to create interactive
 - **Automated Interactions**: Simulate clicks and form inputs to demonstrate functionality
 - **Responsive Design**: Works across different screen sizes and devices
 - **Easy Integration**: Simple to add to any web application
-- **TypeScript Support**: Full TypeScript type definitions for better developer experience
-- **React Integration**: Ready-to-use React components and hooks
-- **Next.js Support**: Server-side rendering compatible components for Next.js
 
 ## Installation
 
@@ -149,116 +141,6 @@ Each step in a walkthrough can have the following options:
 }
 ```
 
-## Framework Integrations
-
-### React Integration
-
-Sable Smart Links provides React components and hooks for easy integration:
-
-```jsx
-import { SmartLinksProvider, useSmartLinks } from 'sable-smart-links/react';
-
-function App() {
-  return (
-    <SmartLinksProvider 
-      walkthroughs={{
-        'welcome': [
-          // Your walkthrough steps
-          {
-            selector: '#header',
-            highlight: true,
-            tooltip: {
-              title: 'Welcome',
-              content: 'This is our application header.',
-              nextButton: 'Next'
-            }
-          }
-        ]
-      }}
-    >
-      <YourApp />
-    </SmartLinksProvider>
-  );
-}
-
-// In a child component
-function WalkthroughButton() {
-  const smartLinks = useSmartLinks();
-  
-  return (
-    <button onClick={() => smartLinks.start('welcome')}>
-      Start Tour
-    </button>
-  );
-}
-```
-
-### Next.js Integration
-
-For Next.js applications, use the special Next.js integration that handles server-side rendering properly:
-
-```jsx
-// app/layout.jsx (App Router)
-import { SmartLinksProvider } from 'sable-smart-links/next';
-
-export default function RootLayout({ children }) {
-  return (
-    <html lang="en">
-      <body>
-        <SmartLinksProvider 
-          walkthroughs={{
-            'welcome': [
-              // Your walkthrough steps
-            ]
-          }}
-        >
-          {children}
-        </SmartLinksProvider>
-      </body>
-    </html>
-  );
-}
-
-// In a client component
-'use client';
-import { useSmartLinks } from 'sable-smart-links/next';
-
-export default function StartButton() {
-  const smartLinks = useSmartLinks();
-  
-  return (
-    <button onClick={() => smartLinks?.start('welcome')}>
-      Start Tour
-    </button>
-  );
-}
-```
-
-### TypeScript Support
-
-Sable Smart Links includes TypeScript definitions for all its APIs:
-
-```typescript
-import SableSmartLinks, { WalkthroughStep } from 'sable-smart-links';
-
-// Define your walkthrough steps with type checking
-const steps: WalkthroughStep[] = [
-  {
-    selector: '#welcome-panel',
-    highlight: true,
-    spotlight: true,
-    tooltip: {
-      title: 'Welcome',
-      content: 'This is a guided tour of our application.',
-      nextButton: 'Next'
-    }
-  }
-];
-
-// Register the walkthrough
-SableSmartLinks.registerWalkthrough('welcome', steps);
-```
-
 ## API Reference
 
 ### SableSmartLinks
@@ -269,11 +151,6 @@ SableSmartLinks.registerWalkthrough('welcome', steps);
 - `start(walkthroughId)`: Start a walkthrough by ID
 - `next()`: Go to the next step in the current walkthrough
 - `end()`: End the current walkthrough
-
-### React Hooks
-
-- `useSmartLinks()`: Access the SableSmartLinks instance in React components
-- `useWalkthrough(id, steps)`: Register and control a walkthrough in a React component
 
 ## Browser Support
 
