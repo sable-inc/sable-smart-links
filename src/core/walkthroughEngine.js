@@ -7,6 +7,7 @@ import { waitForElement } from './elementSelector.js';
 import { highlightElement, removeHighlight } from '../ui/highlight.js';
 import { showTooltip, hideTooltip } from '../ui/tooltip.js';
 import { createSpotlight, removeSpotlights } from '../ui/spotlight.js';
+import { isBrowser, safeWindow } from '../utils/browserAPI.js';
 
 export class WalkthroughEngine {
   /**
@@ -30,11 +31,13 @@ export class WalkthroughEngine {
     this.end = this.end.bind(this);
     
     // Listen for navigation events to potentially end walkthroughs
-    window.addEventListener('popstate', () => {
-      if (this.isRunning) {
-        this.end();
-      }
-    });
+    if (isBrowser) {
+      safeWindow.addEventListener('popstate', () => {
+        if (this.isRunning) {
+          this.end();
+        }
+      });
+    }
   }
   
   /**

@@ -50,7 +50,9 @@ export default [
         exclude: 'node_modules/**',
         extensions: ['.js', '.jsx', '.ts', '.tsx'],
         presets: [
-          ['@babel/preset-env', { targets: '> 0.25%, not dead' }]
+          ['@babel/preset-env', { targets: '> 0.25%, not dead' }],
+          '@babel/preset-typescript',
+          '@babel/preset-react'
         ]
       }),
       terser()
@@ -80,7 +82,9 @@ export default [
         exclude: 'node_modules/**',
         extensions: ['.js', '.jsx', '.ts', '.tsx'],
         presets: [
-          ['@babel/preset-env', { targets: { esmodules: true } }]
+          ['@babel/preset-env', { targets: { esmodules: true } }],
+          '@babel/preset-typescript',
+          '@babel/preset-react'
         ]
       })
     ]
@@ -109,7 +113,9 @@ export default [
         exclude: 'node_modules/**',
         extensions: ['.js', '.jsx', '.ts', '.tsx'],
         presets: [
-          ['@babel/preset-env', { targets: { node: '14' } }]
+          ['@babel/preset-env', { targets: { node: '14' } }],
+          '@babel/preset-typescript',
+          '@babel/preset-react'
         ]
       })
     ]
@@ -138,7 +144,9 @@ export default [
         exclude: 'node_modules/**',
         extensions: ['.js', '.jsx', '.ts', '.tsx'],
         presets: [
-          ['@babel/preset-env', { targets: { esmodules: true } }]
+          ['@babel/preset-env', { targets: { esmodules: true } }],
+          '@babel/preset-typescript',
+          '@babel/preset-react'
         ]
       })
     ]

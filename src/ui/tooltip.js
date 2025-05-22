@@ -2,6 +2,8 @@
  * Tooltip functionality for displaying messages
  */
 
+import { isBrowser, safeDocument, safeWindow } from '../utils/browserAPI.js';
+
 const TOOLTIP_CLASS = 'sable-tooltip';
 const TOOLTIP_CONTAINER_ID = 'sable-tooltip-container';
 
@@ -12,12 +14,15 @@ let activeTooltip = null;
  * Create and inject the necessary CSS for tooltips
  */
 function injectTooltipStyles() {
+  // Only run in browser environment
+  if (!isBrowser) return;
+  
   // Check if styles are already injected
-  if (document.getElementById('sable-tooltip-styles')) {
+  if (safeDocument.getElementById('sable-tooltip-styles')) {
     return;
   }
   
-  const styleElement = document.createElement('style');
+  const styleElement = safeDocument.createElement('style');
   styleElement.id = 'sable-tooltip-styles';
   styleElement.textContent = `
     .${TOOLTIP_CLASS} {
@@ -103,7 +108,7 @@ function injectTooltipStyles() {
       }
     }
   `;
-  document.head.appendChild(styleElement);
+  safeDocument.appendChild(safeDocument.head, styleElement);
 }
 
 /**
@@ -111,10 +116,13 @@ function injectTooltipStyles() {
  * @returns {HTMLElement} The tooltip container element
  */
 function getTooltipContainer() {
-  let container = document.getElementById(TOOLTIP_CONTAINER_ID);
+  // Only run in browser environment
+  if (!isBrowser) return null;
+  
+  let container = safeDocument.getElementById(TOOLTIP_CONTAINER_ID);
   
   if (!container) {
-    container = document.createElement('div');
+    container = safeDocument.createElement('div');
     container.id = TOOLTIP_CONTAINER_ID;
     container.style.position = 'absolute';
     container.style.top = '0';
@@ -124,7 +132,7 @@ function getTooltipContainer() {
     container.style.overflow = 'visible';
     container.style.pointerEvents = 'none';
     container.style.zIndex = '99999';
-    document.body.appendChild(container);
+    safeDocument.appendChild(safeDocument.body, container);
   }
   
   return container;
@@ -151,8 +159,8 @@ function calculateTooltipPosition(targetElement, tooltipElement, position) {
   
   const targetRect = targetElement.getBoundingClientRect();
   const tooltipRect = tooltipElement.getBoundingClientRect();
-  const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-  const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+  // Get scroll position safely
+  const { left: scrollLeft, top: scrollTop } = safeWindow.getScrollPosition();
   
   // Spacing between target and tooltip
   const spacing = 12;
@@ -161,8 +169,8 @@ function calculateTooltipPosition(targetElement, tooltipElement, position) {
   const preferredPosition = position || 'bottom';
   
   // Get viewport dimensions
-  const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
-  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+  // Get viewport dimensions safely
+  const { width: viewportWidth, height: viewportHeight } = safeWindow.getViewportDimensions();
   
   // Calculate positions for each direction
   const positions = {
@@ -253,7 +261,10 @@ export function showTooltip(targetElement, content, options = {}) {
   const container = getTooltipContainer();
   
   // Create tooltip element
-  const tooltipEl = document.createElement('div');
+  // Only run in browser environment
+  if (!isBrowser) return null;
+  
+  const tooltipEl = safeDocument.createElement('div');
   tooltipEl.className = TOOLTIP_CLASS;
   tooltipEl.style.pointerEvents = 'auto';
   
@@ -337,7 +348,7 @@ export function showTooltip(targetElement, content, options = {}) {
  * Hide the currently active tooltip
  */
 export function hideTooltip() {
-  if (activeTooltip && activeTooltip.parentNode) {
+  if (isBrowser && activeTooltip && activeTooltip.parentNode) {
     activeTooltip.parentNode.removeChild(activeTooltip);
     activeTooltip = null;
   }

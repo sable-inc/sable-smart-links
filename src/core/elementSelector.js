@@ -2,6 +2,8 @@
  * Element selection utilities
  */
 
+import { isBrowser, safeDocument } from '../utils/browserAPI.js';
+
 /**
  * Find an element in the DOM using various selector types
  * @param {string|Object} selector - CSS selector, XPath, or element object
@@ -13,11 +15,16 @@ export function findElement(selector) {
     return selector;
   }
   
+  // If not in browser environment, return null
+  if (!isBrowser) {
+    return null;
+  }
+  
   // If selector is a string, try different selection methods
   if (typeof selector === 'string') {
     // Try as CSS selector first
     try {
-      const element = document.querySelector(selector);
+      const element = safeDocument.querySelector(selector);
       if (element) {
         return element;
       }
@@ -30,7 +37,7 @@ export function findElement(selector) {
       try {
         const result = document.evaluate(
           selector,
-          document,
+          safeDocument.documentElement,
           null,
           XPathResult.FIRST_ORDERED_NODE_TYPE,
           null
@@ -45,7 +52,7 @@ export function findElement(selector) {
     
     // Try as ID (without the # prefix)
     if (!selector.includes(' ') && !selector.startsWith('#')) {
-      const element = document.getElementById(selector);
+      const element = safeDocument.getElementById(selector);
       if (element) {
         return element;
       }
@@ -104,7 +111,8 @@ export function waitForElement(selector, options = {}) {
  */
 export function findElements(selector) {
   try {
-    return Array.from(document.querySelectorAll(selector));
+    if (!isBrowser) return [];
+    return Array.from(safeDocument.querySelectorAll(selector));
   } catch (e) {
     return [];
   }

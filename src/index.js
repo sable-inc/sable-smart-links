@@ -5,6 +5,7 @@
 
 import { parseUrlParameters } from './core/urlParser.js';
 import { WalkthroughEngine } from './core/walkthroughEngine.js';
+import { isBrowser, safeDocument } from './utils/browserAPI.js';
 
 class SableSmartLinks {
   /**
@@ -24,10 +25,10 @@ class SableSmartLinks {
     
     this.walkthroughEngine = new WalkthroughEngine(this.config);
     
-    if (this.config.autoStart) {
+    if (this.config.autoStart && isBrowser) {
       // Wait for DOM to be fully loaded
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => this.init());
+      if (safeDocument.readyState === 'loading') {
+        safeDocument.addEventListener('DOMContentLoaded', () => this.init());
       } else {
         this.init();
       }

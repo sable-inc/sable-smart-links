@@ -2,13 +2,15 @@
  * URL parameter parsing utilities
  */
 
+import { isBrowser, safeWindow } from '../utils/browserAPI.js';
+
 /**
  * Parse URL query parameters from the current window location
  * @returns {Object} Object containing all query parameters as key-value pairs
  */
 export function parseUrlParameters() {
   const params = {};
-  const queryString = window.location.search.substring(1);
+  const queryString = safeWindow.location.search.substring(1);
   
   if (queryString) {
     const pairs = queryString.split('&');

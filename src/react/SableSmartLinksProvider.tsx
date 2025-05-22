@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, createContext, useContext } from 'react';
 import { SableSmartLinks, SableSmartLinksConfig, WalkthroughStep } from '../index';
+import { isBrowser } from '../utils/browserAPI';
 
 interface SableSmartLinksContextType {
   registerWalkthrough: (id: string, steps: WalkthroughStep[]) => void;
@@ -29,7 +30,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
 
   useEffect(() => {
     // Initialize SableSmartLinks on the client side only
-    if (typeof window !== 'undefined') {
+    if (isBrowser) {
       // Create a new instance with the provided config
       sableInstance.current = new SableSmartLinks(config);
       
