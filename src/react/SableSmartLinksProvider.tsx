@@ -15,6 +15,7 @@ export interface SableSmartLinksProviderProps {
   config?: SableSmartLinksConfig;
   children: React.ReactNode;
   autoInit?: boolean;
+  walkthroughs?: Record<string, WalkthroughStep[]>;
 }
 
 /**
@@ -24,7 +25,8 @@ export interface SableSmartLinksProviderProps {
 export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = ({
   config,
   children,
-  autoInit = true
+  autoInit = true,
+  walkthroughs = {}
 }) => {
   const sableInstance = useRef<SableSmartLinks | null>(null);
 
@@ -33,6 +35,11 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     if (isBrowser) {
       // Create a new instance with the provided config
       sableInstance.current = new SableSmartLinks(config);
+      
+      // Register any walkthroughs provided via props
+      Object.entries(walkthroughs).forEach(([id, steps]) => {
+        sableInstance.current?.registerWalkthrough(id, steps);
+      });
       
       // Initialize if autoInit is true
       if (autoInit) {
@@ -46,7 +53,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
         sableInstance.current.end();
       }
     };
-  }, [config, autoInit]);
+  }, [config, autoInit, walkthroughs]);
   
   const contextValue = {
     registerWalkthrough: (id: string, steps: WalkthroughStep[]) => {

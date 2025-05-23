@@ -298,9 +298,6 @@ export class WalkthroughEngine {
     // Clean up current step
     this.cleanupCurrentStep();
     
-    // Remove overlay
-    removeOverlay();
-    
     // Remove any spotlights
     removeSpotlights();
     
