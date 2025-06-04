@@ -7,7 +7,7 @@ import { waitForElement } from './elementSelector.js';
 import { highlightElement, removeHighlight } from '../ui/highlight.js';
 import { showTooltip, hideTooltip } from '../ui/tooltip.js';
 import { createSpotlight, removeSpotlights } from '../ui/spotlight.js';
-import { isBrowser, safeWindow } from '../utils/browserAPI.js';
+import { isBrowser, safeWindow, safeDocument } from '../utils/browserAPI.js';
 
 export class WalkthroughEngine {
   /**
@@ -15,7 +15,18 @@ export class WalkthroughEngine {
    * @param {Object} config - Configuration options
    */
   constructor(config) {
-    this.config = config;
+    // Set default config
+    this.config = {
+      debug: false,
+      autoStart: true,
+      stepDelay: 500,
+      ...config
+    };
+    
+    if (this.config.debug) {
+      console.log('[SableSmartLinks] Initializing with config:', this.config);
+    }
+    
     this.walkthroughs = {};
     this.currentWalkthrough = null;
     this.currentStep = 0;
@@ -30,13 +41,278 @@ export class WalkthroughEngine {
     this.next = this.next.bind(this);
     this.end = this.end.bind(this);
     
-    // Listen for navigation events to potentially end walkthroughs
+    // Setup navigation handling
     if (isBrowser) {
-      safeWindow.addEventListener('popstate', () => {
-        if (this.isRunning) {
-          this.end();
+      this._setupNavigationHandling();
+    }
+  }
+  
+  /**
+   * Save current walkthrough state to localStorage
+   */
+  _saveState() {
+    if (!isBrowser) return;
+    
+    const state = {
+      walkthroughId: this.currentWalkthrough,
+      currentStep: this.currentStep,
+      isRunning: this.isRunning,
+      timestamp: Date.now()
+    };
+    
+    try {
+      const stateString = JSON.stringify(state);
+      localStorage.setItem('sableWalkthroughState', stateString);
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] State saved to localStorage:', state);
+      }
+      return true;
+    } catch (e) {
+      console.error('[SableSmartLinks] Failed to save walkthrough state to localStorage:', e);
+      return false;
+    }
+  }
+  
+  /**
+   * Load walkthrough state from localStorage
+   * @returns {Object|null} The saved state or null if none exists or is expired
+   */
+  _loadState() {
+    if (!isBrowser) {
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Not in browser environment, cannot load state');
+      }
+      return null;
+    }
+    
+    try {
+      const savedState = localStorage.getItem('sableWalkthroughState');
+      if (!savedState) {
+        if (this.config.debug) {
+          console.log('[SableSmartLinks] No saved state found in localStorage');
         }
+        return null;
+      }
+      
+      const state = JSON.parse(savedState);
+      
+      // Log the loaded state (before any validation)
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Loaded state from localStorage:', state);
+      }
+      
+      // Check for required fields
+      if (!state.walkthroughId || state.currentStep === undefined) {
+        if (this.config.debug) {
+          console.log('[SableSmartLinks] Invalid state: missing required fields');
+        }
+        this._clearState();
+        return null;
+      }
+      
+      // Check for expiration (1 hour)
+      const EXPIRATION_MS = 60 * 60 * 1000;
+      if (state.timestamp && (Date.now() - state.timestamp > EXPIRATION_MS)) {
+        if (this.config.debug) {
+          console.log('[SableSmartLinks] State expired, clearing...');
+        }
+        this._clearState();
+        return null;
+      }
+      
+      if (this.config.debug) {
+        console.log(`[SableSmartLinks] State is valid:`, {
+          walkthroughId: state.walkthroughId,
+          currentStep: state.currentStep,
+          isRunning: state.isRunning,
+          age: state.timestamp ? `${((Date.now() - state.timestamp) / 1000).toFixed(1)}s ago` : 'unknown'
+        });
+      }
+      
+      return state;
+    } catch (e) {
+      console.error('[SableSmartLinks] Failed to load walkthrough state from localStorage:', e);
+      return null;
+    }
+  }
+  
+  /**
+   * Clear saved walkthrough state
+   */
+  _clearState() {
+    if (!isBrowser) return;
+    try {
+      const hadState = !!localStorage.getItem('sableWalkthroughState');
+      localStorage.removeItem('sableWalkthroughState');
+      
+      if (this.config.debug && hadState) {
+        console.log('[SableSmartLinks] Cleared walkthrough state from localStorage');
+      }
+    } catch (e) {
+      console.error('[SableSmartLinks] Failed to clear walkthrough state from localStorage:', e);
+    }
+  }
+  
+  /**
+   * Set up navigation handling for page transitions
+   */
+  _setupNavigationHandling() {
+    if (!isBrowser) return;
+    
+    // Handle beforeunload to save state
+    const handleBeforeUnload = () => {
+      if (this.isRunning) {
+        if (this.config.debug) {
+          console.log('[SableSmartLinks] Page unloading, saving state...');
+        }
+        this._saveState();
+      }
+    };
+    
+    // Handle popstate (back/forward navigation)
+    const handlePopState = () => {
+      if (this.isRunning) {
+        if (this.config.debug) {
+          console.log('[SableSmartLinks] Navigation detected (popstate), saving state...');
+        }
+        this._saveState();
+        // Small delay to allow the page to start loading
+        setTimeout(() => this._restoreWalkthrough(), 100);
+      }
+    };
+    
+    // Handle link clicks
+    const handleLinkClick = (e) => {
+      if (!this.isRunning) return;
+      
+      // Find the closest anchor tag
+      let target = e.target;
+      while (target && target.nodeName !== 'A') {
+        if (target === safeDocument.documentElement) return;
+        target = target.parentNode;
+      }
+      
+      if (target && target.href) {
+        if (this.config.debug) {
+          console.log('[SableSmartLinks] Link click detected, saving state...');
+        }
+        this._saveState();
+      }
+    };
+    
+    // Store original history methods
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+    
+    // Override pushState
+    history.pushState = function() {
+      if (this.isRunning && this.config.debug) {
+        console.log('[SableSmartLinks] pushState detected, saving state...');
+      }
+      const result = originalPushState.apply(history, arguments);
+      if (this.isRunning) {
+        this._saveState();
+      }
+      return result;
+    }.bind(this);
+    
+    // Override replaceState
+    history.replaceState = function() {
+      if (this.isRunning && this.config.debug) {
+        console.log('[SableSmartLinks] replaceState detected, saving state...');
+      }
+      const result = originalReplaceState.apply(history, arguments);
+      if (this.isRunning) {
+        this._saveState();
+      }
+      return result;
+    }.bind(this);
+    
+    // Add event listeners
+    safeWindow.addEventListener('beforeunload', handleBeforeUnload);
+    safeWindow.addEventListener('popstate', handlePopState);
+    safeDocument.addEventListener('click', handleLinkClick, true); // Use capture phase
+    
+    // Handle page load to restore state
+    const handleLoad = async () => {
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Page loaded, attempting to restore state...');
+      }
+      // Wait for any pending state to be saved
+      await new Promise(resolve => setTimeout(resolve, 50));
+      await this._restoreWalkthrough();
+    };
+    
+    // Use DOMContentLoaded instead of load for faster restoration
+    if (safeDocument.readyState === 'complete' || safeDocument.readyState === 'interactive') {
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Document already loaded, restoring state immediately');
+      }
+      handleLoad();
+    } else {
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Adding DOMContentLoaded listener for state restoration');
+      }
+      safeDocument.addEventListener('DOMContentLoaded', handleLoad);
+      // Also listen for load as a fallback
+      safeWindow.addEventListener('load', handleLoad);
+    }
+    
+    // Store cleanup function
+    this._cleanupFn = () => {
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Cleaning up navigation handlers');
+      }
+      safeWindow.removeEventListener('beforeunload', handleBeforeUnload);
+      safeWindow.removeEventListener('popstate', handlePopState);
+      safeDocument.removeEventListener('click', handleLinkClick, true);
+      history.pushState = originalPushState;
+      history.replaceState = originalReplaceState;
+      delete this._cleanupFn; // Clean up the cleanup function itself
+    };
+  }
+  
+  /**
+   * Restore walkthrough from saved state
+   */
+  async _restoreWalkthrough() {
+    if (this.config.debug) {
+      console.log('[SableSmartLinks] Attempting to restore walkthrough state...');
+    }
+    
+    const state = this._loadState();
+    if (!state || !state.walkthroughId) {
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] No valid walkthrough state to restore');
+      }
+      return false;
+    }
+    
+    // Wait a small delay to ensure the page is fully rendered
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Restore the walkthrough state
+    this.currentWalkthrough = state.walkthroughId;
+    this.currentStep = state.currentStep || 0;
+    this.isRunning = state.isRunning !== false; // Default to true if not set
+    
+    if (this.config.debug) {
+      console.log(`[SableSmartLinks] Restored walkthrough state:`, {
+        walkthroughId: this.currentWalkthrough,
+        currentStep: this.currentStep,
+        isRunning: this.isRunning
       });
+    }
+    
+    // If we're not on the first step, advance to the saved step
+    if (state.currentStep > 0) {
+      this.currentStep = -1; // Reset to before first step
+      for (let i = 0; i <= state.currentStep; i++) {
+        this.next();
+      }
+    } else {
+      // Otherwise just start normally
+      this.executeStep();
     }
   }
   
@@ -74,6 +350,9 @@ export class WalkthroughEngine {
     this.currentStep = 0;
     this.isRunning = true;
     
+    // Save the new state
+    this._saveState();
+    
     // Execute the first step
     this.executeStep();
     
@@ -97,6 +376,9 @@ export class WalkthroughEngine {
       this.end();
       return;
     }
+    
+    // Save the updated state
+    this._saveState();
     
     // Execute the next step
     setTimeout(() => {
@@ -290,10 +572,23 @@ export class WalkthroughEngine {
   }
   
   /**
+   * Clean up navigation event listeners
+   */
+  _cleanupNavigationHandling() {
+    if (typeof this._cleanupFn === 'function') {
+      this._cleanupFn();
+    }
+  }
+  
+  /**
    * End the current walkthrough
    */
   end() {
     if (!this.isRunning) return;
+    
+    if (this.config.debug) {
+      console.log('[SableSmartLinks] Ending walkthrough');
+    }
     
     // Clean up current step
     this.cleanupCurrentStep();
@@ -301,10 +596,16 @@ export class WalkthroughEngine {
     // Remove any spotlights
     removeSpotlights();
     
+    // Clear the saved state
+    this._clearState();
+    
     // Reset state
     this.currentWalkthrough = null;
     this.currentStep = 0;
     this.isRunning = false;
+    
+    // Clean up navigation handling
+    this._cleanupNavigationHandling();
     
     // Trigger onComplete callback if available
     const walkthrough = this.walkthroughs[this.currentWalkthrough];

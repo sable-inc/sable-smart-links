@@ -9,6 +9,8 @@ export interface SableSmartLinksConfig {
   autoStart?: boolean;
   /** Delay between steps in milliseconds (default: 500) */
   stepDelay?: number;
+  /** Enable debug logging (default: false) */
+  debug?: boolean;
 }
 
 export interface WalkthroughStep {
@@ -57,12 +59,26 @@ export interface WalkthroughStep {
   callback?: (element: HTMLElement | null, engine: WalkthroughEngine) => void;
 }
 
+interface WalkthroughState {
+  walkthroughId: string;
+  currentStep: number;
+  isRunning: boolean;
+  timestamp: number;
+}
+
 export class WalkthroughEngine {
   constructor(config: SableSmartLinksConfig);
   register(id: string, steps: WalkthroughStep[]): void;
   start(walkthroughId: string): boolean;
   next(): void;
   end(): void;
+  
+  // Internal methods for state persistence
+  _saveState(): void;
+  _loadState(): WalkthroughState | null;
+  _clearState(): void;
+  _setupNavigationHandling(): void;
+  _restoreWalkthrough(): Promise<void>;
 }
 
 export class SableSmartLinks {
