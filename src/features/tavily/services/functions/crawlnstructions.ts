@@ -14,17 +14,17 @@ const CrawlInstructionsSchema = z.object({
 type CrawlInstructions = z.infer<typeof CrawlInstructionsSchema>;
 
 export const generateCrawlInstructions = async ({ 
-  query 
+  query,
+  apiKey 
 }: { 
-  query: string 
+  query: string;
+  apiKey: string;
 }): Promise<CrawlInstructions> => {
   try {
     debugLog('info', `Generating crawl instructions for query: ${query}`);
 
-    // Get API key from environment
-    const apiKey = process.env.VITE_OPENAI_API_KEY || (window as any).VITE_OPENAI_API_KEY;
     if (!apiKey) {
-      throw new Error('OpenAI API key is missing');
+      throw new Error('OpenAI API key is required');
     }
 
     const openai = new OpenAI({

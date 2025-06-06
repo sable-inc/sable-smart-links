@@ -92,7 +92,12 @@ const typeTextAsync = async (
     return true;
 };
 
-export const CrawlFeatureHighlight: React.FC = () => {
+// Add apiKey to props interface
+interface CrawlFeatureHighlightProps {
+    apiKey: string;
+}
+
+export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ apiKey }) => {
     const [showHighlight, setShowHighlight] = useState(false);
     const [showChatbox, setShowChatbox] = useState(false);
     const [buttonPosition, setButtonPosition] = useState({ top: 0, left: 0, width: 0 });
@@ -103,7 +108,8 @@ export const CrawlFeatureHighlight: React.FC = () => {
         
         try {
             const instructions = await generateCrawlInstructions({
-                query: exploreQuery.trim()
+                query: exploreQuery.trim(),
+                apiKey  // Pass the apiKey to the function
             });
 
             // Use the exact selectors from the HTML

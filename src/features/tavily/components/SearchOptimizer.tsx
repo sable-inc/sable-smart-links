@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Box, Button, Text, HStack } from '@chakra-ui/react';
 import { suggestSearchParameters } from '../services/functions/tavilySearchParameters';
 
 interface SearchOptimizerProps {
@@ -25,8 +24,8 @@ export const SearchOptimizer: React.FC<SearchOptimizerProps> = ({ apiKey }) => {
             // Calculate position for the popup
             const rect = queryInput.getBoundingClientRect();
             setPosition({
-                top: rect.top,
-                left: rect.right + 20 // 20px to the right of the textarea
+                top: rect.top + 20, // Align with the first line of text
+                left: rect.right + 40 // 40px to the right
             });
 
             // Watch for input changes
@@ -44,10 +43,8 @@ export const SearchOptimizer: React.FC<SearchOptimizerProps> = ({ apiKey }) => {
                 }, 1000);
             };
 
-            // Add input event listener
             queryInput.addEventListener('input', handleInput);
 
-            // Cleanup
             return () => {
                 queryInput.removeEventListener('input', handleInput);
                 if (debounceTimer.current) {
@@ -61,7 +58,6 @@ export const SearchOptimizer: React.FC<SearchOptimizerProps> = ({ apiKey }) => {
 
     const handleOptimize = async () => {
         if (!currentQuery) return;
-
         try {
             await suggestSearchParameters({ query: currentQuery, apiKey });
             setIsVisible(false);
@@ -73,36 +69,45 @@ export const SearchOptimizer: React.FC<SearchOptimizerProps> = ({ apiKey }) => {
     if (!isVisible) return null;
 
     return (
-        <Box
-            position="fixed"
-            top={`${position.top}px`}
-            left={`${position.left}px`}
-            zIndex={9999}
-            maxWidth="300px"
-            bg="white"
-            rounded="lg"
-            shadow="lg"
-            p={3}
+        <div 
+            style={{
+                position: 'fixed',
+                top: `${position.top}px`,
+                left: `${position.left}px`,
+                zIndex: 2147483647,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                backgroundColor: 'white',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid #ddd',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                maxWidth: '200px',
+            }}
         >
-            <Text fontSize="sm" color="gray.700" mb={2}>
+            <div style={{
+                fontSize: '14px',
+                color: '#666',
+                lineHeight: '1.4',
+                wordWrap: 'break-word'
+            }}>
                 Would you like me to optimize the search parameters for your query?
-            </Text>
-            <HStack gap={2}>
-                <Button
-                    size="sm"
-                    colorScheme="blue"
-                    onClick={() => handleOptimize()}
-                >
-                    Yes
-                </Button>
-                <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setIsVisible(false)}
-                >
-                    No
-                </Button>
-            </HStack>
-        </Box>
+            </div>
+            <div 
+                onClick={handleOptimize}
+                style={{
+                    fontSize: '18px',
+                    color: '#0066cc',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    paddingLeft: '4px',
+                    alignSelf: 'center'
+                }}
+            >
+                &gt;
+            </div>
+        </div>
     );
 }; 

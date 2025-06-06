@@ -1,6 +1,6 @@
 import { debugLog } from '../../../../config';
 import OpenAI from "openai";
-import { z } from "zod";
+import { z } from "zod"; 
 
 // Helper function to highlight an element with prominent visual effects
 const highlightElement = (element: Element) => {
