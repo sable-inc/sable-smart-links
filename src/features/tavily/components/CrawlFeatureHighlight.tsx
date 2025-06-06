@@ -175,13 +175,13 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
     
     useEffect(() => {
         const checkForCrawlButton = () => {
-            debugLog('info', 'Checking for crawl button');
+            // debugLog('info', 'Checking for crawl button');
             const allFeatureTextElements = document.querySelectorAll('p.chakra-text');
             
             for (const element of allFeatureTextElements) {
                 const buttonText = element.textContent?.trim() || '';
                 if (buttonText.toLowerCase() === 'crawl') {
-                    debugLog('info', 'Found crawl button');
+                    // debugLog('info', 'Found crawl button');
                     const button = element.closest('button');
                     if (button) {
                         const rect = button.getBoundingClientRect();
@@ -195,7 +195,7 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
                     }
                 }
             }
-            debugLog('info', 'Crawl button not found');
+            // debugLog('info', 'Crawl button not found');
             setShowHighlight(false);
         };
         
