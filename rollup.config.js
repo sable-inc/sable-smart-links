@@ -4,15 +4,37 @@ import commonjs from '@rollup/plugin-commonjs';
 import terser from '@rollup/plugin-terser';
 import typescript from '@rollup/plugin-typescript';
 import { dts } from 'rollup-plugin-dts';
+import replace from '@rollup/plugin-replace';
 import { readFileSync } from 'fs';
 
-// Read package.json as ES module
+// Read package.json
 const packageJson = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf8')
 );
 
-// Define external dependencies that shouldn't be bundled
-const external = ['react', 'react-dom'];
+// Define external dependencies
+const external = [
+  'react', 
+  'react-dom', 
+  '@chakra-ui/react', 
+  '@emotion/react', 
+  '@emotion/styled',
+  'framer-motion'
+];
+
+// Common plugins
+const commonPlugins = [
+  replace({
+    preventAssignment: true,
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
+    'process.env.DEBUG_ENABLED': JSON.stringify(process.env.DEBUG_ENABLED || 'true'),
+    'process.env.DEBUG_LOG_LEVEL': JSON.stringify(process.env.DEBUG_LOG_LEVEL || 'info')
+  }),
+  resolve(),
+  commonjs({
+    transformMixedEsModules: true
+  })
+];
 
 export default [
   // UMD build (for browsers)
@@ -24,26 +46,23 @@ export default [
       format: 'umd',
       exports: 'named',
       sourcemap: true,
-      // Ensure the default export is properly exposed as SableSmartLinks
-      // and named exports are available as SableSmartLinks.X
       extend: true,
       globals: {
         react: 'React',
-        'react-dom': 'ReactDOM'
+        'react-dom': 'ReactDOM',
+        '@chakra-ui/react': 'ChakraUI',
+        '@emotion/react': 'EmotionReact',
+        '@emotion/styled': 'EmotionStyled',
+        'framer-motion': 'FramerMotion'
       }
     },
+    external,
     plugins: [
-      resolve(),
-      commonjs({
-        // Ensure CommonJS modules are properly converted to ES modules
-        transformMixedEsModules: true
-      }),
+      ...commonPlugins,
       typescript({
         tsconfig: './tsconfig.json',
-        outputToFilesystem: true,
-        compilerOptions: {
-          declaration: false,
-        }
+        outDir: './dist',
+        declaration: false
       }),
       babel({
         babelHelpers: 'bundled',
@@ -58,6 +77,7 @@ export default [
       terser()
     ]
   },
+
   // ESM build (for modern bundlers)
   {
     input: 'src/index.js',
@@ -67,15 +87,13 @@ export default [
       exports: 'named',
       sourcemap: true
     },
+    external,
     plugins: [
-      resolve(),
-      commonjs(),
+      ...commonPlugins,
       typescript({
         tsconfig: './tsconfig.json',
-        outputToFilesystem: true,
-        compilerOptions: {
-          declaration: false,
-        }
+        outDir: './dist',
+        declaration: false
       }),
       babel({
         babelHelpers: 'bundled',
@@ -89,55 +107,26 @@ export default [
       })
     ]
   },
-  // CommonJS build (for Node.js)
+
+  // Tavily features (ESM)
   {
-    input: 'src/index.js',
-    output: {
-      file: packageJson.main,
-      format: 'cjs',
-      exports: 'named',
-      sourcemap: true
-    },
-    plugins: [
-      resolve(),
-      commonjs(),
-      typescript({
-        tsconfig: './tsconfig.json',
-        outputToFilesystem: true,
-        compilerOptions: {
-          declaration: false,
-        }
-      }),
-      babel({
-        babelHelpers: 'bundled',
-        exclude: 'node_modules/**',
-        extensions: ['.js', '.jsx', '.ts', '.tsx'],
-        presets: [
-          ['@babel/preset-env', { targets: { node: '14' } }],
-          '@babel/preset-typescript',
-          '@babel/preset-react'
-        ]
-      })
-    ]
-  },
-  // React components (ESM)
-  {
-    input: 'src/react/index.ts',
+    input: 'src/features/tavily/index.ts',
     external,
     output: {
-      file: 'dist/react/index.js',
+      dir: 'dist/features/tavily',
       format: 'esm',
-      sourcemap: true
+      sourcemap: true,
+      preserveModules: true,
+      preserveModulesRoot: 'src'
     },
     plugins: [
-      resolve(),
-      commonjs(),
+      ...commonPlugins,
       typescript({
         tsconfig: './tsconfig.json',
-        outputToFilesystem: true,
-        compilerOptions: {
-          declaration: false,
-        }
+        outDir: 'dist/features/tavily',
+        declarationDir: 'dist/features/tavily',
+        declaration: true,
+        rootDir: 'src'
       }),
       babel({
         babelHelpers: 'bundled',
@@ -151,7 +140,8 @@ export default [
       })
     ]
   },
-  // Type definitions for main package
+
+  // Type definitions
   {
     input: 'src/index.d.ts',
     output: {
@@ -160,11 +150,12 @@ export default [
     },
     plugins: [dts()]
   },
-  // Type definitions for React components
+
+  // Type definitions for Tavily features
   {
-    input: 'src/react/index.ts',
+    input: 'src/features/tavily/index.ts',
     output: {
-      file: 'dist/react/index.d.ts',
+      dir: 'dist/features/tavily',
       format: 'es'
     },
     plugins: [dts()]
