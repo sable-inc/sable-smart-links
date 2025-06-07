@@ -6,21 +6,22 @@ import { z } from "zod";
 const highlightElement = (element: Element) => {
     const originalStyle = element.getAttribute('style') || '';
     
-    // Create a more prominent highlight with animation
+    // Create a more subtle highlight with animation and rounded corners
     const highlightStyle = `
       ${originalStyle}; 
-      outline: 5px solid #FF0000; 
-      box-shadow: 0 0 20px rgba(255, 0, 0, 0.9); 
-      transition: box-shadow 0.5s ease-in-out; 
-      animation: pulse-border 1s infinite alternate;
+      outline: 2px solid #E2E8F0; 
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(160, 174, 192, 0.4); 
+      transition: all 0.5s ease-in-out; 
+      animation: pulse-border 1.2s infinite alternate;
     `;
     
-    // Add a CSS animation for the pulsing effect
+    // Add a CSS animation for a gentler pulsing effect
     const styleTag = document.createElement('style');
     styleTag.textContent = `
       @keyframes pulse-border {
-        0% { box-shadow: 0 0 15px rgba(255, 0, 0, 0.8); outline-color: #FF0000; }
-        100% { box-shadow: 0 0 25px rgba(255, 0, 0, 1); outline-color: #FF5500; }
+        0% { box-shadow: 0 0 10px rgba(160, 174, 192, 0.3); outline-color: #E2E8F0; }
+        100% { box-shadow: 0 0 20px rgba(160, 174, 192, 0.5); outline-color: #CBD5E0; }
       }
     `;
     document.head.appendChild(styleTag);
@@ -143,7 +144,7 @@ const selectDropdownOption = async (paramName: string, value: string): Promise<b
             const styleInfo = highlightElement(containerToHighlight);
             
             // Wait for visual effect
-            await wait(1000);
+            await wait(600);
 
             // Set the value and trigger change event
             targetSelect.value = value;
@@ -259,7 +260,7 @@ You must respond with a JSON object in this exact format:
     for (const param of parameterSequence) {
       const result = await selectDropdownOption(param.name, param.value);
       results.push(result);
-      await wait(1000);
+      await wait(600);
     }
 
     const numericResult = await setNumericInput(5);

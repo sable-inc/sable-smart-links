@@ -230,23 +230,26 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
-                width: 'fit-content',
-                minWidth: `${buttonPosition.width}px`,
+                width: '140px',
             }}>
                 <div>🐻‍❄️</div>
                 <div style={{
                     fontFamily: 'system-ui, -apple-system, sans-serif',
                     fontSize: '14px',
-                    whiteSpace: 'nowrap'
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px'
                 }}>
-                    New Feature! Explore Crawl!
+                    <div style={{ fontWeight: '500' }}>New Feature!</div>
+                    <div>Explore Crawl!</div>
                 </div>
                 <div 
                     onClick={handleCrawlClick}
                     style={{
                         fontSize: '18px',
                         color: '#0066cc',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        marginLeft: 'auto'
                     }}
                 >
                     &gt;
@@ -257,7 +260,7 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
                 <div style={{
                     position: 'fixed',
                     top: `${Math.max(buttonPosition.top - 60, 10)}px`,
-                    left: `${buttonPosition.left + 400}px`,
+                    left: `${buttonPosition.left + 200}px`,
                     backgroundColor: 'white',
                     padding: '16px 20px',
                     borderRadius: '12px',
