@@ -84,6 +84,7 @@ export class WalkthroughEngine {
 export class SableSmartLinks {
   constructor(config?: SableSmartLinksConfig);
   init(): void;
+  restoreWalkthrough(): void;
   start(walkthroughId: string): boolean;
   registerWalkthrough(id: string, steps: WalkthroughStep[]): void;
   next(): void;

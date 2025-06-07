@@ -40,11 +40,6 @@ export class WalkthroughEngine {
     // Bind methods to ensure correct 'this' context
     this.next = this.next.bind(this);
     this.end = this.end.bind(this);
-    
-    // Setup navigation handling
-    if (isBrowser) {
-      this._setupNavigationHandling();
-    }
   }
   
   /**
@@ -151,125 +146,6 @@ export class WalkthroughEngine {
     } catch (e) {
       console.error('[SableSmartLinks] Failed to clear walkthrough state from localStorage:', e);
     }
-  }
-  
-  /**
-   * Set up navigation handling for page transitions
-   */
-  _setupNavigationHandling() {
-    if (!isBrowser) return;
-    
-    // Handle beforeunload to save state
-    const handleBeforeUnload = () => {
-      if (this.isRunning) {
-        if (this.config.debug) {
-          console.log('[SableSmartLinks] Page unloading, saving state...');
-        }
-        this._saveState();
-      }
-    };
-    
-    // Handle popstate (back/forward navigation)
-    const handlePopState = () => {
-      if (this.isRunning) {
-        if (this.config.debug) {
-          console.log('[SableSmartLinks] Navigation detected (popstate), saving state...');
-        }
-        this._saveState();
-        // Small delay to allow the page to start loading
-        setTimeout(() => this._restoreWalkthrough(), 100);
-      }
-    };
-    
-    // Handle link clicks
-    const handleLinkClick = (e) => {
-      if (!this.isRunning) return;
-      
-      // Find the closest anchor tag
-      let target = e.target;
-      while (target && target.nodeName !== 'A') {
-        if (target === safeDocument.documentElement) return;
-        target = target.parentNode;
-      }
-      
-      if (target && target.href) {
-        if (this.config.debug) {
-          console.log('[SableSmartLinks] Link click detected, saving state...');
-        }
-        this._saveState();
-      }
-    };
-    
-    // Store original history methods
-    const originalPushState = history.pushState;
-    const originalReplaceState = history.replaceState;
-    
-    // Override pushState
-    history.pushState = function() {
-      if (this.isRunning && this.config.debug) {
-        console.log('[SableSmartLinks] pushState detected, saving state...');
-      }
-      const result = originalPushState.apply(history, arguments);
-      if (this.isRunning) {
-        this._saveState();
-      }
-      return result;
-    }.bind(this);
-    
-    // Override replaceState
-    history.replaceState = function() {
-      if (this.isRunning && this.config.debug) {
-        console.log('[SableSmartLinks] replaceState detected, saving state...');
-      }
-      const result = originalReplaceState.apply(history, arguments);
-      if (this.isRunning) {
-        this._saveState();
-      }
-      return result;
-    }.bind(this);
-    
-    // Add event listeners
-    safeWindow.addEventListener('beforeunload', handleBeforeUnload);
-    safeWindow.addEventListener('popstate', handlePopState);
-    safeDocument.addEventListener('click', handleLinkClick, true); // Use capture phase
-    
-    // Handle page load to restore state
-    const handleLoad = async () => {
-      if (this.config.debug) {
-        console.log('[SableSmartLinks] Page loaded, attempting to restore state...');
-      }
-      // Wait for any pending state to be saved
-      await new Promise(resolve => setTimeout(resolve, 50));
-      await this._restoreWalkthrough();
-    };
-    
-    // Use DOMContentLoaded instead of load for faster restoration
-    if (safeDocument.readyState === 'complete' || safeDocument.readyState === 'interactive') {
-      if (this.config.debug) {
-        console.log('[SableSmartLinks] Document already loaded, restoring state immediately');
-      }
-      handleLoad();
-    } else {
-      if (this.config.debug) {
-        console.log('[SableSmartLinks] Adding DOMContentLoaded listener for state restoration');
-      }
-      safeDocument.addEventListener('DOMContentLoaded', handleLoad);
-      // Also listen for load as a fallback
-      safeWindow.addEventListener('load', handleLoad);
-    }
-    
-    // Store cleanup function
-    this._cleanupFn = () => {
-      if (this.config.debug) {
-        console.log('[SableSmartLinks] Cleaning up navigation handlers');
-      }
-      safeWindow.removeEventListener('beforeunload', handleBeforeUnload);
-      safeWindow.removeEventListener('popstate', handlePopState);
-      safeDocument.removeEventListener('click', handleLinkClick, true);
-      history.pushState = originalPushState;
-      history.replaceState = originalReplaceState;
-      delete this._cleanupFn; // Clean up the cleanup function itself
-    };
   }
   
   /**

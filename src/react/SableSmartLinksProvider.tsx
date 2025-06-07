@@ -4,6 +4,7 @@ import { isBrowser } from '../utils/browserAPI';
 
 interface SableSmartLinksContextType {
   registerWalkthrough: (id: string, steps: WalkthroughStep[]) => void;
+  restoreWalkthrough: () => void;
   start: (walkthroughId: string) => boolean;
   next: () => void;
   end: () => void;
@@ -59,6 +60,11 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     registerWalkthrough: (id: string, steps: WalkthroughStep[]) => {
       if (sableInstance.current) {
         sableInstance.current.registerWalkthrough(id, steps);
+      }
+    },
+    restoreWalkthrough: () => {
+      if (sableInstance.current) {
+        sableInstance.current.restoreWalkthrough();
       }
     },
     start: (walkthroughId: string) => {
