@@ -46,6 +46,13 @@ class SableSmartLinks {
       this.start(walkthroughId);
     }
   }
+
+  /**
+   * Restore walkthrough from saved state
+   */
+  restoreWalkthrough() {
+    this.walkthroughEngine._restoreWalkthrough();
+  }
   
   /**
    * Start a walkthrough by ID
