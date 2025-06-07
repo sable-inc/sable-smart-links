@@ -7,6 +7,10 @@ import { parseUrlParameters } from './core/urlParser.js';
 import { WalkthroughEngine } from './core/walkthroughEngine.js';
 import { isBrowser, safeDocument } from './utils/browserAPI.js';
 
+// Import Tavily features
+export * from './config';
+export * from './features/tavily';
+
 class SableSmartLinks {
   /**
    * Create a new SableSmartLinks instance
