@@ -219,7 +219,7 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
         <>
             <div style={{
                 position: 'fixed',
-                top: `${Math.max(buttonPosition.top - 60, 10)}px`,
+                top: `${Math.max(buttonPosition.top - 100, 10)}px`,
                 left: `${buttonPosition.left}px`,
                 backgroundColor: 'white',
                 padding: '12px 16px',
@@ -230,7 +230,7 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
-                width: '140px',
+                width: '180px',
             }}>
                 <div>🐻‍❄️</div>
                 <div style={{
