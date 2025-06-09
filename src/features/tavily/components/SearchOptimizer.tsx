@@ -10,6 +10,11 @@ export const SearchOptimizer: React.FC<SearchOptimizerProps> = ({ apiKey }) => {
     const [currentQuery, setCurrentQuery] = useState('');
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const debounceTimer = useRef<NodeJS.Timeout>();
+    
+    // Add drag state
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+    const dragRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const setupInputWatcher = () => {
@@ -56,6 +61,56 @@ export const SearchOptimizer: React.FC<SearchOptimizerProps> = ({ apiKey }) => {
         setupInputWatcher();
     }, [currentQuery]);
 
+    // Handle drag start
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (e.target instanceof HTMLElement && e.target.closest('.traffic-lights')) {
+            return; // Prevent dragging when clicking traffic lights
+        }
+        
+        setIsDragging(true);
+        const rect = dragRef.current?.getBoundingClientRect();
+        if (rect) {
+            setDragOffset({
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            });
+        }
+    };
+
+    // Handle drag
+    const handleMouseMove = (e: MouseEvent) => {
+        if (isDragging) {
+            const newLeft = e.clientX - dragOffset.x;
+            const newTop = e.clientY - dragOffset.y;
+            
+            // Keep within window bounds
+            const maxLeft = window.innerWidth - (dragRef.current?.offsetWidth || 0);
+            const maxTop = window.innerHeight - (dragRef.current?.offsetHeight || 0);
+            
+            setPosition({
+                left: Math.max(0, Math.min(newLeft, maxLeft)),
+                top: Math.max(0, Math.min(newTop, maxTop))
+            });
+        }
+    };
+
+    // Handle drag end
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    // Add event listeners for drag
+    useEffect(() => {
+        if (isDragging) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        }
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isDragging, dragOffset]);
+
     const handleOptimize = async () => {
         if (!currentQuery) return;
         try {
@@ -70,44 +125,99 @@ export const SearchOptimizer: React.FC<SearchOptimizerProps> = ({ apiKey }) => {
 
     return (
         <div 
+            ref={dragRef}
             style={{
                 position: 'fixed',
                 top: `${position.top}px`,
                 left: `${position.left}px`,
                 zIndex: 2147483647,
                 display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                backgroundColor: 'white',
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: '1px solid #ddd',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                flexDirection: 'column',
+                gap: '12px',
+                background: `radial-gradient(
+                    circle at center,
+                    rgba(60, 60, 60, 0.5) 0%,
+                    rgba(60, 60, 60, 0.65) 100%
+                )`,
+                padding: '16px',
+                borderRadius: '16px',
+                border: '1px solid rgba(80, 80, 80, 0.8)',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
                 fontFamily: 'system-ui, -apple-system, sans-serif',
-                maxWidth: '200px',
+                maxWidth: '280px',
+                backdropFilter: 'blur(8px)',
+                cursor: isDragging ? 'grabbing' : 'grab',
+                userSelect: 'none',
+                transition: isDragging ? 'none' : 'all 0.2s ease',
             }}
+            onMouseDown={handleMouseDown}
         >
+            {/* Message text */}
             <div style={{
                 fontSize: '14px',
-                color: '#666',
+                color: 'white',
                 lineHeight: '1.4',
-                wordWrap: 'break-word'
+                wordWrap: 'break-word',
             }}>
                 Would you like me to optimize the search parameters for your query?
             </div>
-            <div 
-                onClick={handleOptimize}
-                style={{
-                    fontSize: '18px',
-                    color: '#0066cc',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    paddingLeft: '4px',
-                    alignSelf: 'center'
-                }}
-            >
-                &gt;
+
+            {/* Button container - added marginLeft: 'auto' to push buttons right */}
+            <div style={{
+                display: 'flex',
+                gap: '8px',
+                justifyContent: 'flex-end',
+                marginLeft: 'auto', // This will push the buttons to the right
+            }}>
+                <button
+                    onClick={handleOptimize}
+                    style={{
+                        padding: '6px 16px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        color: 'rgba(0, 0, 0, 0.8)',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                    }}
+                    onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = 'white';
+                        e.currentTarget.style.transform = 'scale(1.02)';
+                    }}
+                    onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+                        e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                >
+                    Yes
+                </button>
+                <button
+                    onClick={() => setIsVisible(false)}
+                    style={{
+                        padding: '6px 16px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        backgroundColor: 'rgba(80, 80, 80, 0.6)',
+                        color: 'white',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                    }}
+                    onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(90, 90, 90, 0.7)';
+                        e.currentTarget.style.transform = 'scale(1.02)';
+                    }}
+                    onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(80, 80, 80, 0.6)';
+                        e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                >
+                    No
+                </button>
             </div>
         </div>
     );
-}; 
+};

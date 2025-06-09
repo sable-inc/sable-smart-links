@@ -9,10 +9,10 @@ const CrawlInstructionsSchema = z.object({
   instruction: z.string().describe('Natural language instruction for how to crawl the URL')
 });
 
-export const generateCrawlInstructions = async ({
+export const generateCrawlInstructions = async ({ 
   query,
   apiKey,
-}: {
+}: { 
   query: string;
   apiKey: string;
 }): Promise<CrawlInstructions> => {

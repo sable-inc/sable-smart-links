@@ -1,6 +1,6 @@
 import { debugLog } from '../../../../config';
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
-import { z } from "zod"; 
+import { z } from "zod";
 
 // Helper function to highlight an element with prominent visual effects
 const highlightElement = (element: Element) => {
@@ -189,7 +189,7 @@ const setNumericInput = async (value: number): Promise<boolean> => {
 
 // Main function simplified
 export const suggestSearchParameters = async ({ 
-  query,
+  query, 
   apiKey 
 }: { 
   query: string;
@@ -201,7 +201,7 @@ export const suggestSearchParameters = async ({
 }> => {
   try {
     debugLog('info', `[SUGGEST] Starting parameter suggestion for query: "${query}"`);
-
+    
     if (!apiKey) {
       return {
         success: false,

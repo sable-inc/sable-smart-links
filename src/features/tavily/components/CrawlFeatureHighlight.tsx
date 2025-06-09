@@ -216,17 +216,17 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
     if (!showHighlight) return null;
 
     return (
-        <div style={{
-            position: 'fixed',
+            <div style={{
+                position: 'fixed',
             top: `${Math.max(buttonPosition.top - 100, 10)}px`,
-            left: `${buttonPosition.left}px`,
+                left: `${buttonPosition.left}px`,
             backgroundColor: 'rgba(60, 60, 60, 0.6)',  // Lighter and more transparent background
             border: '1px solid rgba(80, 80, 80, 0.8)',  // Lighter border
             padding: showChatbox ? '16px 20px' : '12px 16px',
             borderRadius: showChatbox ? '12px' : '8px',
             boxShadow: showChatbox ? '0 4px 20px rgba(0,0,0,0.15)' : '0 2px 10px rgba(0,0,0,0.1)',
-            zIndex: 2147483647,
-            pointerEvents: 'auto',
+                zIndex: 2147483647,
+                pointerEvents: 'auto',
             transition: 'all 0.3s ease-in-out',
             width: showChatbox ? '400px' : '180px',
             transform: showChatbox ? `translateX(${200}px)` : 'translateX(0)',
@@ -235,29 +235,29 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
             {!showChatbox ? (
                 // Compact view
                 <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
+                display: 'flex',
+                alignItems: 'center',
                     gap: '8px',
                     padding: '2px',
-                }}>
-                    <div>🐻‍❄️</div>
-                    <div style={{
-                        fontFamily: 'system-ui, -apple-system, sans-serif',
-                        fontSize: '14px',
+            }}>
+                <div>🐻‍❄️</div>
+                <div style={{
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    fontSize: '14px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '2px',
                         color: 'white',
                         lineHeight: '1.2',
-                    }}>
+                }}>
                         <div style={{ fontWeight: '500' }}>New Feature!</div>
                         <div>Explore</div>
                         <div>Crawl!</div>
-                    </div>
-                    <div 
-                        onClick={handleCrawlClick}
-                        style={{
-                            fontSize: '18px',
+                </div>
+                <div 
+                    onClick={handleCrawlClick}
+                    style={{
+                        fontSize: '18px',
                             cursor: 'pointer',
                             color: 'white',
                             display: 'flex',
@@ -265,11 +265,11 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
                             justifyContent: 'center',
                             flexShrink: 0,
                             marginLeft: '4px',
-                        }}
-                    >
-                        &gt;
-                    </div>
+                    }}
+                >
+                    &gt;
                 </div>
+            </div>
             ) : (
                 // Expanded view
                 <>
