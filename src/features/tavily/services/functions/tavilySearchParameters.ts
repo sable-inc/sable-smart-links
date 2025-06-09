@@ -79,7 +79,7 @@ const SEARCH_PARAMS = {
 const ParameterSuggestionsSchema = z.object({
   topic: z.enum(['general', 'news', 'finance']),
   depth: z.enum(['basic', 'advanced']),
-  maxResults: z.literal(5),
+  maxResults: z.number(),
   timeRange: z.enum(['none', 'day', 'week', 'month', 'year']),
   includeAnswer: z.enum(['none', 'basic', 'advanced']),
   explanation: z.string()
@@ -221,7 +221,7 @@ export const suggestSearchParameters = async ({
     });
 
     // Build prompt
-    const systemPrompt = `You are an expert at optimizing Tavily search parameters. Given a search query, suggest the best parameters and explain why.
+    const systemPrompt = `You are an expert at optimizing Tavily search parameters. Given a search query, suggest the best parameters and explain why. Max results should always be 5. 
 You must respond with a JSON object in this exact format:
 {
   "topic": "general"|"news"|"finance",
@@ -251,13 +251,38 @@ You must respond with a JSON object in this exact format:
     const raw = await new Response(response.body!).text();
     debugLog('info', `Raw model output: ${raw}`);
 
-    // Parse the JSON response
-    const jsonMatch = raw.match(/{[\s\S]*}/);
-    if (!jsonMatch) {
-      throw new Error('Failed to extract JSON from response');
+    // Extract the completion part from the response
+    const completionMatch = /"completion":"(.*?)","stop_reason"/.exec(raw);
+    if (!completionMatch) {
+      throw new Error('Failed to extract completion from response');
     }
-    
-    const suggestions = JSON.parse(jsonMatch[0]) as ParameterSuggestions;
+
+    // Get the completion content and parse it as JSON
+    const completionContent = completionMatch[1]
+      .replace(/\\n/g, '')  // Remove newlines
+      .replace(/\\\"/g, '"') // Replace escaped quotes
+      .replace(/\\\\/g, '\\'); // Replace escaped backslashes
+
+    // Find the JSON object within the completion
+    const jsonMatch = /{.*?}/.exec(completionContent);
+    if (!jsonMatch) {
+      throw new Error('Failed to extract JSON from completion');
+    }
+
+    const parsedJson = JSON.parse(jsonMatch[0]);
+
+    // Validate and construct the suggestions object
+    const suggestions: ParameterSuggestions = {
+      topic: parsedJson.topic,
+      depth: parsedJson.depth,
+      maxResults: 5, // Hardcoded to 5
+      timeRange: parsedJson.timeRange,
+      includeAnswer: parsedJson.includeAnswer,
+      explanation: parsedJson.explanation
+    };
+
+    // Validate against schema
+    ParameterSuggestionsSchema.parse(suggestions);
 
     // Set parameters in UI
     const results: boolean[] = [];
