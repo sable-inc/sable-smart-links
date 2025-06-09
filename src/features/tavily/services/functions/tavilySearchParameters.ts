@@ -1,5 +1,5 @@
 import { debugLog } from '../../../../config';
-import OpenAI from "openai";
+import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { z } from "zod"; 
 
 // Helper function to highlight an element with prominent visual effects
@@ -79,7 +79,7 @@ const SEARCH_PARAMS = {
 const ParameterSuggestionsSchema = z.object({
   topic: z.enum(['general', 'news', 'finance']),
   depth: z.enum(['basic', 'advanced']),
-  maxResults: z.literal(5),
+  maxResults: z.number(),
   timeRange: z.enum(['none', 'day', 'week', 'month', 'year']),
   includeAnswer: z.enum(['none', 'basic', 'advanced']),
   explanation: z.string()
@@ -205,23 +205,23 @@ export const suggestSearchParameters = async ({
     if (!apiKey) {
       return {
         success: false,
-        message: 'OpenAI API key is required'
+        message: 'AWS credentials are required'
       };
     }
 
-    const openai = new OpenAI({
-      apiKey,
-      dangerouslyAllowBrowser: true
+    // Initialize Bedrock client
+    const [accessKeyId, secretAccessKey] = apiKey.split(':');
+    if (!accessKeyId || !secretAccessKey) {
+      throw new Error('API key must be in ACCESS_KEY:SECRET_KEY format');
+    }
+
+    const client = new BedrockRuntimeClient({
+      region: "us-east-1",
+      credentials: { accessKeyId, secretAccessKey }
     });
 
-    // Get parameter suggestions from OpenAI
-    debugLog('info', '[SUGGEST] Calling OpenAI API for parameter suggestions');
-    const response = await openai.chat.completions.create({
-      model: "gpt-4.1-nano-2025-04-14",
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert at optimizing Tavily search parameters. Given a search query, suggest the best parameters and explain why. 
+    // Build prompt
+    const systemPrompt = `You are an expert at optimizing Tavily search parameters. Given a search query, suggest the best parameters and explain why. Max results should always be 5. 
 You must respond with a JSON object in this exact format:
 {
   "topic": "general"|"news"|"finance",
@@ -230,23 +230,59 @@ You must respond with a JSON object in this exact format:
   "timeRange": "none"|"day"|"week"|"month"|"year",
   "includeAnswer": "none"|"basic"|"advanced",
   "explanation": "Why these parameters were chosen"
-}`
-        },
-        {
-          role: "user",
-          content: `Suggest optimal Tavily search parameters for this query: "${query}"`
-        }
-      ],
-      response_format: { type: "json_object" }
+}`;
+
+    const command = new InvokeModelCommand({
+      modelId: 'anthropic.claude-v2:1',
+      contentType: 'application/json',
+      accept: '*/*',
+      body: JSON.stringify({
+        anthropic_version: 'bedrock-2023-05-31',
+        prompt: `${systemPrompt}\n\nHuman: Suggest optimal Tavily search parameters for this query: "${query}"\n\nAssistant:`,
+        max_tokens_to_sample: 300,
+        temperature: 0.7,
+        top_k: 250,
+        top_p: 1,
+        stop_sequences: ['\n\nHuman:'],
+      })
     });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      debugLog('error', '[SUGGEST] No content in OpenAI response');
-      throw new Error('No content in OpenAI response');
+    const response = await client.send(command);
+    const raw = await new Response(response.body!).text();
+    debugLog('info', `Raw model output: ${raw}`);
+
+    // Extract the completion part from the response
+    const completionMatch = /"completion":"(.*?)","stop_reason"/.exec(raw);
+    if (!completionMatch) {
+      throw new Error('Failed to extract completion from response');
     }
 
-    const suggestions = JSON.parse(content) as ParameterSuggestions;
+    // Get the completion content and parse it as JSON
+    const completionContent = completionMatch[1]
+      .replace(/\\n/g, '')  // Remove newlines
+      .replace(/\\\"/g, '"') // Replace escaped quotes
+      .replace(/\\\\/g, '\\'); // Replace escaped backslashes
+
+    // Find the JSON object within the completion
+    const jsonMatch = /{.*?}/.exec(completionContent);
+    if (!jsonMatch) {
+      throw new Error('Failed to extract JSON from completion');
+    }
+
+    const parsedJson = JSON.parse(jsonMatch[0]);
+
+    // Validate and construct the suggestions object
+    const suggestions: ParameterSuggestions = {
+      topic: parsedJson.topic,
+      depth: parsedJson.depth,
+      maxResults: 5, // Hardcoded to 5
+      timeRange: parsedJson.timeRange,
+      includeAnswer: parsedJson.includeAnswer,
+      explanation: parsedJson.explanation
+    };
+
+    // Validate against schema
+    ParameterSuggestionsSchema.parse(suggestions);
 
     // Set parameters in UI
     const results: boolean[] = [];

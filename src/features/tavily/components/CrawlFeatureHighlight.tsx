@@ -216,64 +216,67 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
     if (!showHighlight) return null;
 
     return (
-        <>
-            <div style={{
-                position: 'fixed',
-                top: `${Math.max(buttonPosition.top - 60, 10)}px`,
-                left: `${buttonPosition.left}px`,
-                backgroundColor: 'white',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                zIndex: 2147483647,
-                pointerEvents: 'auto',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                width: '140px',
-            }}>
-                <div>🐻‍❄️</div>
+        <div style={{
+            position: 'fixed',
+            top: `${Math.max(buttonPosition.top - 100, 10)}px`,
+            left: `${buttonPosition.left}px`,
+            backgroundColor: 'rgba(60, 60, 60, 0.6)',  // Lighter and more transparent background
+            border: '1px solid rgba(80, 80, 80, 0.8)',  // Lighter border
+            padding: showChatbox ? '16px 20px' : '12px 16px',
+            borderRadius: showChatbox ? '12px' : '8px',
+            boxShadow: showChatbox ? '0 4px 20px rgba(0,0,0,0.15)' : '0 2px 10px rgba(0,0,0,0.1)',
+            zIndex: 2147483647,
+            pointerEvents: 'auto',
+            transition: 'all 0.3s ease-in-out',
+            width: showChatbox ? '400px' : '180px',
+            transform: showChatbox ? `translateX(${200}px)` : 'translateX(0)',
+            backdropFilter: 'blur(8px)',
+        }}>
+            {!showChatbox ? (
+                // Compact view
                 <div style={{
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                    fontSize: '14px',
                     display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px'
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '2px',
                 }}>
-                    <div style={{ fontWeight: '500' }}>New Feature!</div>
-                    <div>Explore Crawl!</div>
+                    <div>🐻‍❄️</div>
+                    <div style={{
+                        fontFamily: 'system-ui, -apple-system, sans-serif',
+                        fontSize: '14px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px',
+                        color: 'white',
+                        lineHeight: '1.2',
+                    }}>
+                        <div style={{ fontWeight: '500' }}>New Feature!</div>
+                        <div>Explore</div>
+                        <div>Crawl!</div>
+                    </div>
+                    <div 
+                        onClick={handleCrawlClick}
+                        style={{
+                            fontSize: '18px',
+                            cursor: 'pointer',
+                            color: 'white',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            marginLeft: '4px',
+                        }}
+                    >
+                        &gt;
+                    </div>
                 </div>
-                <div 
-                    onClick={handleCrawlClick}
-                    style={{
-                        fontSize: '18px',
-                        color: '#0066cc',
-                        cursor: 'pointer',
-                        marginLeft: 'auto'
-                    }}
-                >
-                    &gt;
-                </div>
-            </div>
-
-            {showChatbox && (
-                <div style={{
-                    position: 'fixed',
-                    top: `${Math.max(buttonPosition.top - 60, 10)}px`,
-                    left: `${buttonPosition.left + 200}px`,
-                    backgroundColor: 'white',
-                    padding: '16px 20px',
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                    zIndex: 2147483647,
-                    width: '400px',
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                    pointerEvents: 'auto',
-                }}>
+            ) : (
+                // Expanded view
+                <>
                     <div style={{
                         fontSize: '14px',
                         lineHeight: '1.5',
-                        color: '#333',
+                        color: 'white',  // White text for dark background
                         marginBottom: '16px'
                     }}>
                         Crawl explores content from websites using natural language instructions, customizable depth and filters, to support tasks like RAG, data collection, and knowledge discovery.
@@ -281,25 +284,21 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
                     <div style={{
                         fontSize: '15px',
                         fontWeight: '500',
-                        color: '#0066cc',
+                        color: '#66B2FF',  // Lighter blue for dark background
                         marginBottom: '12px'
                     }}>
                         What would you like to explore?
                     </div>
                     <div style={{
                         display: 'flex',
-                        gap: '8px',
+                        gap: '3px',
                         alignItems: 'center',
                         pointerEvents: 'auto',
                     }}>
                         <input
                             type="text"
                             value={exploreQuery}
-                            onChange={(e) => {
-                                const newValue = e.target.value;
-                                console.log('Input changed to:', newValue);
-                                setExploreQuery(newValue);
-                            }}
+                            onChange={(e) => setExploreQuery(e.target.value)}
                             onKeyDown={(e) => {
                                 e.stopPropagation();
                                 if (e.key === 'Enter') {
@@ -311,7 +310,9 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
                                 flex: 1,
                                 padding: '8px 12px',
                                 borderRadius: '6px',
-                                border: '1px solid #ddd',
+                                border: '1px solid rgba(80, 80, 80, 0.8)',  // Matching border color
+                                backgroundColor: 'rgba(70, 70, 70, 0.6)',  // Lighter input background
+                                color: 'white',
                                 fontSize: '14px',
                                 outline: 'none',
                                 fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -339,8 +340,8 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
                             Enter
                         </button>
                     </div>
-                </div>
+                </>
             )}
-        </>
+        </div>
     );
 };

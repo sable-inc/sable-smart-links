@@ -6,6 +6,7 @@ import typescript from '@rollup/plugin-typescript';
 import { dts } from 'rollup-plugin-dts';
 import replace from '@rollup/plugin-replace';
 import { readFileSync } from 'fs';
+import json from '@rollup/plugin-json';
 
 // Read package.json
 const packageJson = JSON.parse(
@@ -19,11 +20,15 @@ const external = [
   '@chakra-ui/react', 
   '@emotion/react', 
   '@emotion/styled',
-  'framer-motion'
+  'framer-motion',
+  '@aws-sdk/client-bedrock-runtime',
+  '@aws-sdk/smithy-client',
+  '@aws-sdk/types'
 ];
 
 // Common plugins
 const commonPlugins = [
+  json(),
   replace({
     preventAssignment: true,
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
@@ -53,7 +58,8 @@ export default [
         '@chakra-ui/react': 'ChakraUI',
         '@emotion/react': 'EmotionReact',
         '@emotion/styled': 'EmotionStyled',
-        'framer-motion': 'FramerMotion'
+        'framer-motion': 'FramerMotion',
+        '@aws-sdk/client-bedrock-runtime': 'AWSBedrockRuntime'
       }
     },
     external,
