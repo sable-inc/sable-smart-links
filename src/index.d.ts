@@ -93,3 +93,89 @@ export class SableSmartLinks {
 
 declare const instance: SableSmartLinks;
 export default instance;
+
+/**
+ * Type definitions for the Sable text agent
+ */
+
+export interface TextAgentStep {
+  /** Whether the text agent step is draggable */
+  draggable?: boolean;
+
+  /** Configuration for chat input */
+  chatInput?: {
+    /** Whether chat input is enabled */
+    enabled: boolean;
+    /** Placeholder text for the chat input */
+    placeholder?: string;
+  };
+
+  /** Chat state configuration */
+  chatState?: {
+    /** Current state of the chat */
+    state: 'expanded' | 'collapsed';
+    /** Handler function for state changes */
+    onStateChange?: (newState: 'expanded' | 'collapsed') => void;
+  };
+
+  /** Proceed button configuration */
+  proceedButton?: {
+    /** Whether to show the proceed button */
+    show: boolean;
+    /** Position of the proceed button */
+    position: 'after-text' | 'bottom' | 'right';
+    /** Custom button text */
+    text?: string;
+    /** Handler function when proceed is clicked */
+    onClick?: () => void;
+  };
+
+  /** Yes/No buttons configuration */
+  yesNoButtons?: {
+    /** Whether to show yes/no buttons */
+    show: boolean;
+    /** Position of the yes/no buttons */
+    position: 'left' | 'right' | 'middle';
+    /** Custom yes button text */
+    yesText?: string;
+    /** Custom no button text */
+    noText?: string;
+    /** Handler function when yes is clicked */
+    onYes?: () => void;
+    /** Handler function when no is clicked */
+    onNo?: () => void;
+  };
+
+  /** Whether to show the minimize button */
+  showMinimizeButton?: boolean;
+
+  /** Main text content */
+  text: string;
+
+  /** Secondary text content (displayed in blue) */
+  secondaryText?: string;
+
+  /** Element selector configuration */
+  selector?: {
+    /** CSS selector for the target element */
+    target: string;
+    /** Position of the selector indicator */
+    position: 'top' | 'right' | 'bottom' | 'left';
+  };
+
+  /** Action configuration */
+  action?: {
+    /** Handler function for the action */
+    handler: () => void | Promise<void>;
+    /** Whether the action should be triggered automatically */
+    autoTrigger?: boolean;
+  };
+
+  /** Custom CSS class names */
+  className?: {
+    container?: string;
+    text?: string;
+    secondaryText?: string;
+    buttons?: string;
+  };
+}
