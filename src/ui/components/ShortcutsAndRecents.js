@@ -12,7 +12,7 @@ class ShortcutsAndRecents {
         Object.assign(container.style, {
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px',
+            gap: '0',
         });
 
         // Recents Section
@@ -26,13 +26,13 @@ class ShortcutsAndRecents {
     createSection(title, items) {
         const section = document.createElement('div');
         Object.assign(section.style, {
-            padding: '0 8px',
-            marginBottom: '0',
+            padding: '0 16px',
+            marginTop: title === 'Shortcuts' ? '0px' : '0',
         });
 
         const heading = document.createElement('h3');
         Object.assign(heading.style, {
-            fontSize: '8px',
+            fontSize: '14px',
             color: 'rgba(255, 255, 255, 0.9)',
             marginBottom: '8px',
             fontWeight: '500',
@@ -43,43 +43,44 @@ class ShortcutsAndRecents {
         Object.assign(itemsContainer.style, {
             display: 'flex',
             flexDirection: 'column',
-            gap: '2px',
+            gap: '4px',
+            paddingLeft: '12px',
         });
 
         items.forEach(item => {
-            const itemElement = document.createElement('div');
+            const itemElement = document.createElement('span');
             Object.assign(itemElement.style, {
-                padding: '4px 8px',
+                color: 'rgba(255, 255, 255, 0.7)',
+                fontSize: '13px',
+                padding: '2px 0',
                 cursor: 'pointer',
-                borderRadius: '4px',
                 transition: 'all 0.2s ease',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                width: '90%',
-                margin: '0 auto',
+                gap: '8px',
+                background: 'transparent',
             });
 
             itemElement.addEventListener('mouseover', () => {
                 itemElement.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-                itemElement.style.transform = 'translateX(5px)';
             });
 
             itemElement.addEventListener('mouseout', () => {
-                itemElement.style.backgroundColor = 'rgba(255, 255, 255, 0.03)';
-                itemElement.style.transform = 'translateX(0)';
+                itemElement.style.backgroundColor = 'transparent';
             });
 
             itemElement.addEventListener('click', () => this.onQuerySelect(item));
 
-            const text = document.createElement('span');
-            Object.assign(text.style, {
-                color: 'rgba(255, 255, 255, 0.7)',
-                fontSize: '6px',
+            const icon = document.createElement('span');
+            Object.assign(icon.style, {
+                fontSize: '12px',
             });
+            icon.textContent = '📖';
+
+            const text = document.createElement('span');
             text.textContent = item;
 
+            itemElement.appendChild(icon);
             itemElement.appendChild(text);
             itemsContainer.appendChild(itemElement);
         });

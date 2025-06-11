@@ -308,11 +308,11 @@ export const SablePopup: React.FC<SablePopupProps> = ({
                                     {messages.length === 0 && (
                                         <>
                                             {/* Recents Section */}
-                                            <div style={{ padding: '0 8px' }}>
+                                            <div style={{ padding: '0 16px', background: 'transparent' }}>
                                                 <h3 style={{ 
-                                                    fontSize: '8px',
-                                                    color: 'rgba(255, 255, 255, 0.9)',
-                                                    marginBottom: '8px',
+                                                    fontSize: '14px',
+                                                    color: 'rgba(120, 33, 33, 0.9)',
+                                                    marginBottom: '4px',
                                                     fontWeight: '500',
                                                 }}>
                                                     Recents
@@ -320,56 +320,47 @@ export const SablePopup: React.FC<SablePopupProps> = ({
                                                 <div style={{
                                                     display: 'flex',
                                                     flexDirection: 'column',
-                                                    gap: '2px',
+                                                    gap: '1px',
+                                                    background: 'transparent',
                                                 }}>
                                                     {recentQueries.map((query, index) => (
-                                                        <div
+                                                        <span
                                                             key={index}
-                                                            style={{
-                                                                padding: '4px 8px',
+                                                            style={{ 
+                                                                color: 'rgba(255, 255, 255, 0.7)',
+                                                                fontSize: '13px',
+                                                                padding: '4px 0',
                                                                 cursor: 'pointer',
-                                                                borderRadius: '4px',
-                                                                transition: 'all 0.2s ease',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '4px',
-                                                                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                                                                width: '90%',
-                                                                margin: '0 auto',
+                                                                transition: 'background-color 0.2s ease',
+                                                                background: 'transparent',
                                                             }}
                                                             onMouseOver={(e) => {
                                                                 e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-                                                                e.currentTarget.style.transform = 'translateX(5px)';
                                                             }}
                                                             onMouseOut={(e) => {
-                                                                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)';
-                                                                e.currentTarget.style.transform = 'translateX(0)';
+                                                                e.currentTarget.style.backgroundColor = 'transparent';
                                                             }}
                                                             onClick={() => {
                                                                 setChatInput(query);
                                                                 handleChatSubmit();
                                                             }}
                                                         >
-                                                            <span style={{ 
-                                                                color: 'rgba(255, 255, 255, 0.7)',
-                                                                fontSize: '6px',
-                                                            }}>
-                                                                {query}
-                                                            </span>
-                                                        </div>
+                                                            {query}
+                                                        </span>
                                                     ))}
                                                 </div>
                                             </div>
 
                                             {/* Shortcuts Section */}
                                             <div style={{ 
-                                                padding: '0 8px',
-                                                marginBottom: '0'
+                                                padding: '0 16px',
+                                                marginTop: '16px',
+                                                background: 'transparent',
                                             }}>
                                                 <h3 style={{ 
-                                                    fontSize: '8px',
+                                                    fontSize: '14px',
                                                     color: 'rgba(255, 255, 255, 0.9)',
-                                                    marginBottom: '8px',
+                                                    marginBottom: '4px',
                                                     fontWeight: '500',
                                                 }}>
                                                     Shortcuts
@@ -377,44 +368,33 @@ export const SablePopup: React.FC<SablePopupProps> = ({
                                                 <div style={{
                                                     display: 'flex',
                                                     flexDirection: 'column',
-                                                    gap: '2px',
-                                                    marginBottom: '0'
+                                                    gap: '1px',
+                                                    background: 'transparent',
                                                 }}>
                                                     {shortcuts.map((shortcut, index) => (
-                                                        <div
+                                                        <span
                                                             key={index}
-                                                            style={{
-                                                                padding: '4px 8px',
+                                                            style={{ 
+                                                                color: 'rgba(255, 255, 255, 0.7)',
+                                                                fontSize: '13px',
+                                                                padding: '4px 0',
                                                                 cursor: 'pointer',
-                                                                borderRadius: '4px',
-                                                                transition: 'all 0.2s ease',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '4px',
-                                                                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                                                                width: '90%',
-                                                                margin: '0 auto',
+                                                                transition: 'background-color 0.2s ease',
+                                                                background: 'transparent',
                                                             }}
                                                             onMouseOver={(e) => {
                                                                 e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-                                                                e.currentTarget.style.transform = 'translateX(5px)';
                                                             }}
                                                             onMouseOut={(e) => {
-                                                                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)';
-                                                                e.currentTarget.style.transform = 'translateX(0)';
+                                                                e.currentTarget.style.backgroundColor = 'transparent';
                                                             }}
                                                             onClick={() => {
                                                                 setChatInput(shortcut);
                                                                 handleChatSubmit();
                                                             }}
                                                         >
-                                                            <span style={{ 
-                                                                color: 'rgba(255, 255, 255, 0.7)',
-                                                                fontSize: '6px',
-                                                            }}>
-                                                                {shortcut}
-                                                            </span>
-                                                        </div>
+                                                            {shortcut}
+                                                        </span>
                                                     ))}
                                                 </div>
                                             </div>
