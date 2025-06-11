@@ -1,10 +1,12 @@
 // components/MinimizedState.js
 class MinimizedState {
-    constructor({ primaryColor, isDragging, onMouseOver, onMouseOut }) {
-        this.primaryColor = primaryColor;
-        this.isDragging = isDragging;
+    constructor(config) {
+        this.config = {
+            text: config.text || '',
+            onClick: config.onClick || (() => {}),
+            primaryColor: config.primaryColor || '#FFFFFF'
+        };
         this.element = this.createElement();
-        this.setupEventListeners(onMouseOver, onMouseOut);
     }
 
     createElement() {
@@ -15,35 +17,30 @@ class MinimizedState {
             gap: '8px',
             opacity: '0.7',
             transition: 'opacity 0.2s ease',
-            cursor: this.isDragging ? 'grabbing' : 'pointer',
+            cursor: 'pointer',
         });
+
+        container.addEventListener('mouseover', () => {
+            container.style.opacity = '1';
+        });
+
+        container.addEventListener('mouseout', () => {
+            container.style.opacity = '0.7';
+        });
+
+        container.addEventListener('click', this.config.onClick);
 
         const text = document.createElement('span');
         Object.assign(text.style, {
             fontSize: '14px',
-            color: this.primaryColor,
+            color: this.config.primaryColor,
             fontWeight: '500',
+            fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         });
-        text.textContent = 'Ask Tavily...';
+        text.textContent = `${this.config.text.substring(0, 20)}...`;
 
         container.appendChild(text);
         return container;
-    }
-
-    setupEventListeners(onMouseOver, onMouseOut) {
-        this.element.addEventListener('mouseover', () => {
-            if (!this.isDragging) {
-                this.element.style.opacity = '1';
-                onMouseOver?.();
-            }
-        });
-
-        this.element.addEventListener('mouseout', () => {
-            if (!this.isDragging) {
-                this.element.style.opacity = '0.7';
-                onMouseOut?.();
-            }
-        });
     }
 
     render() {
