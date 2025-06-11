@@ -1,14 +1,16 @@
-// components/ChatInput.js
-class ChatInput {
-    constructor({ onSubmit, onInputChange, platform = 'Tavily', primaryColor = '#FFFFFF' }) {
-        this.onSubmit = onSubmit;
-        this.onInputChange = onInputChange;
+import { ArrowButton } from './ArrowButton.js';
+
+export class ChatInput {
+    constructor({ value, onChange, onSubmit, platform = 'Tavily', primaryColor = '#FFFFFF' }) {
+        this.onChange = onChange.bind(this);
+        this.onSubmit = onSubmit.bind(this);
+        this.value = value;
         this.platform = platform;
         this.primaryColor = primaryColor;
-        this.element = this.createInput();
+        this.element = this.createElement();
     }
 
-    createInput() {
+    createElement() {
         const container = document.createElement('div');
         Object.assign(container.style, {
             marginTop: '0',
@@ -41,11 +43,15 @@ class ChatInput {
             fontSize: '14px',
             outline: 'none',
         });
-        input.placeholder = `Ask anything about ${this.platform}`;
+        input.value = this.value;
+        input.placeholder = `Ask ${this.platform}...`;
         
-        input.addEventListener('input', (e) => this.onInputChange(e));
+        input.addEventListener('input', (e) => this.onChange(e));
         input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') this.onSubmit();
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.onSubmit();
+            }
         });
 
         const arrowButton = new ArrowButton(this.onSubmit);

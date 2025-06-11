@@ -1,5 +1,5 @@
 // components/MinimizeButton.js
-class MinimizeButton {
+export class MinimizeButton {
     constructor({ onMinimize, primaryColor }) {
         this.element = this.createElement({ onMinimize, primaryColor });
     }

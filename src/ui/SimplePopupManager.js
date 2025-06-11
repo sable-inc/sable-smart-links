@@ -1,5 +1,6 @@
 // managers/SimplePopupManager.js
 import { SimplePopup } from './components/SimplePopup.js';
+import { MinimizedState } from './components/MinimizedState.js';
 
 export class SimplePopupManager {
     constructor(config) {
@@ -30,7 +31,9 @@ export class SimplePopupManager {
     }
 
     handleMinimize = () => {
+        console.log('Minimize clicked, before:', this.isMinimized);
         this.isMinimized = true;
+        console.log('After setting isMinimized:', this.isMinimized);
         this.render();
     }
 
@@ -40,10 +43,21 @@ export class SimplePopupManager {
     }
 
     render() {
-        // Clear existing content
+        console.log('Rendering with isMinimized:', this.isMinimized);
         this.container.innerHTML = '';
 
         if (this.isMinimized) {
+            console.log('Attempting to render MinimizedState');
+            try {
+                const minimizedState = new MinimizedState({
+                    text: this.config.text,
+                    onClick: () => this.handleMaximize(),
+                    primaryColor: this.config.primaryColor
+                });
+                console.log('MinimizedState created successfully');
+            } catch (error) {
+                console.error('Error creating MinimizedState:', error);
+            }
             // Render minimized state
             const minimizedState = new MinimizedState({
                 text: this.config.text,

@@ -140,6 +140,26 @@ class SableSmartLinks {
   }
 
   /**
+   * Shows a complex popup with chat, shortcuts, and state management
+   * @param {Object} options - Popup configuration options
+   * @param {string} options.text - The text to display in the popup
+   * @param {number} [options.boxWidth=300] - Width of the popup in pixels
+   * @param {Function} [options.onProceed] - Callback when proceed/continue is clicked
+   * @param {string} [options.primaryColor='#FFFFFF'] - Primary color for the popup
+   * @param {HTMLElement} [options.parent] - Parent element to mount the popup to
+   * @param {string[]} [options.shortcuts] - List of shortcut options to display
+   * @param {string[]} [options.recentQueries] - List of recent queries to display
+   * @returns {Object} Popup manager instance with mount/unmount methods
+   */
+  showComplexPopup(options) {
+    if (!this.textAgentEngine) {
+      console.error('TextAgentEngine not initialized');
+      return null;
+    }
+    return this.textAgentEngine.showComplexPopup(options);
+  }
+
+  /**
    * Register a new text agent with the given ID and steps
    * @param {string} id - Unique identifier for the text agent
    * @param {Array<Object>} steps - Array of text agent steps

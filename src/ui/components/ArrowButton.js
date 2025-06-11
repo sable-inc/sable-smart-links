@@ -1,59 +1,57 @@
 // components/ArrowButton.js
 export class ArrowButton {
-    constructor(onClick, primaryColor = '#FFFFFF') {
-        this.onClick = onClick;
-        this.primaryColor = primaryColor;
-        this.element = this.createButton();
+    constructor(onClick) {
+        this.element = this.createButton(onClick);
     }
 
-    createButton() {
+    createButton(onClick) {
         const button = document.createElement('button');
         Object.assign(button.style, {
-            width: '36px',
-            height: '36px',
-            borderRadius: '6px',
+            padding: '5px',
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
             border: 'none',
-            backgroundColor: this.primaryColor,
+            backgroundColor: '#ffffff',
             color: '#000000',
+            cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor: 'pointer',
-            transition: 'background-color 0.2s',
+            transition: 'all 0.2s ease',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
         });
 
-        // Arrow icon
-        const arrowSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        arrowSvg.setAttribute('width', '20');
-        arrowSvg.setAttribute('height', '20');
-        arrowSvg.setAttribute('viewBox', '0 0 24 24');
-        arrowSvg.setAttribute('fill', 'none');
-        arrowSvg.setAttribute('stroke', 'currentColor');
-        arrowSvg.setAttribute('stroke-width', '2');
-        arrowSvg.setAttribute('stroke-linecap', 'round');
-        arrowSvg.setAttribute('stroke-linejoin', 'round');
-        
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', 'M5 12h14M12 5l7 7-7 7');
-        arrowSvg.appendChild(path);
-
-        button.appendChild(arrowSvg);
-
-        // Add hover effect
-        button.addEventListener('mouseenter', () => {
-            button.style.backgroundColor = '#e6e6e6';
-        });
-        button.addEventListener('mouseleave', () => {
-            button.style.backgroundColor = this.primaryColor;
+        button.addEventListener('mouseover', () => {
+            button.style.transform = 'scale(1.05)';
+            button.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
         });
 
-        // Add click handler
-        button.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (typeof this.onClick === 'function') {
-                this.onClick();
-            }
+        button.addEventListener('mouseout', () => {
+            button.style.transform = 'scale(1)';
+            button.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
         });
+
+        button.addEventListener('click', onClick);
+
+        // Add SVG icon
+        button.innerHTML = `
+            <svg 
+                width="16"
+                height="16"
+                viewBox="0 0 16 16" 
+                fill="none" 
+                style="transform: translateY(-1px)"
+            >
+                <path 
+                    d="M8 2L8 14M8 2L2 8M8 2L14 8"
+                    stroke="black" 
+                    strokeWidth="3.5"
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                />
+            </svg>
+        `;
 
         return button;
     }

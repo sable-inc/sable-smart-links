@@ -1,5 +1,6 @@
-// components/TextInputOnly.js
-class TextInputOnly {
+import { MinimizeButton } from './MinimizeButton.js';
+
+export class TextInputOnly {
     constructor({ onSubmit, onInputChange, onExpand, platform, primaryColor, onMinimize }) {
         this.element = this.createElement({ 
             onSubmit, 

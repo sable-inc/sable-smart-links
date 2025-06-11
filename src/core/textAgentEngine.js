@@ -9,6 +9,7 @@ import { showTooltip, hideTooltip } from '../ui/tooltip.js';
 import { highlightElement, removeHighlight } from '../ui/highlight.js';
 import { createTextAgentUI, removeTextAgentUI } from '../ui/textAgentGuide.js';
 import { SimplePopupManager } from '../ui/SimplePopupManager.js';
+import { PopupStateManager } from '../ui/PopupStateManager.js';
 
 export class TextAgentEngine {
   /**
@@ -303,6 +304,39 @@ export class TextAgentEngine {
     };
 
     const popupManager = new SimplePopupManager({ ...defaultOptions, ...options });
+    popupManager.mount(options.parent || defaultOptions.parent);
+    
+    return {
+      unmount: () => popupManager.unmount(),
+      mount: (newParent) => popupManager.mount(newParent)
+    };
+  }
+
+  /**
+   * Shows a complex popup with chat, shortcuts, and state management
+   * @param {Object} options - Popup options
+   * @param {string} [options.platform='Sable'] - Platform name to show in placeholder
+   * @param {string} [options.primaryColor='#FFFFFF'] - Primary color for the popup
+   * @param {number} [options.width=380] - Width of the popup in pixels
+   * @param {Function} [options.onChatSubmit] - Async callback when chat message is submitted
+   * @param {HTMLElement} [options.parent=document.body] - Parent element to mount the popup to
+   * @returns {Object} Popup manager instance with mount/unmount methods
+   */
+  showComplexPopup(options) {
+    if (!isBrowser) {
+      console.warn('Popup can only be shown in a browser environment');
+      return null;
+    }
+
+    const defaultOptions = {
+      platform: 'Sable',
+      primaryColor: '#FFFFFF',
+      width: 380,
+      onChatSubmit: async (message) => 'Default response',
+      parent: safeDocument?.body || document.body
+    };
+
+    const popupManager = new PopupStateManager({ ...defaultOptions, ...options });
     popupManager.mount(options.parent || defaultOptions.parent);
     
     return {

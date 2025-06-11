@@ -1,5 +1,5 @@
 // components/ShortcutsAndRecents.js
-class ShortcutsAndRecents {
+export class ShortcutsAndRecents {
     constructor({ recentQueries, shortcuts, onQuerySelect }) {
         this.recentQueries = recentQueries;
         this.shortcuts = shortcuts;

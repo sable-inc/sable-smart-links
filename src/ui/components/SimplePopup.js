@@ -1,6 +1,7 @@
 // components/SimplePopup.js
 import { ArrowButton } from './ArrowButton.js';
 import { YesNoButtons } from './YesNoButtons.js';
+import { MinimizedState } from './MinimizedState.js';
 
 export class SimplePopup {
     constructor(config) {
@@ -224,11 +225,114 @@ export class SimplePopup {
     }
 
     setupDragging() {
-        // ... dragging logic implementation ...
+        const handleDragStart = (e) => {
+            if (e.target instanceof HTMLButtonElement) return;
+            
+            e.preventDefault();
+            this.isDragging = true;
+            this.dragStart = {
+                x: e.clientX - this.position.left,
+                y: e.clientY - this.position.top
+            };
+            this.element.style.cursor = 'grabbing';
+        };
+
+        const handleMouseMove = (e) => {
+            if (!this.isDragging) return;
+            
+            const newLeft = e.clientX - this.dragStart.x;
+            const newTop = e.clientY - this.dragStart.y;
+            
+            // Constrain to window boundaries
+            this.position.left = Math.max(0, Math.min(newLeft, window.innerWidth - this.element.offsetWidth));
+            this.position.top = Math.max(0, Math.min(newTop, window.innerHeight - this.element.offsetHeight));
+            
+            // Update element position
+            this.element.style.left = `${this.position.left}px`;
+            this.element.style.top = `${this.position.top}px`;
+        };
+
+        const handleMouseUp = () => {
+            if (this.isDragging) {
+                this.isDragging = false;
+                this.element.style.cursor = 'grab';
+            }
+        };
+
+        // Add event listeners
+        this.element.addEventListener('mousedown', handleDragStart);
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+
+        // Cleanup function (store it for potential future cleanup)
+        this.cleanupDragging = () => {
+            this.element.removeEventListener('mousedown', handleDragStart);
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
     }
 
     minimize() {
-        // ... minimize logic implementation ...
+        console.log('Minimize clicked');
+        
+        // Call the onMinimize callback if provided in config
+        if (this.config.onMinimize) {
+            this.config.onMinimize();
+        }
+
+        // Update state
+        this.isMinimized = true;
+
+        // Clear existing content
+        this.element.innerHTML = '';
+
+        // Create and render minimized state
+        const minimizedState = new MinimizedState({
+            text: this.config.text,
+            onClick: () => {
+                // Handle maximize
+                this.isMinimized = false;
+                this.element.innerHTML = '';
+                
+                // Restore original content
+                const dragHandle = this.createDragHandle();
+                const minimizeButton = this.createMinimizeButton();
+                const content = this.createContent();
+                
+                this.element.appendChild(dragHandle);
+                this.element.appendChild(minimizeButton);
+                this.element.appendChild(content);
+                
+                // Restore original styles
+                Object.assign(this.element.style, {
+                    width: 'fit-content',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    background: `radial-gradient(
+                        circle at center,
+                        rgba(60, 60, 60, 0.5) 0%,
+                        rgba(60, 60, 60, 0.65) 100%
+                    )`,
+                    padding: '12px',
+                    cursor: 'grab',
+                });
+
+                // Restart animation sequence
+                this.startAnimationSequence();
+            },
+            primaryColor: this.config.primaryColor
+        });
+
+        // Update styles for minimized state
+        Object.assign(this.element.style, {
+            width: 'auto',
+            background: 'rgba(0, 0, 0, 0.8)',
+            padding: '8px 16px',
+            cursor: 'pointer',
+        });
+
+        // Append minimized state
+        this.element.appendChild(minimizedState.render());
     }
 
     render() {

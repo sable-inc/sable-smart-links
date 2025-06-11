@@ -1,5 +1,5 @@
 // components/MinimizedState.js
-class MinimizedState {
+export class MinimizedState {
     constructor(config) {
         this.config = {
             text: config.text || '',

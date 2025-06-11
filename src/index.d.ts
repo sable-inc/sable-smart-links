@@ -125,6 +125,7 @@ export class SableSmartLinks {
   
   // Popup methods
   showPopup(options: PopupOptions): { unmount: () => void; mount: (parent: HTMLElement) => void } | null;
+  showComplexPopup(options: PopupOptions): { unmount: () => void; mount: (parent: HTMLElement) => void } | null;
 }
 
 declare const instance: SableSmartLinks;

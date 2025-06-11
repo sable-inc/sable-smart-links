@@ -1,17 +1,21 @@
-// components/ExpandedWithShortcuts.js
-class ExpandedWithShortcuts {
-    constructor({ recentQueries, shortcuts, onQuerySelect, chatInput, primaryColor, onMinimize }) {
+import { MinimizeButton } from './MinimizeButton.js';
+import { ShortcutsAndRecents } from './ShortcutsAndRecents.js';
+import { ChatInput } from './ChatInput.js';
+
+export class ExpandedWithShortcuts {
+    constructor({ recentQueries, shortcuts, onQuerySelect, chatInput, primaryColor, onMinimize, onSubmit }) {
         this.element = this.createElement({ 
             recentQueries, 
             shortcuts, 
             onQuerySelect, 
             chatInput, 
             primaryColor, 
-            onMinimize 
+            onMinimize,
+            onSubmit 
         });
     }
 
-    createElement({ recentQueries, shortcuts, onQuerySelect, chatInput, primaryColor, onMinimize }) {
+    createElement({ recentQueries, shortcuts, onQuerySelect, chatInput, primaryColor, onMinimize, onSubmit }) {
         const container = document.createElement('div');
         Object.assign(container.style, {
             position: 'relative', // Added for absolute positioning of minimize button
@@ -36,8 +40,16 @@ class ExpandedWithShortcuts {
             onQuerySelect
         });
 
+        const chatInputComponent = new ChatInput({
+            value: chatInput.value,
+            onChange: chatInput.onChange,
+            onSubmit: onSubmit,
+            platform: chatInput.platform,
+            primaryColor: primaryColor
+        });
+
         container.appendChild(shortcutsAndRecents.render());
-        container.appendChild(chatInput.render());
+        container.appendChild(chatInputComponent.render());
 
         return container;
     }

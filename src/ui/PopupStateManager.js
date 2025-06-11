@@ -1,5 +1,12 @@
+// Import all required components
+import { MinimizedState } from './components/MinimizedState.js';
+import { TextInputOnly } from './components/TextInputOnly.js';
+import { ExpandedWithShortcuts } from './components/ExpandedWithShortcuts.js';
+import { ExpandedWithMessages } from './components/ExpandedWithMessages.js';
+import { ChatInput } from './components/ChatInput.js';
+
 // PopupStateManager.js
-class PopupStateManager {
+export class PopupStateManager {
     constructor(config) {
         this.config = {
             platform: config.platform || 'Sable',
@@ -73,26 +80,43 @@ class PopupStateManager {
     }
 
     handleSubmit = async () => {
+        console.log('handleSubmit called, current state:', this.currentState);
         if (!this.chatInput.trim()) return;
 
         const userMessage = this.chatInput.trim();
+        
+        // First transition to messages state
+        this.currentState = 'messages';
+        
+        // Add user message
         this.messages.push({ type: 'user', content: userMessage });
+        
+        // Clear input
+        const inputText = this.chatInput;
         this.chatInput = '';
 
-        // Transition to messages state if not already there
-        this.transitionTo('messages');
+        // Render immediately to show user message
+        this.render();
 
-        // Handle chat submission
-        try {
-            const response = await this.config.onChatSubmit(userMessage);
-            this.messages.push({ type: 'assistant', content: response });
-        } catch (error) {
-            this.messages.push({ 
-                type: 'assistant', 
-                content: 'Sorry, I encountered an error. Please try again.' 
-            });
+        // Show thinking indicator
+        const messagesComponent = this.container.querySelector('.messages-container');
+        if (messagesComponent) {
+            messagesComponent.setThinking(true);
         }
 
+        // Add quick test response after a delay
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+
+        // Hide thinking indicator
+        if (messagesComponent) {
+            messagesComponent.setThinking(false);
+        }
+
+        // Add response
+        this.messages.push({ 
+            type: 'assistant', 
+            content: `Test message - You said: "${inputText}"`
+        });
         this.render();
     }
 
@@ -116,11 +140,13 @@ class PopupStateManager {
     }
 
     transitionTo(newState) {
+        console.log(`Transitioning from ${this.currentState} to ${newState}`);
         this.currentState = newState;
         this.render();
     }
 
     render() {
+        console.log('Rendering PopupStateManager, current state:', this.currentState);
         // Clear existing content
         this.container.innerHTML = '';
 
@@ -160,40 +186,45 @@ class PopupStateManager {
                 });
                 break;
 
-                case 'expanded':
-                    component = new ExpandedWithShortcuts({
-                        recentQueries: this.recentQueries,
-                        shortcuts: this.shortcuts,
-                        onQuerySelect: this.handleShortcutSelect,
-                        chatInput: new ChatInput({
-                            value: this.chatInput,
-                            onChange: this.handleInputChange,
-                            onSubmit: this.handleSubmit,
-                            platform: this.config.platform,
-                            primaryColor: this.config.primaryColor
-                        }),
-                        primaryColor: this.config.primaryColor,
-                        onMinimize: this.handleMinimize
-                    });
-                    break;
-    
-                case 'messages':
-                    component = new ExpandedWithMessages({
-                        messages: this.messages,
-                        chatInput: new ChatInput({
-                            value: this.chatInput,
-                            onChange: this.handleInputChange,
-                            onSubmit: this.handleSubmit,
-                            platform: this.config.platform,
-                            primaryColor: this.config.primaryColor
-                        }),
-                        primaryColor: this.config.primaryColor,
-                        onMinimize: this.handleMinimize
-                    });
-                    break;
-            }
+            case 'expanded':
+                const chatInput = new ChatInput({
+                    value: this.chatInput,
+                    onChange: (e) => this.handleInputChange(e),
+                    onSubmit: () => this.handleSubmit(),
+                    platform: this.config.platform,
+                    primaryColor: this.config.primaryColor
+                });
 
-            this.container.appendChild(component.render());
+                component = new ExpandedWithShortcuts({
+                    recentQueries: this.recentQueries,
+                    shortcuts: this.shortcuts,
+                    onQuerySelect: this.handleShortcutSelect,
+                    chatInput: chatInput,
+                    primaryColor: this.config.primaryColor,
+                    onMinimize: this.handleMinimize,
+                    onSubmit: () => this.handleSubmit()
+                });
+                break;
+
+            case 'messages':
+                console.log('Creating ExpandedWithMessages component with messages:', this.messages);
+                component = new ExpandedWithMessages({
+                    messages: this.messages,
+                    chatInput: new ChatInput({
+                        value: this.chatInput,
+                        onChange: this.handleInputChange,
+                        onSubmit: this.handleSubmit,
+                        platform: this.config.platform,
+                        primaryColor: this.config.primaryColor
+                    }),
+                    primaryColor: this.config.primaryColor,
+                    onMinimize: this.handleMinimize
+                });
+                break;
+        }
+
+        console.log('Created component:', component);
+        this.container.appendChild(component.render());
     }
 
     mount(parentElement) {
