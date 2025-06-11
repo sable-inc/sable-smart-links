@@ -122,6 +122,9 @@ export class SableSmartLinks {
   toggleTextAgentExpand(): void;
   sendTextAgentMessage(message: string): void;
   endTextAgent(): void;
+  
+  // Popup methods
+  showPopup(options: PopupOptions): { unmount: () => void; mount: (parent: HTMLElement) => void } | null;
 }
 
 declare const instance: SableSmartLinks;
@@ -131,6 +134,29 @@ export default instance;
  * Type definitions for the Sable text agent
  */
 
+/**
+ * Options for showing a popup
+ */
+export interface PopupOptions {
+  /** The text to display in the popup */
+  text: string;
+  /** Width of the popup in pixels (default: 300) */
+  boxWidth?: number;
+  /** Type of buttons to show (default: 'arrow') */
+  buttonType?: 'arrow' | 'yes-no';
+  /** Callback when proceed/continue is clicked */
+  onProceed?: () => void;
+  /** Callback for yes/no buttons (receives boolean) */
+  onYesNo?: (isYes: boolean) => void;
+  /** Primary color for the popup (default: '#FFFFFF') */
+  primaryColor?: string;
+  /** Parent element to mount the popup to (default: document.body) */
+  parent?: HTMLElement;
+}
+
+/**
+ * Text Agent Step configuration
+ */
 export interface TextAgentStep {
   /** Whether the text agent step is draggable */
   draggable?: boolean;

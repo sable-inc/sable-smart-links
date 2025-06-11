@@ -8,6 +8,7 @@ import { isBrowser, safeWindow, safeDocument } from '../utils/browserAPI.js';
 import { showTooltip, hideTooltip } from '../ui/tooltip.js';
 import { highlightElement, removeHighlight } from '../ui/highlight.js';
 import { createTextAgentUI, removeTextAgentUI } from '../ui/textAgentGuide.js';
+import { SimplePopupManager } from '../ui/SimplePopupManager.js';
 
 export class TextAgentEngine {
   /**
@@ -273,5 +274,40 @@ export class TextAgentEngine {
     } catch (error) {
       console.error('[SableTextAgent] Failed to load state:', error);
     }
+  }
+  
+  /**
+   * Shows a simple popup with the given options
+   * @param {Object} options - Popup options
+   * @param {string} options.text - The text to display in the popup
+   * @param {number} [options.boxWidth=300] - Width of the popup in pixels
+   * @param {'arrow'|'yes-no'} [options.buttonType='arrow'] - Type of buttons to show
+   * @param {Function} [options.onProceed] - Callback when proceed/continue is clicked
+   * @param {Function} [options.onYesNo] - Callback for yes/no buttons (receives boolean)
+   * @param {string} [options.primaryColor='#FFFFFF'] - Primary color for the popup
+   * @param {HTMLElement} [options.parent=document.body] - Parent element to mount the popup to
+   * @returns {Object} Popup manager instance with mount/unmount methods
+   */
+  showPopup(options) {
+    if (!isBrowser) {
+      console.warn('Popup can only be shown in a browser environment');
+      return null;
+    }
+
+    const defaultOptions = {
+      text: '',
+      boxWidth: 300,
+      buttonType: 'arrow',
+      primaryColor: '#FFFFFF',
+      parent: safeDocument?.body || document.body
+    };
+
+    const popupManager = new SimplePopupManager({ ...defaultOptions, ...options });
+    popupManager.mount(options.parent || defaultOptions.parent);
+    
+    return {
+      unmount: () => popupManager.unmount(),
+      mount: (newParent) => popupManager.mount(newParent)
+    };
   }
 }

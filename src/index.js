@@ -53,6 +53,9 @@ class SableSmartLinks {
       ...this.config.textAgent
     });
     
+    // Bind methods
+    this.showPopup = this.showPopup.bind(this);
+    
     // Auto-start walkthrough if enabled and in browser
     const shouldAutoStart = this.config.walkthrough?.autoStart !== false;
     if (shouldAutoStart && isBrowser) {
@@ -114,6 +117,26 @@ class SableSmartLinks {
    */
   endWalkthrough() {
     this.walkthroughEngine.end();
+  }
+
+  /**
+   * Shows a popup with the given options
+   * @param {Object} options - Popup configuration options
+   * @param {string} options.text - The text to display in the popup
+   * @param {number} [options.boxWidth=300] - Width of the popup in pixels
+   * @param {'arrow'|'yes-no'} [options.buttonType='arrow'] - Type of buttons to show
+   * @param {Function} [options.onProceed] - Callback when proceed/continue is clicked
+   * @param {Function} [options.onYesNo] - Callback for yes/no buttons (receives boolean)
+   * @param {string} [options.primaryColor='#FFFFFF'] - Primary color for the popup
+   * @param {HTMLElement} [options.parent] - Parent element to mount the popup to
+   * @returns {Object} Popup manager instance with mount/unmount methods
+   */
+  showPopup(options) {
+    if (!this.textAgentEngine) {
+      console.error('TextAgentEngine not initialized');
+      return null;
+    }
+    return this.textAgentEngine.showPopup(options);
   }
 
   /**

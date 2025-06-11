@@ -1,71 +1,64 @@
-// components/ChatInput.js
-class ChatInput {
-    constructor({ onSubmit, onInputChange, platform = 'Tavily', primaryColor = '#FFFFFF' }) {
-        this.onSubmit = onSubmit;
-        this.onInputChange = onInputChange;
-        this.platform = platform;
+// components/ArrowButton.js
+export class ArrowButton {
+    constructor(onClick, primaryColor = '#FFFFFF') {
+        this.onClick = onClick;
         this.primaryColor = primaryColor;
-        this.element = this.createInput();
+        this.element = this.createButton();
     }
 
-    createInput() {
-        const container = document.createElement('div');
-        Object.assign(container.style, {
-            marginTop: '0',
-            marginBottom: '0',
-            padding: '0',
-            opacity: '1',
-            transform: 'translateY(0)',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        });
-
-        const inputContainer = document.createElement('div');
-        Object.assign(inputContainer.style, {
-            display: 'flex',
-            gap: '8px',
-            backgroundColor: '#323232',
-            padding: '8px',
-            borderRadius: '8px',
-            borderBottomLeftRadius: '16px',
-            borderBottomRightRadius: '16px',
-        });
-
-        const input = document.createElement('input');
-        Object.assign(input.style, {
-            flex: '1',
-            padding: '10px 12px',
+    createButton() {
+        const button = document.createElement('button');
+        Object.assign(button.style, {
+            width: '36px',
+            height: '36px',
             borderRadius: '6px',
             border: 'none',
-            backgroundColor: '#323232',
-            color: this.primaryColor,
-            fontSize: '14px',
-            outline: 'none',
+            backgroundColor: this.primaryColor,
+            color: '#000000',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'background-color 0.2s',
         });
-        input.placeholder = `Ask anything about ${this.platform}`;
+
+        // Arrow icon
+        const arrowSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        arrowSvg.setAttribute('width', '20');
+        arrowSvg.setAttribute('height', '20');
+        arrowSvg.setAttribute('viewBox', '0 0 24 24');
+        arrowSvg.setAttribute('fill', 'none');
+        arrowSvg.setAttribute('stroke', 'currentColor');
+        arrowSvg.setAttribute('stroke-width', '2');
+        arrowSvg.setAttribute('stroke-linecap', 'round');
+        arrowSvg.setAttribute('stroke-linejoin', 'round');
         
-        input.addEventListener('input', (e) => this.onInputChange(e));
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') this.onSubmit();
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', 'M5 12h14M12 5l7 7-7 7');
+        arrowSvg.appendChild(path);
+
+        button.appendChild(arrowSvg);
+
+        // Add hover effect
+        button.addEventListener('mouseenter', () => {
+            button.style.backgroundColor = '#e6e6e6';
+        });
+        button.addEventListener('mouseleave', () => {
+            button.style.backgroundColor = this.primaryColor;
         });
 
-        const arrowButton = new ArrowButton(this.onSubmit);
+        // Add click handler
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (typeof this.onClick === 'function') {
+                this.onClick();
+            }
+        });
 
-        inputContainer.appendChild(input);
-        inputContainer.appendChild(arrowButton.render());
-        container.appendChild(inputContainer);
-
-        return container;
+        return button;
     }
 
     render() {
         return this.element;
-    }
-
-    getValue() {
-        return this.element.querySelector('input').value;
-    }
-
-    setValue(value) {
-        this.element.querySelector('input').value = value;
     }
 }

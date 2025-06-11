@@ -1,5 +1,7 @@
 // managers/SimplePopupManager.js
-class SimplePopupManager {
+import { SimplePopup } from './components/SimplePopup.js';
+
+export class SimplePopupManager {
     constructor(config) {
         this.config = {
             text: config.text || '',
@@ -93,6 +95,7 @@ class SimplePopupManager {
 }
 
 
+// Example usage (commented out):
 // const popupManager = new SimplePopupManager({
 //     text: "Would you like to proceed?",
 //     boxWidth: 200,
