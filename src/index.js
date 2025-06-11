@@ -5,6 +5,7 @@
 
 import { parseUrlParameters } from './core/urlParser.js';
 import { WalkthroughEngine } from './core/walkthroughEngine.js';
+import { TextAgentEngine } from './core/textAgentEngine.js';
 import { isBrowser, safeDocument } from './utils/browserAPI.js';
 
 // Import Tavily features
@@ -14,22 +15,47 @@ export * from './features/tavily';
 class SableSmartLinks {
   /**
    * Create a new SableSmartLinks instance
-   * @param {Object} config - Configuration options
-   * @param {string} [config.paramName='walkthrough'] - URL parameter name to trigger walkthroughs
-   * @param {boolean} [config.autoStart=true] - Automatically start walkthrough if parameter is found
-   * @param {number} [config.stepDelay=500] - Delay between steps in milliseconds
+   * @param {SableSmartLinksConfig} config - Configuration options
    */
   constructor(config = {}) {
+    // Set default configuration
     this.config = {
-      paramName: 'walkthrough',  // Default URL parameter to look for
-      autoStart: true,           // Start walkthrough automatically if param found
-      stepDelay: 500,            // Delay between steps in milliseconds
-      ...config
+      debug: false,
+      walkthrough: {
+        paramName: 'walkthrough',
+        autoStart: true,
+        stepDelay: 500
+      },
+      textAgent: {
+        defaultState: 'collapsed',
+        position: 'right',
+        enableChatInput: false,
+        persistState: true
+      },
+      ...config,
+      // Deep merge for nested objects
+      walkthrough: {
+        ...(config.walkthrough || {})
+      },
+      textAgent: {
+        ...(config.textAgent || {})
+      }
     };
     
-    this.walkthroughEngine = new WalkthroughEngine(this.config);
+    // Initialize engines with their specific configs
+    this.walkthroughEngine = new WalkthroughEngine({
+      debug: this.config.debug,
+      ...this.config.walkthrough
+    });
     
-    if (this.config.autoStart && isBrowser) {
+    this.textAgentEngine = new TextAgentEngine({
+      debug: this.config.debug,
+      ...this.config.textAgent
+    });
+    
+    // Auto-start walkthrough if enabled and in browser
+    const shouldAutoStart = this.config.walkthrough?.autoStart !== false;
+    if (shouldAutoStart && isBrowser) {
       // Wait for DOM to be fully loaded
       if (safeDocument.readyState === 'loading') {
         safeDocument.addEventListener('DOMContentLoaded', () => this.init());
@@ -44,7 +70,7 @@ class SableSmartLinks {
    */
   init() {
     const params = parseUrlParameters();
-    const walkthroughId = params[this.config.paramName];
+    const walkthroughId = params[this.config.walkthrough.paramName];
     
     if (walkthroughId) {
       this.start(walkthroughId);
@@ -63,7 +89,7 @@ class SableSmartLinks {
    * @param {string} walkthroughId - ID of the walkthrough to start
    * @returns {boolean} - Success status
    */
-  start(walkthroughId) {
+  startWalkthrough(walkthroughId) {
     return this.walkthroughEngine.start(walkthroughId);
   }
   
@@ -79,15 +105,75 @@ class SableSmartLinks {
   /**
    * Go to the next step in the current walkthrough
    */
-  next() {
+  nextWalkthroughStep() {
     this.walkthroughEngine.next();
   }
   
   /**
    * End the current walkthrough
    */
-  end() {
+  endWalkthrough() {
     this.walkthroughEngine.end();
+  }
+
+  /**
+   * Register a new text agent with the given ID and steps
+   * @param {string} id - Unique identifier for the text agent
+   * @param {Array<Object>} steps - Array of text agent steps
+   */
+  registerTextAgent(id, steps) {
+    // TODO: Implement text agent registration
+    console.log(`[SableSmartLinks] Registering text agent: ${id}`);
+  }
+
+  /**
+   * Start a text agent with the given ID
+   * @param {string} [agentId] - Optional ID of the text agent to start
+   */
+  startTextAgent(agentId) {
+    // TODO: Implement text agent start logic
+    console.log(`[SableSmartLinks] Starting text agent: ${agentId || 'default'}`);
+  }
+
+  /**
+   * Move to the next step in the current text agent
+   */
+  nextTextAgentStep() {
+    // TODO: Implement next step logic
+    console.log('[SableSmartLinks] Moving to next text agent step');
+  }
+
+  /**
+   * Move to the previous step in the current text agent
+   */
+  previousTextAgentStep() {
+    // TODO: Implement previous step logic
+    console.log('[SableSmartLinks] Moving to previous text agent step');
+  }
+
+  /**
+   * Toggle the expanded/collapsed state of the text agent
+   */
+  toggleTextAgentExpand() {
+    // TODO: Implement expand/collapse toggle
+    console.log('[SableSmartLinks] Toggling text agent expand state');
+  }
+
+  /**
+   * Send a message to the current text agent
+   * @param {string} message - The message to send
+   */
+  sendTextAgentMessage(message) {
+    // TODO: Implement message sending logic
+    console.log(`[SableSmartLinks] Sending message to text agent: ${message}`);
+  }
+
+  /**
+   * End the current text agent session
+   */
+  endTextAgent() {
+    // TODO: Implement cleanup for text agent
+    console.log('[SableSmartLinks] Ending text agent session');
   }
 }
 

@@ -3,15 +3,35 @@
  */
 
 export interface SableSmartLinksConfig {
-  /** URL parameter name to trigger walkthroughs (default: 'walkthrough') */
-  paramName?: string;
-  /** Automatically start walkthrough if parameter is found (default: true) */
-  autoStart?: boolean;
-  /** Delay between steps in milliseconds (default: 500) */
-  stepDelay?: number;
   /** Enable debug logging (default: false) */
   debug?: boolean;
+  
+  /** Configuration for the walkthrough engine */
+  walkthrough?: {
+    /** URL parameter name to trigger walkthroughs (default: 'walkthrough') */
+    paramName?: string;
+    /** Automatically start walkthrough if parameter is found (default: true) */
+    autoStart?: boolean;
+    /** Delay between steps in milliseconds (default: 500) */
+    stepDelay?: number;
+  };
+
+  /** Configuration for the text agent engine */
+  textAgent?: {
+    /** Default state of the text agent (default: 'collapsed') */
+    defaultState?: 'expanded' | 'collapsed';
+    /** Position of the text agent (default: 'right') */
+    position?: 'top' | 'right' | 'bottom' | 'left';
+    /** Whether to enable chat input (default: false) */
+    enableChatInput?: boolean;
+    /** Whether to persist state across page reloads (default: true) */
+    persistState?: boolean;
+  };
 }
+
+/**
+ * Type definitions for Smart Link walkthroughs
+ */
 
 export interface WalkthroughStep {
   /** CSS selector for the target element */
@@ -83,12 +103,25 @@ export class WalkthroughEngine {
 
 export class SableSmartLinks {
   constructor(config?: SableSmartLinksConfig);
+  
+  // Core methods
   init(): void;
+  
+  // Walkthrough methods
   restoreWalkthrough(): void;
-  start(walkthroughId: string): boolean;
   registerWalkthrough(id: string, steps: WalkthroughStep[]): void;
-  next(): void;
-  end(): void;
+  startWalkthrough(walkthroughId: string): boolean;
+  nextWalkthroughStep(): void;
+  endWalkthrough(): void;
+  
+  // Text Agent methods
+  registerTextAgent(id: string, steps: TextAgentStep[]): void;
+  startTextAgent(agentId?: string): void;
+  nextTextAgentStep(): void;
+  previousTextAgentStep(): void;
+  toggleTextAgentExpand(): void;
+  sendTextAgentMessage(message: string): void;
+  endTextAgent(): void;
 }
 
 declare const instance: SableSmartLinks;

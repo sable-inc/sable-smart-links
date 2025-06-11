@@ -353,3 +353,44 @@ export function hideTooltip() {
     activeTooltip = null;
   }
 }
+
+/**
+ * Create and show the text agent UI
+ * @param {Object} config - Configuration for the text agent UI
+ * @param {Function} onMessage - Callback when a message is sent
+ * @param {Function} onClose - Callback when the UI is closed
+ * @param {Function} onToggleExpand - Callback when expand/collapse is toggled
+ * @returns {Object} UI instance with methods to control the UI
+ */
+export function createTextAgentUI(config, { onMessage, onClose, onToggleExpand } = {}) {
+  // TODO: Implement text agent UI creation
+  console.log('[TextAgent] Creating UI with config:', config);
+  
+  // Return a mock UI instance with required methods
+  return {
+    update: (step) => {
+      console.log('[TextAgent] Updating UI with step:', step);
+      // TODO: Implement UI update logic
+    },
+    destroy: () => {
+      console.log('[TextAgent] Destroying UI');
+      // TODO: Implement cleanup logic
+    },
+    setExpanded: (isExpanded) => {
+      console.log(`[TextAgent] Setting expanded state to: ${isExpanded}`);
+      // TODO: Implement expand/collapse logic
+    }
+  };
+}
+
+/**
+ * Remove the text agent UI
+ * @param {Object} instance - The UI instance to remove
+ */
+export function removeTextAgentUI(instance) {
+  // TODO: Implement UI removal logic
+  console.log('[TextAgent] Removing UI');
+  if (instance && typeof instance.destroy === 'function') {
+    instance.destroy();
+  }
+}
