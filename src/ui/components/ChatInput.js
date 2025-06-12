@@ -16,10 +16,11 @@ export class ChatInput {
             marginTop: '0',
             marginBottom: '0',
             padding: '0',
-            width: '100%', // Take full width of parent
+            width: '100%',
             opacity: '1',
             transform: 'translateY(0)',
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            borderRadius: '0',
         });
 
         const inputContainer = document.createElement('div');
@@ -28,26 +29,91 @@ export class ChatInput {
             gap: '8px',
             backgroundColor: '#323232',
             padding: '8px',
-            borderRadius: '0', // Remove border radius at the bottom
-            width: '100%', // Take full width of parent
-            boxSizing: 'border-box', // Include padding in width calculation
+            borderRadius: '0',
+            width: '100%',
+            boxSizing: 'border-box',
+            position: 'relative', // Added for cursor positioning
         });
 
         const input = document.createElement('input');
         Object.assign(input.style, {
             flex: '1',
             padding: '10px 12px',
-            borderRadius: '6px',
+            borderRadius: '0',
             border: 'none',
             backgroundColor: '#323232',
             color: this.primaryColor,
             fontSize: '14px',
             outline: 'none',
+            caretColor: 'transparent', // Hide the default cursor
         });
         input.value = this.value;
         input.placeholder = `Ask ${this.platform}...`;
         
-        input.addEventListener('input', (e) => this.onChange(e));
+        // Auto-focus the input when created
+        setTimeout(() => {
+            input.focus();
+        }, 0);
+
+        // Keep focus when clicking anywhere in the container
+        inputContainer.addEventListener('click', () => {
+            input.focus();
+        });
+
+        // Create the custom cursor element
+        const cursor = document.createElement('span');
+        Object.assign(cursor.style, {
+            position: 'absolute',
+            left: '20px', // Initial position before the placeholder
+            top: '50%',
+            transform: 'translateY(-50%)',
+            color: this.primaryColor,
+            pointerEvents: 'none',
+            animation: 'blink 1s infinite',
+            zIndex: '1',
+        });
+        cursor.textContent = '|';
+
+        // Add the blinking animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes blink {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0; }
+            }
+
+            input::placeholder {
+                color: ${this.primaryColor};
+                opacity: 0.7;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Update cursor position based on input
+        input.addEventListener('input', (e) => {
+            if (e.target.value) {
+                // Calculate cursor position based on input text width
+                const textWidth = this.getTextWidth(e.target.value.substring(0, e.target.selectionStart), input);
+                cursor.style.left = `${textWidth + 20}px`; // 20px is the initial padding
+            } else {
+                cursor.style.left = '20px'; // Reset to initial position
+            }
+            this.onChange(e);
+        });
+
+        // Update cursor position on click or arrow keys
+        input.addEventListener('click', (e) => {
+            const textWidth = this.getTextWidth(e.target.value.substring(0, e.target.selectionStart), input);
+            cursor.style.left = `${textWidth + 20}px`;
+        });
+
+        input.addEventListener('keyup', (e) => {
+            if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+                const textWidth = this.getTextWidth(e.target.value.substring(0, e.target.selectionStart), input);
+                cursor.style.left = `${textWidth + 20}px`;
+            }
+        });
+
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -55,9 +121,19 @@ export class ChatInput {
             }
         });
 
+        // Helper function to calculate text width
+        this.getTextWidth = (text, element) => {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            const computedStyle = window.getComputedStyle(element);
+            context.font = `${computedStyle.fontSize} ${computedStyle.fontFamily}`;
+            return context.measureText(text).width;
+        };
+
         const arrowButton = new ArrowButton(this.onSubmit);
 
         inputContainer.appendChild(input);
+        inputContainer.appendChild(cursor);
         inputContainer.appendChild(arrowButton.render());
         container.appendChild(inputContainer);
 

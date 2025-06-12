@@ -63,6 +63,8 @@ export class ChatMessages {
             display: 'flex',
             gap: '12px',
             alignItems: 'flex-start',
+            opacity: '1', // Always start visible for user messages
+            transform: 'none', // No transform for user messages
         });
 
         const messageElement = document.createElement('div');
@@ -76,45 +78,44 @@ export class ChatMessages {
             wordWrap: 'break-word',
             overflowWrap: 'break-word',
             whiteSpace: 'pre-wrap',
+            opacity: '1',
+            transform: 'none',
+            animation: 'none'
         } : {
             color: this.primaryColor,
             padding: '8px 0',
             maxWidth: '100%',
             whiteSpace: 'pre-wrap',
+            opacity: shouldAnimate ? '0' : '1',
+            transform: shouldAnimate ? 'translateY(10px)' : 'none',
+            animation: shouldAnimate ? 'messageAppear 0.3s ease forwards' : 'none',
         };
 
         Object.assign(messageElement.style, {
             ...messageStyles,
             fontSize: '15px',
             lineHeight: '1.4',
-            opacity: shouldAnimate ? '0' : '1',
-            transform: shouldAnimate ? 'translateY(10px)' : 'none',
-            animation: shouldAnimate ? 'messageAppear 0.3s ease forwards' : 'none',
         });
 
         const textSpan = document.createElement('span');
         textSpan.classList.add('message-text');
+        textSpan.textContent = message.content; // Always show full content for user messages
         
         const cursor = document.createElement('span');
         Object.assign(cursor.style, {
             borderRight: '2px solid currentColor',
             marginLeft: '2px',
             animation: 'blink 1s step-end infinite',
-            display: shouldAnimate ? 'inline-block' : 'none',
+            display: 'none', // Never show cursor for user messages
         });
         cursor.classList.add('typing-cursor');
         
-        if (shouldAnimate) {
-            textSpan.textContent = ''; // Start empty for animation
-        } else {
-            textSpan.textContent = message.content; // Show full text immediately
-        }
-        
         messageElement.appendChild(textSpan);
-        messageElement.appendChild(cursor);
+        if (message.type !== 'user') {
+            messageElement.appendChild(cursor); // Only add cursor for non-user messages
+        }
         messageWrapper.appendChild(messageElement);
         
-        // Store reference to message elements for later animation
         this.messageElements.set(index, {
             wrapper: messageWrapper,
             textSpan: textSpan,
@@ -194,13 +195,21 @@ export class ChatMessages {
     async addMessage(message, animate = true) {
         const messageIndex = this.messages.length;
         
-        // Create new message with animation
+        // For user messages: no animation at all
+        if (message.type === 'user') {
+            const messageWrapper = this.createMessageElement(message, messageIndex, false);
+            this.element.appendChild(messageWrapper);
+            this.messages.push(message);
+            this.scrollToBottom();
+            return messageIndex;
+        }
+        
+        // For model responses: animate if requested
         const messageWrapper = this.createMessageElement(message, messageIndex, animate);
         this.element.appendChild(messageWrapper);
         this.messages.push(message);
         this.scrollToBottom();
         
-        // Animate the text typing if requested
         if (animate) {
             await this.animateText(messageIndex, message.content);
         }

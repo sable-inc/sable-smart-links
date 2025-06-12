@@ -41,7 +41,7 @@ export class YesNoButtons {
             padding: '6px 12px',
             borderRadius: '8px',
             border: 'none',
-            backgroundColor: '#000000',
+            backgroundColor: '#4A4A4A',
             color: primaryColor,
             fontSize: '14px',
             cursor: 'pointer',
@@ -54,11 +54,11 @@ export class YesNoButtons {
         noButton.addEventListener('click', () => onYesNo(false));
         noButton.addEventListener('mouseover', () => {
             noButton.style.transform = 'scale(1.05)';
-            noButton.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            noButton.style.backgroundColor = '#5A5A5A';
         });
         noButton.addEventListener('mouseout', () => {
             noButton.style.transform = 'scale(1)';
-            noButton.style.backgroundColor = '#000000';
+            noButton.style.backgroundColor = '#4A4A4A';
         });
 
         container.appendChild(yesButton);

@@ -334,7 +334,8 @@ export class PopupStateManager {
             case 'minimized':
                 this.components.minimizedState = new MinimizedState({
                     onClick: this.handleMaximize,
-                    primaryColor: this.config.primaryColor
+                    primaryColor: this.config.primaryColor,
+                    text: `Ask ${this.config.platform}...`
                 });
                 component = this.components.minimizedState;
                 break;

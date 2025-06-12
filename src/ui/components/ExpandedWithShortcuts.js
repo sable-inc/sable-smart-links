@@ -22,6 +22,9 @@ export class ExpandedWithShortcuts {
             opacity: '1',
             transform: 'translateY(0)',
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            paddingTop: '0',
+            paddingLeft: '0',
+            marginLeft: '-4px',
         });
 
         const shortcutsAndRecents = new ShortcutsAndRecents({
@@ -30,22 +33,22 @@ export class ExpandedWithShortcuts {
             onQuerySelect
         });
 
+        container.appendChild(shortcutsAndRecents.render());
+        
+        // Wrap chat input in a container that takes full width and extends to the edges
+        const chatInputWrapper = document.createElement('div');
+        Object.assign(chatInputWrapper.style, {
+            width: 'calc(100% + 32px)',
+            marginLeft: '-16px',
+            marginTop: 'auto',
+        });
+        
         const chatInputComponent = new ChatInput({
             value: chatInput.value,
             onChange: chatInput.onChange,
             onSubmit: onSubmit,
             platform: chatInput.platform,
             primaryColor: primaryColor
-        });
-
-        container.appendChild(shortcutsAndRecents.render());
-        
-        // Wrap chat input in a container that takes full width and extends to the edges
-        const chatInputWrapper = document.createElement('div');
-        Object.assign(chatInputWrapper.style, {
-            width: 'calc(100% + 32px)', // Account for parent's padding (16px on each side)
-            marginLeft: '-16px', // Negative margin to extend beyond parent padding
-            marginTop: 'auto', // Push to bottom
         });
         
         chatInputWrapper.appendChild(chatInputComponent.render());
