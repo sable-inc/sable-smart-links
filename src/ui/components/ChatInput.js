@@ -16,6 +16,7 @@ export class ChatInput {
             marginTop: '0',
             marginBottom: '0',
             padding: '0',
+            width: '100%', // Take full width of parent
             opacity: '1',
             transform: 'translateY(0)',
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -27,9 +28,9 @@ export class ChatInput {
             gap: '8px',
             backgroundColor: '#323232',
             padding: '8px',
-            borderRadius: '8px',
-            borderBottomLeftRadius: '16px',
-            borderBottomRightRadius: '16px',
+            borderRadius: '0', // Remove border radius at the bottom
+            width: '100%', // Take full width of parent
+            boxSizing: 'border-box', // Include padding in width calculation
         });
 
         const input = document.createElement('input');

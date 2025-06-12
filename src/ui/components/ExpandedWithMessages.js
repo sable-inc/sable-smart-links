@@ -36,7 +36,17 @@ export class ExpandedWithMessages {
         
         container.appendChild(messagesElement);
         console.log('ChatMessages component rendered');
-        container.appendChild(this.chatInput.render());
+        
+        // Wrap chat input in a container that takes full width and extends to the edges
+        const chatInputWrapper = document.createElement('div');
+        Object.assign(chatInputWrapper.style, {
+            width: 'calc(100% + 32px)', // Account for parent's padding (16px on each side)
+            marginLeft: '-16px', // Negative margin to extend beyond parent padding
+            marginTop: 'auto', // Push to bottom
+        });
+        
+        chatInputWrapper.appendChild(this.chatInput.render());
+        container.appendChild(chatInputWrapper);
 
         // Scroll to bottom after render
         setTimeout(() => this.messagesComponent.scrollToBottom(), 0);

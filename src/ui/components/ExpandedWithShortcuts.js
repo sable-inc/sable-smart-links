@@ -39,7 +39,17 @@ export class ExpandedWithShortcuts {
         });
 
         container.appendChild(shortcutsAndRecents.render());
-        container.appendChild(chatInputComponent.render());
+        
+        // Wrap chat input in a container that takes full width and extends to the edges
+        const chatInputWrapper = document.createElement('div');
+        Object.assign(chatInputWrapper.style, {
+            width: 'calc(100% + 32px)', // Account for parent's padding (16px on each side)
+            marginLeft: '-16px', // Negative margin to extend beyond parent padding
+            marginTop: 'auto', // Push to bottom
+        });
+        
+        chatInputWrapper.appendChild(chatInputComponent.render());
+        container.appendChild(chatInputWrapper);
 
         return container;
     }
