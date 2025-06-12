@@ -11,13 +11,22 @@ interface SableSmartLinksContextType {
   endWalkthrough: () => void;
   
   // Text Agent methods
-  registerTextAgent: (id: string, steps: TextAgentStep[]) => void;
-  startTextAgent: (agentId?: string) => void;
-  nextTextAgentStep: () => void;
-  previousTextAgentStep: () => void;
-  toggleTextAgentExpand: () => void;
-  sendTextAgentMessage: (message: string) => void;
-  endTextAgent: () => void;
+  registerTextAgent: (id: string, steps: TextAgentStep[]) => SableSmartLinksContextType;
+  startTextAgent: (agentId?: string) => boolean | void;
+  nextTextAgentStep: () => SableSmartLinksContextType;
+  previousTextAgentStep: () => SableSmartLinksContextType;
+  endTextAgent: () => SableSmartLinksContextType;
+  
+  // Popup method
+  showPopup: (options: {
+    text: string;
+    boxWidth?: number;
+    buttonType?: 'arrow' | 'yes-no';
+    onProceed?: () => void;
+    onYesNo?: (isYes: boolean) => void;
+    primaryColor?: string;
+    parent?: HTMLElement;
+  }) => { unmount: () => void; mount: (newParent: HTMLElement) => void; } | null;
 }
 
 const SableSmartLinksContext = createContext<SableSmartLinksContextType | null>(null);
@@ -73,6 +82,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
       isMounted.current = false;
       if (sableInstance.current) {
         sableInstance.current.endWalkthrough();
+        sableInstance.current.endTextAgent();
       }
     };
   }, [config, autoInit, walkthroughs, textAgents]);
@@ -111,40 +121,49 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
       if (sableInstance.current) {
         sableInstance.current.registerTextAgent(id, steps);
       }
+      return contextValue;
     },
     startTextAgent: (agentId?: string) => {
       if (sableInstance.current) {
-        if (agentId) {
-          sableInstance.current.startTextAgent(agentId);
-        } else {
-          sableInstance.current.startTextAgent();
-        }
+        return sableInstance.current.startTextAgent(agentId);
       }
+      return false;
     },
     nextTextAgentStep: () => {
       if (sableInstance.current) {
         sableInstance.current.nextTextAgentStep();
       }
+      return contextValue;
     },
     previousTextAgentStep: () => {
       if (sableInstance.current) {
         sableInstance.current.previousTextAgentStep();
       }
+      return contextValue;
     },
-    toggleTextAgentExpand: () => {
-      if (sableInstance.current) {
-        sableInstance.current.toggleTextAgentExpand();
-      }
-    },
-    sendTextAgentMessage: (message: string) => {
-      if (sableInstance.current) {
-        sableInstance.current.sendTextAgentMessage(message);
-      }
-    },
+
+
     endTextAgent: () => {
       if (sableInstance.current) {
         sableInstance.current.endTextAgent();
       }
+      return contextValue;
+    },
+    
+    // Popup method
+    showPopup: (options: {
+      text: string;
+      boxWidth?: number;
+      buttonType?: 'arrow' | 'yes-no';
+      onProceed?: () => void;
+      onYesNo?: (isYes: boolean) => void;
+      primaryColor?: string;
+      parent?: HTMLElement;
+    }) => {
+      if (sableInstance.current) {
+        return sableInstance.current.showPopup(options);
+      }
+      return null;
     }
   };
 

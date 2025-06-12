@@ -55,6 +55,11 @@ class SableSmartLinks {
     
     // Bind methods
     this.showPopup = this.showPopup.bind(this);
+    this.registerTextAgent = this.registerTextAgent.bind(this);
+    this.startTextAgent = this.startTextAgent.bind(this);
+    this.nextTextAgentStep = this.nextTextAgentStep.bind(this);
+    this.previousTextAgentStep = this.previousTextAgentStep.bind(this);
+    this.endTextAgent = this.endTextAgent.bind(this);
     
     // Auto-start walkthrough if enabled and in browser
     const shouldAutoStart = this.config.walkthrough?.autoStart !== false;
@@ -133,90 +138,88 @@ class SableSmartLinks {
    */
   showPopup(options) {
     if (!this.textAgentEngine) {
-      console.error('TextAgentEngine not initialized');
+      console.error('[SableSmartLinks] TextAgentEngine not initialized');
       return null;
     }
     return this.textAgentEngine.showPopup(options);
   }
 
   /**
-   * Shows a complex popup with chat, shortcuts, and state management
-   * @param {Object} options - Popup configuration options
-   * @param {string} options.text - The text to display in the popup
-   * @param {number} [options.boxWidth=300] - Width of the popup in pixels
-   * @param {Function} [options.onProceed] - Callback when proceed/continue is clicked
-   * @param {string} [options.primaryColor='#FFFFFF'] - Primary color for the popup
-   * @param {HTMLElement} [options.parent] - Parent element to mount the popup to
-   * @param {string[]} [options.shortcuts] - List of shortcut options to display
-   * @param {string[]} [options.recentQueries] - List of recent queries to display
-   * @returns {Object} Popup manager instance with mount/unmount methods
-   */
-  showComplexPopup(options) {
-    if (!this.textAgentEngine) {
-      console.error('TextAgentEngine not initialized');
-      return null;
-    }
-    return this.textAgentEngine.showComplexPopup(options);
-  }
-
-  /**
    * Register a new text agent with the given ID and steps
    * @param {string} id - Unique identifier for the text agent
-   * @param {Array<Object>} steps - Array of text agent steps
+   * @param {Array<TextAgentStep>} steps - Array of text agent steps
+   * @param {boolean} [autoStart=false] - Whether to start the text agent immediately
+   * @returns {SableSmartLinks} - This instance for chaining
    */
-  registerTextAgent(id, steps) {
-    // TODO: Implement text agent registration
-    console.log(`[SableSmartLinks] Registering text agent: ${id}`);
+  registerTextAgent(id, steps, autoStart = false) {
+    if (!this.textAgentEngine) {
+      console.error('[SableSmartLinks] TextAgentEngine not initialized');
+      return this;
+    }
+    
+    this.textAgentEngine.register(id, steps);
+    
+    if (autoStart) {
+      this.startTextAgent(id);
+    }
+    
+    return this;
   }
 
   /**
    * Start a text agent with the given ID
    * @param {string} [agentId] - Optional ID of the text agent to start
+   * @returns {boolean} - Success status
    */
   startTextAgent(agentId) {
-    // TODO: Implement text agent start logic
-    console.log(`[SableSmartLinks] Starting text agent: ${agentId || 'default'}`);
+    if (!this.textAgentEngine) {
+      console.error('[SableSmartLinks] TextAgentEngine not initialized');
+      return false;
+    }
+    
+    return this.textAgentEngine.start(agentId);
   }
 
   /**
    * Move to the next step in the current text agent
+   * @returns {SableSmartLinks} - This instance for chaining
    */
   nextTextAgentStep() {
-    // TODO: Implement next step logic
-    console.log('[SableSmartLinks] Moving to next text agent step');
+    if (!this.textAgentEngine) {
+      console.error('[SableSmartLinks] TextAgentEngine not initialized');
+      return this;
+    }
+    
+    this.textAgentEngine.next();
+    return this;
   }
 
   /**
    * Move to the previous step in the current text agent
+   * @returns {SableSmartLinks} - This instance for chaining
    */
   previousTextAgentStep() {
-    // TODO: Implement previous step logic
-    console.log('[SableSmartLinks] Moving to previous text agent step');
-  }
-
-  /**
-   * Toggle the expanded/collapsed state of the text agent
-   */
-  toggleTextAgentExpand() {
-    // TODO: Implement expand/collapse toggle
-    console.log('[SableSmartLinks] Toggling text agent expand state');
-  }
-
-  /**
-   * Send a message to the current text agent
-   * @param {string} message - The message to send
-   */
-  sendTextAgentMessage(message) {
-    // TODO: Implement message sending logic
-    console.log(`[SableSmartLinks] Sending message to text agent: ${message}`);
+    if (!this.textAgentEngine) {
+      console.error('[SableSmartLinks] TextAgentEngine not initialized');
+      return this;
+    }
+    
+    this.textAgentEngine.previous();
+    return this;
   }
 
   /**
    * End the current text agent session
+   * @returns {SableSmartLinks} - This instance for chaining
    */
   endTextAgent() {
-    // TODO: Implement cleanup for text agent
-    console.log('[SableSmartLinks] Ending text agent session');
+    if (!this.textAgentEngine) {
+      console.error('[SableSmartLinks] TextAgentEngine not initialized');
+      return this;
+    }
+    
+    this.textAgentEngine.end();
+    return this;
   }
 }
 

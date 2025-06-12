@@ -159,78 +159,84 @@ export interface PopupOptions {
  * Text Agent Step configuration
  */
 export interface TextAgentStep {
-  /** Whether the text agent step is draggable */
-  draggable?: boolean;
-
-  /** Configuration for chat input */
-  chatInput?: {
-    /** Whether chat input is enabled */
-    enabled: boolean;
-    /** Placeholder text for the chat input */
-    placeholder?: string;
-  };
-
-  /** Chat state configuration */
-  chatState?: {
-    /** Current state of the chat */
-    state: 'expanded' | 'collapsed';
-    /** Handler function for state changes */
-    onStateChange?: (newState: 'expanded' | 'collapsed') => void;
-  };
-
-  /** Proceed button configuration */
-  proceedButton?: {
-    /** Whether to show the proceed button */
-    show: boolean;
-    /** Position of the proceed button */
-    position: 'after-text' | 'bottom' | 'right';
-    /** Custom button text */
-    text?: string;
-    /** Handler function when proceed is clicked */
-    onClick?: () => void;
-  };
-
-  /** Yes/No buttons configuration */
-  yesNoButtons?: {
-    /** Whether to show yes/no buttons */
-    show: boolean;
-    /** Position of the yes/no buttons */
-    position: 'left' | 'right' | 'middle';
-    /** Custom yes button text */
-    yesText?: string;
-    /** Custom no button text */
-    noText?: string;
-    /** Handler function when yes is clicked */
-    onYes?: () => void;
-    /** Handler function when no is clicked */
-    onNo?: () => void;
-  };
-
-  /** Whether to show the minimize button */
-  showMinimizeButton?: boolean;
-
-  /** Main text content */
+  /** Unique identifier for the step (will be auto-generated if not provided) */
+  id?: string;
+  
+  /** Main text content to display in the popup */
   text: string;
-
-  /** Secondary text content (displayed in blue) */
+  
+  /** Secondary text content (displayed in a different style) */
   secondaryText?: string;
-
-  /** Element selector configuration */
-  selector?: {
+  
+  /** Width of the popup box in pixels */
+  boxWidth?: number;
+  
+  /** Type of button to show in the popup */
+  buttonType?: 'arrow' | 'yes-no';
+  
+  /** Callback function when proceed/continue button is clicked */
+  onProceed?: () => void;
+  
+  /** Callback function for yes/no buttons (receives boolean indicating 'yes' selection) */
+  onYesNo?: (isYes: boolean) => void;
+  
+  /** Primary color for styling the popup */
+  primaryColor?: string;
+  
+  /** Whether the popup should be minimizable */
+  minimizable?: boolean;
+  
+  /** Whether the popup starts in minimized state */
+  startMinimized?: boolean;
+  
+  /** Callback when minimized state changes */
+  onMinimizeStateChange?: (isMinimized: boolean) => void;
+  
+  /** Element to highlight or focus during this step */
+  targetElement?: {
     /** CSS selector for the target element */
-    target: string;
-    /** Position of the selector indicator */
-    position: 'top' | 'right' | 'bottom' | 'left';
+    selector: string;
+    /** Whether to wait for the element to appear in DOM */
+    waitForElement?: boolean;
+    /** Maximum time to wait for element in milliseconds */
+    waitTimeout?: number;
   };
-
-  /** Action configuration */
+  
+  /** Whether to automatically advance to next step */
+  autoAdvance?: boolean;
+  
+  /** Delay in milliseconds before auto-advancing */
+  autoAdvanceDelay?: number;
+  
+  /** Action to perform during this step */
   action?: {
-    /** Handler function for the action */
-    handler: () => void | Promise<void>;
-    /** Whether the action should be triggered automatically */
-    autoTrigger?: boolean;
+    /** Type of action to perform */
+    type?: 'click' | 'input' | 'focus' | 'hover' | 'custom';
+    /** Value for input actions */
+    value?: string;
+    /** Whether to use typing effect for input */
+    typeEffect?: boolean;
+    /** Delay between characters when using type effect (ms) */
+    typeDelay?: number;
+    /** Delay before performing the action (ms) */
+    delay?: number;
+    /** Whether to auto-advance after action completes */
+    autoAdvance?: boolean;
+    /** Custom handler function for 'custom' action type */
+    handler?: (element: HTMLElement, engine: any) => void;
   };
-
+  
+  /** Custom callback function called when step is executed */
+  callback?: (element: HTMLElement | null, engine: any) => void;
+  
+  /** Position of the popup relative to the viewport or target element */
+  position?: {
+    top?: string | number;
+    left?: string | number;
+    right?: string | number;
+    bottom?: string | number;
+  };
+  
   /** Custom CSS class names */
   className?: {
     container?: string;

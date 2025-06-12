@@ -1,15 +1,12 @@
 /**
  * Text Agent Engine
- * Core functionality for managing and executing text agent guides
+ * Core functionality for managing and executing text agent guides using SimplePopupManager
  */
 
 import { waitForElement } from './elementSelector.js';
 import { isBrowser, safeWindow, safeDocument } from '../utils/browserAPI.js';
-import { showTooltip, hideTooltip } from '../ui/tooltip.js';
 import { highlightElement, removeHighlight } from '../ui/highlight.js';
-import { createTextAgentUI, removeTextAgentUI } from '../ui/textAgentGuide.js';
 import { SimplePopupManager } from '../ui/SimplePopupManager.js';
-import { PopupStateManager } from '../ui/PopupStateManager.js';
 
 export class TextAgentEngine {
   /**
@@ -20,10 +17,10 @@ export class TextAgentEngine {
     // Default configuration
     this.config = {
       debug: false,
-      defaultState: 'collapsed',
-      position: 'right',
-      enableChatInput: false,
-      persistState: true,
+      stepDelay: 500,
+      autoStart: true,
+      primaryColor: '#FFFFFF',
+      defaultBoxWidth: 300,
       ...config
     };
     
@@ -35,18 +32,12 @@ export class TextAgentEngine {
     this.steps = [];
     this.currentStepIndex = -1;
     this.isRunning = false;
-    this.ui = null;
-    this.state = {
-      isExpanded: this.config.defaultState === 'expanded',
-      chatHistory: []
-    };
+    this.activePopupManager = null;
     
     // Bind methods
     this.next = this.next.bind(this);
     this.previous = this.previous.bind(this);
     this.end = this.end.bind(this);
-    this.toggleExpand = this.toggleExpand.bind(this);
-    this.sendMessage = this.sendMessage.bind(this);
   }
   
   /**
@@ -57,11 +48,16 @@ export class TextAgentEngine {
   register(id, steps) {
     this.steps = steps.map(step => ({
       ...step,
-      id: `${id}-${Math.random().toString(36).substr(2, 9)}`
+      id: step.id || `${id}-${Math.random().toString(36).substr(2, 9)}`
     }));
     
     if (this.config.debug) {
       console.log(`[SableTextAgent] Registered ${this.steps.length} steps`);
+    }
+    
+    // Auto-start if configured
+    if (this.config.autoStart && this.steps.length > 0) {
+      this.start();
     }
   }
   
@@ -87,81 +83,72 @@ export class TextAgentEngine {
     }
     
     this._renderCurrentStep();
+    
+    return this; // For chaining
   }
   
   /**
    * Move to the next step
    */
   next() {
+    // Clean up current step if any
+    this._cleanupCurrentStep();
+    
     if (this.currentStepIndex < this.steps.length - 1) {
       this.currentStepIndex++;
       this._renderCurrentStep();
     } else {
       this.end();
     }
+    
+    return this; // For chaining
   }
   
   /**
    * Move to the previous step
    */
   previous() {
+    // Clean up current step if any
+    this._cleanupCurrentStep();
+    
     if (this.currentStepIndex > 0) {
       this.currentStepIndex--;
       this._renderCurrentStep();
     }
+    
+    return this; // For chaining
   }
   
   /**
    * End the current text agent session
    */
   end() {
-    if (this.ui) {
-      removeTextAgentUI(this.ui);
-      this.ui = null;
-    }
+    // Clean up current step
+    this._cleanupCurrentStep();
     
     this.isRunning = false;
     this.currentStepIndex = -1;
-    removeHighlight();
     
     if (this.config.debug) {
       console.log('[SableTextAgent] Session ended');
     }
+    
+    return this; // For chaining
   }
   
   /**
-   * Toggle expanded/collapsed state
-   */
-  toggleExpand() {
-    this.state.isExpanded = !this.state.isExpanded;
-    this._updateUI();
-  }
-  
-  /**
-   * Send a message (when chat input is enabled)
-   * @param {string} message - The message text
-   */
-  sendMessage(message) {
-    if (!message.trim()) return;
-    
-    // Add user message to chat history
-    this.state.chatHistory.push({ role: 'user', content: message });
-    
-    // Process the message (in a real implementation, this would call an API)
-    this._processMessage(message);
-    
-    // Update UI
-    this._updateUI();
-  }
-  
-  /**
-   * Process a message (placeholder for actual implementation)
+   * Clean up the current step
    * @private
    */
-  _processMessage(message) {
-    // In a real implementation, this would call an API
-    const response = `Received: ${message}`; // Placeholder
-    this.state.chatHistory.push({ role: 'assistant', content: response });
+  _cleanupCurrentStep() {
+    // Remove any active popup
+    if (this.activePopupManager) {
+      this.activePopupManager.unmount();
+      this.activePopupManager = null;
+    }
+    
+    // Remove any highlights
+    removeHighlight();
   }
   
   /**
@@ -175,105 +162,205 @@ export class TextAgentEngine {
     
     const step = this.steps[this.currentStepIndex];
     
-    // Handle element highlighting if selector is provided
-    if (step.selector) {
-      const element = document.querySelector(step.selector);
+    if (this.config.debug) {
+      console.log(`[SableTextAgent] Rendering step ${this.currentStepIndex + 1}/${this.steps.length}`, step);
+    }
+    
+    // First handle any target element that needs to be highlighted or waited for
+    this._handleTargetElement(step).then(targetElement => {
+      // Create popup based on step configuration
+      this._createPopupForStep(step, targetElement);
+      
+      // Handle any auto-actions after a brief delay
+      setTimeout(() => {
+        this._performStepActions(step, targetElement);
+      }, this.config.stepDelay);
+    });
+  }
+  
+  /**
+   * Handle target element selection and highlighting
+   * @param {TextAgentStep} step - The current step
+   * @returns {Promise<HTMLElement|null>} - Promise resolving to the target element or null
+   * @private
+   */
+  async _handleTargetElement(step) {
+    if (!step.targetElement?.selector) {
+      return null;
+    }
+    
+    try {
+      let element = null;
+      
+      // Wait for element if configured
+      if (step.targetElement.waitForElement) {
+        element = await waitForElement(step.targetElement.selector, {
+          timeout: step.targetElement.waitTimeout || 5000
+        });
+      } else {
+        // Just try to select it immediately
+        element = document.querySelector(step.targetElement.selector);
+      }
+      
+      // Highlight the element if found
       if (element) {
-        highlightElement(element, step.highlightOptions);
+        highlightElement(element);
       }
-    }
-    
-    // Create or update the UI
-    if (!this.ui) {
-      this.ui = createTextAgentUI({
-        step,
-        config: this.config,
-        state: this.state,
-        onNext: this.next,
-        onPrevious: this.previous,
-        onEnd: this.end,
-        onToggleExpand: this.toggleExpand,
-        onSendMessage: this.config.enableChatInput ? this.sendMessage : null
-      });
-    } else {
-      this._updateUI();
-    }
-    
-    // Trigger any auto-actions
-    this._triggerAutoActions(step);
-  }
-  
-  /**
-   * Update the UI with current state
-   * @private
-   */
-  _updateUI() {
-    if (!this.ui || this.currentStepIndex < 0) return;
-    
-    const step = this.steps[this.currentStepIndex];
-    
-    // Update the UI with current step and state
-    if (this.ui.update) {
-      this.ui.update({
-        step,
-        state: this.state,
-        isFirstStep: this.currentStepIndex === 0,
-        isLastStep: this.currentStepIndex === this.steps.length - 1
-      });
+      
+      return element;
+    } catch (error) {
+      console.error('[SableTextAgent] Error handling target element:', error);
+      return null;
     }
   }
   
   /**
-   * Trigger any auto-actions for the current step
+   * Create a popup for the current step
+   * @param {TextAgentStep} step - The current step
+   * @param {HTMLElement|null} targetElement - The target element if any
    * @private
    */
-  _triggerAutoActions(step) {
-    if (step.action?.autoTrigger && step.action.handler) {
-      try {
-        step.action.handler();
-      } catch (error) {
-        console.error('[SableTextAgent] Error in auto-action handler:', error);
-      }
-    }
-  }
-  
-  /**
-   * Save current state to localStorage
-   * @private
-   */
-  _saveState() {
-    if (!this.config.persistState || !isBrowser) return;
+  _createPopupForStep(step, targetElement) {
+    // Clean up any existing popup
+    this._cleanupCurrentStep();
     
-    try {
-      const state = {
-        isExpanded: this.state.isExpanded,
-        chatHistory: this.state.chatHistory
+    // Configure popup options based on step
+    const popupOptions = {
+      text: step.text,
+      boxWidth: step.boxWidth || this.config.defaultBoxWidth,
+      buttonType: step.buttonType || 'arrow',
+      primaryColor: step.primaryColor || this.config.primaryColor,
+      parent: safeDocument?.body || document.body
+    };
+    
+    // Set up callbacks
+    if (step.buttonType === 'yes-no') {
+      popupOptions.onYesNo = (isYes) => {
+        if (isYes && typeof step.onYesNo === 'function') {
+          step.onYesNo(true);
+        } else if (!isYes && typeof step.onYesNo === 'function') {
+          step.onYesNo(false);
+        }
+        
+        // Auto-advance if configured
+        if (step.autoAdvance) {
+          setTimeout(() => this.next(), step.autoAdvanceDelay || 1000);
+        }
       };
-      safeWindow.localStorage.setItem('sableTextAgentState', JSON.stringify(state));
-    } catch (error) {
-      console.error('[SableTextAgent] Failed to save state:', error);
+    } else {
+      // Default arrow button
+      popupOptions.onProceed = () => {
+        if (typeof step.onProceed === 'function') {
+          step.onProceed();
+        }
+        
+        // Auto-advance if configured or if no specific handler
+        if (step.autoAdvance || !step.onProceed) {
+          setTimeout(() => this.next(), step.autoAdvanceDelay || 1000);
+        }
+      };
+    }
+    
+    // Create and mount the popup
+    this.activePopupManager = new SimplePopupManager(popupOptions);
+    this.activePopupManager.mount(popupOptions.parent);
+    
+    // Position the popup if custom positioning is specified
+    if (step.position) {
+      const container = this.activePopupManager.container;
+      if (container) {
+        if (step.position.top !== undefined) container.style.top = typeof step.position.top === 'number' ? `${step.position.top}px` : step.position.top;
+        if (step.position.left !== undefined) container.style.left = typeof step.position.left === 'number' ? `${step.position.left}px` : step.position.left;
+        if (step.position.right !== undefined) container.style.right = typeof step.position.right === 'number' ? `${step.position.right}px` : step.position.right;
+        if (step.position.bottom !== undefined) container.style.bottom = typeof step.position.bottom === 'number' ? `${step.position.bottom}px` : step.position.bottom;
+      }
+    }
+    
+    // Execute callback if provided
+    if (typeof step.callback === 'function') {
+      step.callback(targetElement, this);
     }
   }
   
   /**
-   * Load state from localStorage
+   * Perform actions for the current step
+   * @param {TextAgentStep} step - The current step
+   * @param {HTMLElement|null} element - The target element if any
    * @private
    */
-  _loadState() {
-    if (!this.config.persistState || !isBrowser) return;
+  _performStepActions(step, element) {
+    if (!step.action || !element) return;
     
-    try {
-      const savedState = safeWindow.localStorage.getItem('sableTextAgentState');
-      if (savedState) {
-        const parsedState = JSON.parse(savedState);
-        this.state = {
-          ...this.state,
-          isExpanded: parsedState.isExpanded ?? this.state.isExpanded,
-          chatHistory: parsedState.chatHistory ?? this.state.chatHistory
-        };
-      }
-    } catch (error) {
-      console.error('[SableTextAgent] Failed to load state:', error);
+    const action = step.action;
+    
+    switch (action.type) {
+      case 'click':
+        setTimeout(() => {
+          element.click();
+          
+          // Auto advance after click if specified
+          if (action.autoAdvance) {
+            setTimeout(() => this.next(), action.delay || 1000);
+          }
+        }, action.delay || 0);
+        break;
+        
+      case 'input':
+        // Check if we should use character-by-character typing
+        if (action.typeEffect) {
+          // Start with empty string
+          element.value = '';
+          element.dispatchEvent(new Event('input', { bubbles: true }));
+          
+          const text = action.value || '';
+          const charDelay = action.typeDelay || 50; // ms between characters
+          
+          // Type each character with a delay
+          let i = 0;
+          const typeNextChar = () => {
+            if (i < text.length) {
+              // Add the next character
+              element.value += text.charAt(i);
+              element.dispatchEvent(new Event('input', { bubbles: true }));
+              i++;
+              
+              // Schedule the next character
+              setTimeout(typeNextChar, charDelay);
+            } else {
+              // Typing complete, auto advance if specified
+              if (action.autoAdvance) {
+                setTimeout(() => this.next(), action.delay || 1000);
+              }
+            }
+          };
+          
+          // Start typing after initial delay
+          setTimeout(typeNextChar, action.delay || 0);
+        } else {
+          // Original behavior - set value immediately
+          element.value = action.value;
+          element.dispatchEvent(new Event('input', { bubbles: true }));
+          
+          // Auto advance after input if specified
+          if (action.autoAdvance) {
+            setTimeout(() => this.next(), action.delay || 1000);
+          }
+        }
+        break;
+        
+      case 'focus':
+        element.focus();
+        break;
+        
+      case 'hover':
+        element.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+        break;
+        
+      case 'custom':
+        if (typeof action.handler === 'function') {
+          action.handler(element, this);
+        }
+        break;
     }
   }
   
@@ -291,56 +378,33 @@ export class TextAgentEngine {
    */
   showPopup(options) {
     if (!isBrowser) {
-      console.warn('Popup can only be shown in a browser environment');
+      console.warn('[SableTextAgent] Popup can only be shown in a browser environment');
       return null;
     }
 
     const defaultOptions = {
       text: '',
-      boxWidth: 300,
+      boxWidth: this.config.defaultBoxWidth || 300,
       buttonType: 'arrow',
-      primaryColor: '#FFFFFF',
+      primaryColor: this.config.primaryColor || '#FFFFFF',
       parent: safeDocument?.body || document.body
     };
 
+    // Clean up any existing popup
+    this._cleanupCurrentStep();
+
+    // Create and mount the popup
     const popupManager = new SimplePopupManager({ ...defaultOptions, ...options });
+    this.activePopupManager = popupManager;
     popupManager.mount(options.parent || defaultOptions.parent);
     
     return {
-      unmount: () => popupManager.unmount(),
-      mount: (newParent) => popupManager.mount(newParent)
-    };
-  }
-
-  /**
-   * Shows a complex popup with chat, shortcuts, and state management
-   * @param {Object} options - Popup options
-   * @param {string} [options.platform='Sable'] - Platform name to show in placeholder
-   * @param {string} [options.primaryColor='#FFFFFF'] - Primary color for the popup
-   * @param {number} [options.width=380] - Width of the popup in pixels
-   * @param {Function} [options.onChatSubmit] - Async callback when chat message is submitted
-   * @param {HTMLElement} [options.parent=document.body] - Parent element to mount the popup to
-   * @returns {Object} Popup manager instance with mount/unmount methods
-   */
-  showComplexPopup(options) {
-    if (!isBrowser) {
-      console.warn('Popup can only be shown in a browser environment');
-      return null;
-    }
-
-    const defaultOptions = {
-      platform: 'Sable',
-      primaryColor: '#FFFFFF',
-      width: 380,
-      onChatSubmit: async (message) => 'Default response',
-      parent: safeDocument?.body || document.body
-    };
-
-    const popupManager = new PopupStateManager({ ...defaultOptions, ...options });
-    popupManager.mount(options.parent || defaultOptions.parent);
-    
-    return {
-      unmount: () => popupManager.unmount(),
+      unmount: () => {
+        popupManager.unmount();
+        if (this.activePopupManager === popupManager) {
+          this.activePopupManager = null;
+        }
+      },
       mount: (newParent) => popupManager.mount(newParent)
     };
   }
