@@ -4,6 +4,10 @@ import { ChatInput } from './ChatInput.js';
 export class ExpandedWithMessages {
     constructor({ messages, chatInput, primaryColor }) {
         console.log('ExpandedWithMessages constructor called with messages:', messages);
+        this.messages = messages || []; // Store messages and initialize as empty array if undefined
+        this.chatInput = chatInput;
+        this.primaryColor = primaryColor;
+        this.messagesComponent = null; // Store reference to the ChatMessages component
         this.element = this.createElement({ messages, chatInput, primaryColor });
     }
 
@@ -20,17 +24,22 @@ export class ExpandedWithMessages {
         });
         
         console.log('Creating ChatMessages component');
-        const messagesComponent = new ChatMessages({
-            messages,
-            primaryColor
+        this.messagesComponent = new ChatMessages({
+            messages: this.messages,
+            primaryColor: this.primaryColor,
+            isThinking: false // Initialize with no thinking state
         });
-
-        container.appendChild(messagesComponent.render());
+        
+        // Add class to make it easier to find
+        const messagesElement = this.messagesComponent.render();
+        messagesElement.classList.add('messages-container');
+        
+        container.appendChild(messagesElement);
         console.log('ChatMessages component rendered');
-        container.appendChild(chatInput.render());
+        container.appendChild(this.chatInput.render());
 
         // Scroll to bottom after render
-        setTimeout(() => messagesComponent.scrollToBottom(), 0);
+        setTimeout(() => this.messagesComponent.scrollToBottom(), 0);
 
         return container;
     }

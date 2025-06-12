@@ -36,6 +36,14 @@ export class PopupStateManager {
         this.position = { top: 320, left: 32 };
         this.isDragging = false;
         this.dragStart = { x: 0, y: 0 };
+        
+        // Component references
+        this.components = {
+            expandedWithMessages: null,
+            textInputOnly: null,
+            expandedWithShortcuts: null,
+            minimizedState: null
+        };
 
         // Create container
         this.container = document.createElement('div');
@@ -98,36 +106,72 @@ export class PopupStateManager {
         // First transition to messages state
         this.currentState = 'messages';
         
-        // Add user message
-        this.messages.push({ type: 'user', content: userMessage });
-        
-        // Clear input
+        // Clear input and save it
         const inputText = this.chatInput;
         this.chatInput = '';
-
-        // Render immediately to show user message
+        
+        // Add user message to our internal array
+        this.messages.push({ type: 'user', content: userMessage });
+        
+        // Render to ensure we have the messages component with the user message
         this.render();
-
+        
+        // Get the messages component from ExpandedWithMessages
+        const expandedWithMessages = this.components?.expandedWithMessages;
+        if (!expandedWithMessages || !expandedWithMessages.messagesComponent) return;
+        
+        const messagesComponent = expandedWithMessages.messagesComponent;
+        
+        // Animate the user message that was just rendered
+        const userMessageIndex = this.messages.length - 1;
+        await messagesComponent.animateMessage(userMessageIndex);
+        
         // Show thinking indicator
-        const messagesComponent = this.container.querySelector('.messages-container');
-        if (messagesComponent) {
-            messagesComponent.setThinking(true);
-        }
-
-        // Add quick test response after a delay
-        await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
-
-        // Hide thinking indicator
-        if (messagesComponent) {
+        messagesComponent.setThinking(true);
+        
+        try {
+            // Simulate API call (replace with actual API call to this.config.onChatSubmit)
+            const response = await new Promise(resolve => {
+                setTimeout(() => {
+                    resolve(`Test message - You said: "${inputText}"`);
+                }, 1000); // 1 second delay
+            });
+            
+            // Hide thinking indicator
             messagesComponent.setThinking(false);
+            
+            // Add assistant message to our internal array
+            this.messages.push({ type: 'assistant', content: response });
+            
+            // Re-render to update the DOM with the new message
+            this.render();
+            
+            // Get the updated messagesComponent after re-render
+            const updatedMessagesComponent = this.components?.expandedWithMessages?.messagesComponent;
+            if (updatedMessagesComponent) {
+                // Animate the assistant message (last message in the array)
+                const assistantMessageIndex = this.messages.length - 1;
+                await updatedMessagesComponent.animateMessage(assistantMessageIndex);
+            }
+        } catch (error) {
+            // Hide thinking indicator
+            messagesComponent.setThinking(false);
+            
+            // Add error message to our internal array
+            const errorMessage = 'Sorry, I encountered an error. Please try again.';
+            this.messages.push({ type: 'assistant', content: errorMessage });
+            
+            // Re-render to update the DOM with the error message
+            this.render();
+            
+            // Get the updated messagesComponent after re-render
+            const updatedMessagesComponent = this.components?.expandedWithMessages?.messagesComponent;
+            if (updatedMessagesComponent) {
+                // Animate the error message (last message in the array)
+                const errorMessageIndex = this.messages.length - 1;
+                await updatedMessagesComponent.animateMessage(errorMessageIndex);
+            }
         }
-
-        // Add response
-        this.messages.push({ 
-            type: 'assistant', 
-            content: `Test message - You said: "${inputText}"`
-        });
-        this.render();
     }
 
     handleMinimize = () => {
@@ -277,17 +321,26 @@ export class PopupStateManager {
             });
         }
 
+        // Reset component references for current state
+        this.components = {
+            expandedWithMessages: null,
+            textInputOnly: null,
+            expandedWithShortcuts: null,
+            minimizedState: null
+        };
+        
         let component;
         switch (this.currentState) {
             case 'minimized':
-                component = new MinimizedState({
+                this.components.minimizedState = new MinimizedState({
                     onClick: this.handleMaximize,
                     primaryColor: this.config.primaryColor
                 });
+                component = this.components.minimizedState;
                 break;
 
             case 'textInput':
-                component = new TextInputOnly({
+                this.components.textInputOnly = new TextInputOnly({
                     onSubmit: this.handleSubmit,
                     onInputChange: this.handleInputChange,
                     onExpand: () => this.transitionTo('expanded'),
@@ -296,6 +349,7 @@ export class PopupStateManager {
                     onMinimize: this.handleMinimize,
                     value: this.chatInput
                 });
+                component = this.components.textInputOnly;
                 break;
 
             case 'expanded':
@@ -307,7 +361,7 @@ export class PopupStateManager {
                     primaryColor: this.config.primaryColor
                 });
 
-                component = new ExpandedWithShortcuts({
+                this.components.expandedWithShortcuts = new ExpandedWithShortcuts({
                     recentQueries: this.recentQueries,
                     shortcuts: this.shortcuts,
                     onQuerySelect: this.handleShortcutSelect,
@@ -316,22 +370,26 @@ export class PopupStateManager {
                     onMinimize: this.handleMinimize,
                     onSubmit: () => this.handleSubmit()
                 });
+                component = this.components.expandedWithShortcuts;
                 break;
 
             case 'messages':
                 console.log('Creating ExpandedWithMessages component with messages:', this.messages);
-                component = new ExpandedWithMessages({
+                const chatInputForMessages = new ChatInput({
+                    value: this.chatInput,
+                    onChange: this.handleInputChange,
+                    onSubmit: this.handleSubmit,
+                    platform: this.config.platform,
+                    primaryColor: this.config.primaryColor
+                });
+                
+                this.components.expandedWithMessages = new ExpandedWithMessages({
                     messages: this.messages,
-                    chatInput: new ChatInput({
-                        value: this.chatInput,
-                        onChange: this.handleInputChange,
-                        onSubmit: this.handleSubmit,
-                        platform: this.config.platform,
-                        primaryColor: this.config.primaryColor
-                    }),
+                    chatInput: chatInputForMessages,
                     primaryColor: this.config.primaryColor,
                     onMinimize: this.handleMinimize
                 });
+                component = this.components.expandedWithMessages;
                 break;
         }
 

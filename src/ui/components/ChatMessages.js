@@ -1,10 +1,11 @@
 // components/ChatMessages.js
 export class ChatMessages {
     constructor({ messages, primaryColor, isThinking }) {
-        this.messages = messages;
+        this.messages = messages || []; // Initialize as empty array if undefined
         this.primaryColor = primaryColor;
         this.isThinking = isThinking;
         this.visibleCharacters = {};
+        this.messageElements = new Map(); // Store references to message elements
         this.element = this.createElement();
     }
 
@@ -54,6 +55,8 @@ export class ChatMessages {
 
     createMessageElement(message, index, shouldAnimate = false) {
         const messageWrapper = document.createElement('div');
+        messageWrapper.dataset.messageIndex = index;
+        
         Object.assign(messageWrapper.style, {
             alignSelf: message.type === 'user' ? 'flex-end' : 'flex-start',
             maxWidth: '80%',
@@ -82,7 +85,7 @@ export class ChatMessages {
 
         Object.assign(messageElement.style, {
             ...messageStyles,
-            fontSize: '13px',
+            fontSize: '15px',
             lineHeight: '1.4',
             opacity: shouldAnimate ? '0' : '1',
             transform: shouldAnimate ? 'translateY(10px)' : 'none',
@@ -90,35 +93,53 @@ export class ChatMessages {
         });
 
         const textSpan = document.createElement('span');
+        textSpan.classList.add('message-text');
+        
+        const cursor = document.createElement('span');
+        Object.assign(cursor.style, {
+            borderRight: '2px solid currentColor',
+            marginLeft: '2px',
+            animation: 'blink 1s step-end infinite',
+            display: shouldAnimate ? 'inline-block' : 'none',
+        });
+        cursor.classList.add('typing-cursor');
+        
         if (shouldAnimate) {
             textSpan.textContent = ''; // Start empty for animation
-            // Add cursor for typing animation
-            const cursor = document.createElement('span');
-            Object.assign(cursor.style, {
-                borderRight: '2px solid currentColor',
-                marginLeft: '2px',
-                animation: 'blink 1s step-end infinite',
-            });
-            messageElement.appendChild(cursor);
-            
-            // Start the typing animation
-            this.animateText(textSpan, cursor, message.content);
         } else {
             textSpan.textContent = message.content; // Show full text immediately
         }
         
         messageElement.appendChild(textSpan);
+        messageElement.appendChild(cursor);
         messageWrapper.appendChild(messageElement);
+        
+        // Store reference to message elements for later animation
+        this.messageElements.set(index, {
+            wrapper: messageWrapper,
+            textSpan: textSpan,
+            cursor: cursor
+        });
+        
         return messageWrapper;
     }
 
-    async animateText(textSpan, cursor, text) {
-        const charDelay = 10; // Super fast animation - 10ms between characters
+    async animateText(messageIndex, text) {
+        const elements = this.messageElements.get(messageIndex);
+        if (!elements) return;
+        
+        const { textSpan, cursor } = elements;
+        const charDelay = 20; // 20ms between characters for a natural typing effect
+        
+        // Show the cursor during typing
+        cursor.style.display = 'inline-block';
+        
         for (let i = 0; i <= text.length; i++) {
             textSpan.textContent = text.slice(0, i);
             await new Promise(resolve => setTimeout(resolve, charDelay));
         }
-        // Hide cursor after animation
+        
+        // Hide cursor after animation completes
         cursor.style.display = 'none';
     }
 
@@ -128,7 +149,7 @@ export class ChatMessages {
             alignSelf: 'flex-start',
             color: this.primaryColor,
             padding: '8px 0',
-            fontSize: '13px',
+            fontSize: '15px',
             lineHeight: '1.4',
             opacity: '0',
             transform: 'translateY(10px)',
@@ -170,11 +191,39 @@ export class ChatMessages {
     }
 
     // Method to add a new message
-    addMessage(message) {
+    async addMessage(message, animate = true) {
+        const messageIndex = this.messages.length;
+        
         // Create new message with animation
-        const messageWrapper = this.createMessageElement(message, this.messages.length, true);
+        const messageWrapper = this.createMessageElement(message, messageIndex, animate);
         this.element.appendChild(messageWrapper);
         this.messages.push(message);
         this.scrollToBottom();
+        
+        // Animate the text typing if requested
+        if (animate) {
+            await this.animateText(messageIndex, message.content);
+        }
+        
+        return messageIndex;
+    }
+    
+    // Method to animate an existing message by index
+    async animateMessage(index) {
+        if (index < 0 || index >= this.messages.length) return;
+        
+        const message = this.messages[index];
+        const elements = this.messageElements.get(index);
+        
+        if (!elements) return;
+        
+        // Reset the text content to empty to prepare for animation
+        elements.textSpan.textContent = '';
+        
+        // Show the cursor during typing
+        elements.cursor.style.display = 'inline-block';
+        
+        // Animate the text
+        await this.animateText(index, message.content);
     }
 }
