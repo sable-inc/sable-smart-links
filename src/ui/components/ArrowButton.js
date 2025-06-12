@@ -12,7 +12,7 @@ export class ArrowButton {
             height: '32px',
             borderRadius: '50%',
             border: 'none',
-            backgroundColor: '#ffffff',
+            backgroundColor: 'rgba(255, 255, 255, 0.7)',
             color: '#000000',
             cursor: 'pointer',
             display: 'flex',
@@ -25,16 +25,18 @@ export class ArrowButton {
         button.addEventListener('mouseover', () => {
             button.style.transform = 'scale(1.05)';
             button.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+            button.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
         });
 
         button.addEventListener('mouseout', () => {
             button.style.transform = 'scale(1)';
             button.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+            button.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
         });
 
         button.addEventListener('click', onClick);
 
-        // Add SVG icon
+        // Add SVG icon with corrected attribute names
         button.innerHTML = `
             <svg 
                 width="16"
@@ -46,9 +48,9 @@ export class ArrowButton {
                 <path 
                     d="M8 2L8 14M8 2L2 8M8 2L14 8"
                     stroke="black" 
-                    strokeWidth="3.5"
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
+                    stroke-width="3.5"
+                    stroke-linecap="round" 
+                    stroke-linejoin="round"
                 />
             </svg>
         `;

@@ -43,16 +43,16 @@ export class ChatMessages {
         `;
         container.appendChild(style);
 
-        // Render messages
+        // Render existing messages without animation
         this.messages.forEach((message, index) => {
-            const messageWrapper = this.createMessageElement(message, index);
+            const messageWrapper = this.createMessageElement(message, index, false);
             container.appendChild(messageWrapper);
         });
 
         return container;
     }
 
-    createMessageElement(message, index) {
+    createMessageElement(message, index, shouldAnimate = false) {
         const messageWrapper = document.createElement('div');
         Object.assign(messageWrapper.style, {
             alignSelf: message.type === 'user' ? 'flex-end' : 'flex-start',
@@ -84,29 +84,31 @@ export class ChatMessages {
             ...messageStyles,
             fontSize: '13px',
             lineHeight: '1.4',
-            opacity: '0',
-            transform: 'translateY(10px)',
-            animation: 'messageAppear 0.3s ease forwards',
+            opacity: shouldAnimate ? '0' : '1',
+            transform: shouldAnimate ? 'translateY(10px)' : 'none',
+            animation: shouldAnimate ? 'messageAppear 0.3s ease forwards' : 'none',
         });
 
         const textSpan = document.createElement('span');
-        textSpan.textContent = ''; // Start empty for animation
+        if (shouldAnimate) {
+            textSpan.textContent = ''; // Start empty for animation
+            // Add cursor for typing animation
+            const cursor = document.createElement('span');
+            Object.assign(cursor.style, {
+                borderRight: '2px solid currentColor',
+                marginLeft: '2px',
+                animation: 'blink 1s step-end infinite',
+            });
+            messageElement.appendChild(cursor);
+            
+            // Start the typing animation
+            this.animateText(textSpan, cursor, message.content);
+        } else {
+            textSpan.textContent = message.content; // Show full text immediately
+        }
+        
         messageElement.appendChild(textSpan);
-
-        // Add cursor for typing animation
-        const cursor = document.createElement('span');
-        Object.assign(cursor.style, {
-            borderRight: '2px solid currentColor',
-            marginLeft: '2px',
-            animation: 'blink 1s step-end infinite',
-        });
-        messageElement.appendChild(cursor);
-
         messageWrapper.appendChild(messageElement);
-        
-        // Start the typing animation
-        this.animateText(textSpan, cursor, message.content);
-        
         return messageWrapper;
     }
 
@@ -169,7 +171,8 @@ export class ChatMessages {
 
     // Method to add a new message
     addMessage(message) {
-        const messageWrapper = this.createMessageElement(message, this.messages.length);
+        // Create new message with animation
+        const messageWrapper = this.createMessageElement(message, this.messages.length, true);
         this.element.appendChild(messageWrapper);
         this.messages.push(message);
         this.scrollToBottom();

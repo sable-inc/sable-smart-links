@@ -1,4 +1,5 @@
 import { MinimizeButton } from './MinimizeButton.js';
+import { ArrowButton } from './ArrowButton.js';
 
 export class TextInputOnly {
     constructor({ onSubmit, onInputChange, onExpand, platform, primaryColor, onMinimize }) {
@@ -48,44 +49,10 @@ export class TextInputOnly {
         input.addEventListener('input', onInputChange);
         input.addEventListener('click', onExpand);
 
-        const expandButton = document.createElement('button');
-        Object.assign(expandButton.style, {
-            background: 'white',
-            border: 'none',
-            borderRadius: '50%',
-            width: '32px',
-            height: '32px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-        });
-
-        expandButton.innerHTML = `
-            <svg 
-                width="16" 
-                height="16" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="black" 
-                strokeWidth="2"
-                style="transform: rotate(-90deg)"
-            >
-                <path d="M12 5l7 7-7 7M5 12h14" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-        `;
-
-        expandButton.addEventListener('click', onExpand);
-        expandButton.addEventListener('mouseover', () => {
-            expandButton.style.transform = 'scale(1.05)';
-        });
-        expandButton.addEventListener('mouseout', () => {
-            expandButton.style.transform = 'scale(1)';
-        });
+        const arrowButton = new ArrowButton(onExpand);
 
         container.appendChild(input);
-        container.appendChild(expandButton);
+        container.appendChild(arrowButton.render());
         return container;
     }
 
