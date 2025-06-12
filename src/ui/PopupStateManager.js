@@ -31,9 +31,17 @@ export class PopupStateManager {
             'What are the best practices?'
         ];
 
+        // Dragging state
+        this.position = { top: 320, left: 32 };
+        this.isDragging = false;
+        this.dragStart = { x: 0, y: 0 };
+
         // Create container
         this.container = document.createElement('div');
         this.setupContainer();
+        
+        // Setup dragging functionality
+        this.setupDragging();
         
         // Initial render
         this.render();
@@ -42,8 +50,8 @@ export class PopupStateManager {
     setupContainer() {
         Object.assign(this.container.style, {
             position: 'fixed',
-            top: '320px',
-            left: '32px',
+            top: `${this.position.top}px`,
+            left: `${this.position.left}px`,
             zIndex: 2147483647,
             width: `${this.config.width}px`,
             display: 'flex',
@@ -67,6 +75,7 @@ export class PopupStateManager {
             transform: 'scale(1)',
             transformOrigin: 'bottom center',
             overflow: 'hidden',
+            cursor: 'grab',
         });
     }
 
@@ -145,10 +154,91 @@ export class PopupStateManager {
         this.render();
     }
 
+    createDragHandle() {
+        const handle = document.createElement('div');
+        Object.assign(handle.style, {
+            padding: '2px 0',
+            cursor: 'grab',
+            userSelect: 'none',
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: '8px',
+        });
+
+        const bar = document.createElement('div');
+        Object.assign(bar.style, {
+            width: '32px',
+            height: '4px',
+            backgroundColor: 'rgba(255, 255, 255, 0.3)',
+            borderRadius: '2px',
+            margin: '0 auto',
+        });
+
+        handle.appendChild(bar);
+        return handle;
+    }
+
+    setupDragging() {
+        const handleDragStart = (e) => {
+            // Don't start dragging if clicking on a button or input
+            if (e.target instanceof HTMLButtonElement || 
+                e.target instanceof HTMLInputElement) return;
+            
+            e.preventDefault();
+            this.isDragging = true;
+            this.dragStart = {
+                x: e.clientX - this.position.left,
+                y: e.clientY - this.position.top
+            };
+            this.container.style.cursor = 'grabbing';
+        };
+
+        const handleMouseMove = (e) => {
+            if (!this.isDragging) return;
+            
+            const newLeft = e.clientX - this.dragStart.x;
+            const newTop = e.clientY - this.dragStart.y;
+            
+            // Constrain to window boundaries
+            this.position.left = Math.max(0, Math.min(newLeft, window.innerWidth - this.container.offsetWidth));
+            this.position.top = Math.max(0, Math.min(newTop, window.innerHeight - this.container.offsetHeight));
+            
+            // Update element position
+            this.container.style.left = `${this.position.left}px`;
+            this.container.style.top = `${this.position.top}px`;
+        };
+
+        const handleMouseUp = () => {
+            if (this.isDragging) {
+                this.isDragging = false;
+                this.container.style.cursor = 'grab';
+            }
+        };
+
+        // Add event listeners
+        this.container.addEventListener('mousedown', handleDragStart);
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+
+        // Cleanup function (store it for potential future cleanup)
+        this.cleanupDragging = () => {
+            this.container.removeEventListener('mousedown', handleDragStart);
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }
+
     render() {
         console.log('Rendering PopupStateManager, current state:', this.currentState);
         // Clear existing content
         this.container.innerHTML = '';
+        
+        // Add drag handle (except in minimized state)
+        if (this.currentState !== 'minimized') {
+            const dragHandle = this.createDragHandle();
+            this.container.appendChild(dragHandle);
+        }
 
         // Update container styles based on state
         if (this.currentState === 'minimized') {
@@ -232,6 +322,10 @@ export class PopupStateManager {
     }
 
     unmount() {
+        // Clean up event listeners before removing
+        if (this.cleanupDragging) {
+            this.cleanupDragging();
+        }
         this.container.remove();
     }
 }
