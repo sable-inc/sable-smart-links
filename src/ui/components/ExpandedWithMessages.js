@@ -1,18 +1,16 @@
-import { MinimizeButton } from './MinimizeButton.js';
 import { ChatMessages } from './ChatMessages.js';
 import { ChatInput } from './ChatInput.js';
 
 export class ExpandedWithMessages {
-    constructor({ messages, chatInput, primaryColor, onMinimize }) {
+    constructor({ messages, chatInput, primaryColor }) {
         console.log('ExpandedWithMessages constructor called with messages:', messages);
-        this.element = this.createElement({ messages, chatInput, primaryColor, onMinimize });
+        this.element = this.createElement({ messages, chatInput, primaryColor });
     }
 
-    createElement({ messages, chatInput, primaryColor, onMinimize }) {
+    createElement({ messages, chatInput, primaryColor }) {
         console.log('Creating ExpandedWithMessages element');
         const container = document.createElement('div');
         Object.assign(container.style, {
-            position: 'relative',
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
@@ -20,13 +18,6 @@ export class ExpandedWithMessages {
             transform: 'translateY(0)',
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         });
-
-        const minimizeButton = new MinimizeButton({
-            onMinimize,
-            primaryColor
-        });
-
-        container.appendChild(minimizeButton.render());
         
         console.log('Creating ChatMessages component');
         const messagesComponent = new ChatMessages({

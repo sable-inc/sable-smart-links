@@ -1,19 +1,35 @@
-import { MinimizeButton } from './MinimizeButton.js';
 import { ArrowButton } from './ArrowButton.js';
 
 export class TextInputOnly {
-    constructor({ onSubmit, onInputChange, onExpand, platform, primaryColor, onMinimize }) {
+    constructor({ onSubmit, onInputChange, onExpand, platform, primaryColor }) {
         this.element = this.createElement({ 
             onSubmit, 
             onInputChange, 
             onExpand, 
             platform, 
-            primaryColor, 
-            onMinimize 
+            primaryColor 
         });
     }
 
-    createElement({ onSubmit, onInputChange, onExpand, platform, primaryColor, onMinimize }) {
+    createElement({ onSubmit, onInputChange, onExpand, platform, primaryColor }) {
+        // Create style element for placeholder color
+        const style = document.createElement('style');
+        style.textContent = `
+            input::placeholder {
+                color: rgba(255, 255, 255, 0.5) !important;
+            }
+            input::-webkit-input-placeholder {
+                color: rgba(255, 255, 255, 0.5) !important;
+            }
+            input::-moz-placeholder {
+                color: rgba(255, 255, 255, 0.5) !important;
+            }
+            input:-ms-input-placeholder {
+                color: rgba(255, 255, 255, 0.5) !important;
+            }
+        `;
+        document.head.appendChild(style);
+
         const container = document.createElement('div');
         Object.assign(container.style, {
             position: 'relative',
@@ -23,18 +39,13 @@ export class TextInputOnly {
             gap: '8px',
             backgroundColor: '#323232',
             padding: '10px 16px',
-            borderRadius: '16px',
+            paddingLeft: '40px',
+            borderRadius: '16px 16px 0 0',
             width: 'calc(100% + 32px)',
             margin: '0 -16px',
-            height: '100%',
+            marginTop: 'auto',
+            height: 'fit-content',
         });
-
-        const minimizeButton = new MinimizeButton({
-            onMinimize,
-            primaryColor
-        });
-
-        container.appendChild(minimizeButton.render());
 
         const input = document.createElement('input');
         Object.assign(input.style, {

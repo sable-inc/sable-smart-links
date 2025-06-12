@@ -2,6 +2,7 @@
 import { ArrowButton } from './ArrowButton.js';
 import { YesNoButtons } from './YesNoButtons.js';
 import { MinimizedState } from './MinimizedState.js';
+import { MinimizeButton } from './MinimizeButton.js';
 
 export class SimplePopup {
     constructor(config) {
@@ -62,9 +63,12 @@ export class SimplePopup {
         const dragHandle = this.createDragHandle();
         popup.appendChild(dragHandle);
 
-        // Add minimize button
-        const minimizeButton = this.createMinimizeButton();
-        popup.appendChild(minimizeButton);
+        // Replace custom minimize button with MinimizeButton component
+        const minimizeButton = new MinimizeButton({
+            onMinimize: () => this.minimize(),
+            primaryColor: this.config.primaryColor
+        });
+        popup.appendChild(minimizeButton.render());
 
         // Add content container
         const content = this.createContent();
@@ -102,46 +106,6 @@ export class SimplePopup {
 
         handle.appendChild(bar);
         return handle;
-    }
-
-    createMinimizeButton() {
-        const button = document.createElement('button');
-        Object.assign(button.style, {
-            position: 'absolute',
-            top: '4px',
-            left: '4px',
-            width: '20px',
-            height: '20px',
-            borderRadius: '50%',
-            border: 'none',
-            backgroundColor: 'transparent',
-            color: this.config.primaryColor,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.2s ease',
-            fontSize: '16px',
-            fontWeight: '500',
-        });
-
-        button.textContent = 'x';
-        button.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.minimize();
-        });
-
-        button.addEventListener('mouseover', () => {
-            button.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-            button.style.transform = 'scale(1.1)';
-        });
-
-        button.addEventListener('mouseout', () => {
-            button.style.backgroundColor = 'transparent';
-            button.style.transform = 'scale(1)';
-        });
-
-        return button;
     }
 
     createContent() {
@@ -300,11 +264,14 @@ export class SimplePopup {
                 
                 // Restore original content
                 const dragHandle = this.createDragHandle();
-                const minimizeButton = this.createMinimizeButton();
+                const minimizeButton = new MinimizeButton({
+                    onMinimize: () => this.minimize(),
+                    primaryColor: this.config.primaryColor
+                });
                 const content = this.createContent();
                 
                 this.element.appendChild(dragHandle);
-                this.element.appendChild(minimizeButton);
+                this.element.appendChild(minimizeButton.render());
                 this.element.appendChild(content);
                 
                 // Restore original styles

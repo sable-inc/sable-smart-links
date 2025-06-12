@@ -4,6 +4,7 @@ import { TextInputOnly } from './components/TextInputOnly.js';
 import { ExpandedWithShortcuts } from './components/ExpandedWithShortcuts.js';
 import { ExpandedWithMessages } from './components/ExpandedWithMessages.js';
 import { ChatInput } from './components/ChatInput.js';
+import { MinimizeButton } from './components/MinimizeButton.js';
 
 // PopupStateManager.js
 export class PopupStateManager {
@@ -234,6 +235,24 @@ export class PopupStateManager {
         // Clear existing content
         this.container.innerHTML = '';
         
+        // Add minimize button (except in minimized state)
+        if (this.currentState !== 'minimized') {
+            const minimizeButton = new MinimizeButton({
+                onMinimize: this.handleMinimize,
+                primaryColor: this.config.primaryColor
+            });
+            
+            const minimizeButtonElement = minimizeButton.render();
+            Object.assign(minimizeButtonElement.style, {
+                position: 'absolute',
+                top: '8px',
+                left: '8px',
+                zIndex: 2147483648, // One higher than container
+            });
+            
+            this.container.appendChild(minimizeButtonElement);
+        }
+
         // Add drag handle (except in minimized state)
         if (this.currentState !== 'minimized') {
             const dragHandle = this.createDragHandle();
@@ -251,7 +270,10 @@ export class PopupStateManager {
             Object.assign(this.container.style, {
                 width: `${this.config.width}px`,
                 padding: '16px',
+                paddingBottom: '0',
                 cursor: 'default',
+                display: 'flex',
+                flexDirection: 'column',
             });
         }
 
