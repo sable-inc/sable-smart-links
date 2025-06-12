@@ -125,7 +125,7 @@ export class SimplePopup {
             fontWeight: '500',
         });
 
-        button.textContent = '-';
+        button.textContent = 'x';
         button.addEventListener('click', (e) => {
             e.stopPropagation();
             this.minimize();
@@ -161,7 +161,7 @@ export class SimplePopup {
             width: `${this.config.boxWidth}px`,
             padding: '4px 4px',
             color: this.config.primaryColor,
-            fontSize: '14px',
+            fontSize: '15px',
             fontWeight: '400',
             letterSpacing: '-0.01em',
             wordWrap: 'break-word',
@@ -171,6 +171,9 @@ export class SimplePopup {
             textRendering: 'optimizeLegibility',
             fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         });
+        
+        // Store a direct reference to the text container
+        this.textContainer = textContainer;
 
         // Button container
         const buttonContainer = document.createElement('div');
@@ -179,6 +182,9 @@ export class SimplePopup {
             transform: 'scale(0.9)',
             transition: 'all 0.8s ease',
         });
+        
+        // Store a direct reference to the button container
+        this.buttonContainer = buttonContainer;
 
         // Add button based on type
         if (this.config.buttonType === 'arrow') {
@@ -200,27 +206,25 @@ export class SimplePopup {
             this.element.style.opacity = '1';
         }, 0);
 
-        // Animate text
-        const textContainer = this.element.querySelector('div > div:first-child');
+        // Animate text - use the direct reference instead of querySelector
         const charDelay = 800 / this.config.text.length;
         
         for (let i = 0; i <= this.config.text.length; i++) {
             setTimeout(() => {
-                textContainer.textContent = this.config.text.slice(0, i);
+                this.textContainer.textContent = this.config.text.slice(0, i);
                 if (i < this.config.text.length) {
                     const cursor = document.createElement('span');
                     cursor.style.borderRight = '2px solid rgba(255, 255, 255, 0.7)';
                     cursor.style.animation = 'blink 1s step-end infinite';
-                    textContainer.appendChild(cursor);
+                    this.textContainer.appendChild(cursor);
                 }
             }, 300 + (i * charDelay));
         }
 
-        // Show button
+        // Show button - use the direct reference instead of querySelector
         setTimeout(() => {
-            const buttonContainer = this.element.querySelector('div > div:last-child');
-            buttonContainer.style.opacity = '1';
-            buttonContainer.style.transform = 'scale(1)';
+            this.buttonContainer.style.opacity = '1';
+            this.buttonContainer.style.transform = 'scale(1)';
         }, 2000);
     }
 
@@ -317,7 +321,8 @@ export class SimplePopup {
                     cursor: 'grab',
                 });
 
-                // Restart animation sequence
+                // The references to textContainer and buttonContainer are updated in createContent
+                // so we can safely call startAnimationSequence
                 this.startAnimationSequence();
             },
             primaryColor: this.config.primaryColor
