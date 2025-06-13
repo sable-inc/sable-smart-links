@@ -13,11 +13,14 @@ export class SimplePopup {
             onProceed: config.onProceed || (() => {}),
             onYesNo: config.onYesNo || (() => {}),
             primaryColor: config.primaryColor || '#FFFFFF',
+            onMinimize: config.onMinimize || (() => {}),
+            onPositionChange: config.onPositionChange || (() => {})
         };
 
         // State
         this.isMinimized = false;
-        this.position = { top: 320, left: 32 };
+        // Use position from config if provided, otherwise use default
+        this.position = config.position || { top: window.innerHeight / 2, left: window.innerWidth / 2 };
         this.isDragging = false;
         this.dragStart = { x: 0, y: 0 };
         this.visibleCharacters = 0;
@@ -57,6 +60,7 @@ export class SimplePopup {
             WebkitFontSmoothing: 'antialiased',
             MozOsxFontSmoothing: 'grayscale',
             opacity: '0',
+            transform: 'none', // Remove any transform to ensure consistent positioning
         });
 
         // Add drag handle
@@ -194,15 +198,16 @@ export class SimplePopup {
 
     setupDragging() {
         const handleDragStart = (e) => {
-            if (e.target instanceof HTMLButtonElement) return;
+            if (e.target.closest('.minimize-button') || e.target.closest('.action-button')) {
+                return; // Don't start dragging when clicking buttons
+            }
             
-            e.preventDefault();
             this.isDragging = true;
-            this.dragStart = {
-                x: e.clientX - this.position.left,
-                y: e.clientY - this.position.top
-            };
             this.element.style.cursor = 'grabbing';
+            
+            // Calculate the offset of the mouse pointer from the top-left of the element
+            this.dragStart.x = e.clientX - this.position.left;
+            this.dragStart.y = e.clientY - this.position.top;
         };
 
         const handleMouseMove = (e) => {
@@ -218,12 +223,18 @@ export class SimplePopup {
             // Update element position
             this.element.style.left = `${this.position.left}px`;
             this.element.style.top = `${this.position.top}px`;
+            
+            // Notify parent of position change
+            this.config.onPositionChange(this.position);
         };
 
         const handleMouseUp = () => {
             if (this.isDragging) {
                 this.isDragging = false;
                 this.element.style.cursor = 'grab';
+                
+                // Ensure final position is reported when drag ends
+                this.config.onPositionChange(this.position);
             }
         };
 

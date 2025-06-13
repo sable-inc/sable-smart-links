@@ -15,14 +15,17 @@ export class SimplePopupManager {
 
         // Single state variable
         this.isMinimized = false;
+        
+        // Track position state
+        this.position = {
+            top: window.innerHeight / 2,
+            left: window.innerWidth / 2
+        };
 
         // Create container
         this.container = document.createElement('div');
         Object.assign(this.container.style, {
             position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
             zIndex: 2147483646,
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         });
@@ -75,6 +78,9 @@ export class SimplePopupManager {
                 boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
                 backdropFilter: 'blur(8px)',
                 cursor: 'pointer',
+                top: `${this.position.top}px`,
+                left: `${this.position.left}px`,
+                transform: 'none'
             });
 
             this.container.appendChild(minimizedState.render());
@@ -83,7 +89,11 @@ export class SimplePopupManager {
             const popup = new SimplePopup({
                 ...this.config,
                 isVisible: true,
-                onMinimize: () => this.handleMinimize()
+                onMinimize: () => this.handleMinimize(),
+                position: this.position,
+                onPositionChange: (newPosition) => {
+                    this.position = newPosition;
+                }
             });
 
             // Reset container styles for full popup
@@ -94,6 +104,9 @@ export class SimplePopupManager {
                 boxShadow: 'none',
                 backdropFilter: 'none',
                 cursor: 'default',
+                top: `${this.position.top}px`,
+                left: `${this.position.left}px`,
+                transform: 'none'
             });
 
             this.container.appendChild(popup.render());
@@ -106,6 +119,38 @@ export class SimplePopupManager {
 
     unmount() {
         this.container.remove();
+    }
+    
+    /**
+     * Updates the position of the popup
+     * @param {Object} newPosition - The new position object
+     * @param {number} newPosition.top - The top position in pixels
+     * @param {number} newPosition.left - The left position in pixels
+     */
+    updatePosition(newPosition) {
+        if (!newPosition || typeof newPosition !== 'object') {
+            console.error('Invalid position provided to updatePosition');
+            return;
+        }
+        
+        // Update the position state
+        this.position = {
+            top: newPosition.top !== undefined ? newPosition.top : this.position.top,
+            left: newPosition.left !== undefined ? newPosition.left : this.position.left
+        };
+        
+        // Update the container position immediately
+        Object.assign(this.container.style, {
+            top: `${this.position.top}px`,
+            left: `${this.position.left}px`
+        });
+        
+        // Re-render if needed to ensure child components get updated position
+        if (!this.isMinimized) {
+            this.render();
+        }
+        
+        return this.position;
     }
 }
 

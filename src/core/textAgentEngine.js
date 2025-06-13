@@ -295,40 +295,66 @@ export class TextAgentEngine {
 
     // Position the popup relative to target element if specified
     if (targetElement && step.targetElement && step.targetElement.position) {
-      const container = this.activePopupManager.container;
       const position = step.targetElement.position;
       const elementRect = targetElement.getBoundingClientRect();
+      let newPosition = {};
       
-      // Reset any existing positioning
-      container.style.top = '';
-      container.style.left = '';
-      container.style.right = '';
-      container.style.bottom = '';
-      container.style.transform = '';
+      // First, get the popup dimensions to position it correctly
+      // We need to ensure the popup is rendered before measuring it
+      const popupRect = this.activePopupManager.container.getBoundingClientRect();
+      const popupWidth = popupRect.width || 200; // Fallback width if not yet rendered
+      const popupHeight = popupRect.height || 100; // Fallback height if not yet rendered
+      const margin = 10; // Space between popup and target element
       
       // Calculate position based on the specified direction
       switch (position) {
         case 'top':
-          container.style.bottom = `${window.innerHeight - elementRect.top + 10}px`;
-          container.style.left = `${elementRect.left + (elementRect.width / 2)}px`;
-          container.style.transform = 'translateX(-50%)';
+          // Position popup so its bottom edge is above the target element
+          newPosition = {
+            top: elementRect.top - popupHeight - margin,
+            left: elementRect.left - popupWidth + (elementRect.width / 2)
+          };
+          // Center horizontally
+          this.activePopupManager.container.style.transform = 'translateX(-50%)';
           break;
         case 'right':
-          container.style.left = `${elementRect.right + 10}px`;
-          container.style.top = `${elementRect.top + (elementRect.height / 2)}px`;
-          container.style.transform = 'translateY(-50%)';
+          // Position popup so its left edge is to the right of the target element
+          newPosition = {
+            top: elementRect.top - popupHeight / 2 + (elementRect.height / 2),
+            left: elementRect.right + margin
+          };
+          // Center vertically
+          this.activePopupManager.container.style.transform = 'translateY(-50%)';
           break;
         case 'bottom':
-          container.style.top = `${elementRect.bottom + 10}px`;
-          container.style.left = `${elementRect.left + (elementRect.width / 2)}px`;
-          container.style.transform = 'translateX(-50%)';
+          // Position popup so its top edge is below the target element
+          newPosition = {
+            top: elementRect.bottom + margin,
+            left: elementRect.left - popupWidth + (elementRect.width / 2)
+          };
+          // // Center horizontally
+          // this.activePopupManager.container.style.transform = 'translateX(-50%)';
           break;
         case 'left':
-          container.style.right = `${window.innerWidth - elementRect.left + 10}px`;
-          container.style.top = `${elementRect.top + (elementRect.height / 2)}px`;
-          container.style.transform = 'translateY(-50%)';
+          // Position popup so its right edge is to the left of the target element
+          newPosition = {
+            top: elementRect.top - popupHeight / 2 + (elementRect.height / 2),
+            left: elementRect.left - (2 * popupWidth) - margin
+          };
+          // Center vertically
+          this.activePopupManager.container.style.transform = 'translateY(-50%)';
           break;
+        default:
+          // Default to centered on the element
+          newPosition = {
+            top: elementRect.top + (elementRect.height / 2),
+            left: elementRect.left + (elementRect.width / 2)
+          };
+          this.activePopupManager.container.style.transform = 'translate(-50%, -50%)';
       }
+      
+      // Update the position using the new method
+      this.activePopupManager.updatePosition(newPosition);
     }
     
     // Execute callback if provided
