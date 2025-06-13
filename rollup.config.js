@@ -173,9 +173,7 @@ export default [
     output: {
       dir: 'dist/react',
       format: 'esm',
-      sourcemap: true,
-      preserveModules: true,
-      preserveModulesRoot: 'src'
+      sourcemap: true
     },
     external,
     plugins: [
