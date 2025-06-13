@@ -22,18 +22,18 @@ export class PopupStateManager {
         this.messages = [];
         this.chatInput = '';
         this.recentQueries = [
-            'Request for Explanation Clarification',
-            'Understanding Transformer Architecture Impact',
-            'Explaining Transformer Architecture'
+            'When should I use Tavily Search vs Crawl?',
+            'What are the best practices for Tavily Search?',
+            'Can you explain what Tavily Extract does?'
         ];
         this.shortcuts = [
-            'How does this work?',
-            'Show me examples',
-            'What are the best practices?'
+            'Best practices for Tavily Search',
+            'Upgrade to a production API key',
+            'Set up your billing address'
         ];
 
         // Dragging state
-        this.position = { top: 320, left: 32 };
+        this.position = { top: 360, left: 660 };
         this.isDragging = false;
         this.dragStart = { x: 0, y: 0 };
         
@@ -133,7 +133,8 @@ export class PopupStateManager {
             // Simulate API call (replace with actual API call to this.config.onChatSubmit)
             const response = await new Promise(resolve => {
                 setTimeout(() => {
-                    resolve(`Test message - You said: "${inputText}"`);
+                    // TODO: Replace with actual API call
+                    resolve(`For best results with Tavily Search, use short, focused queries under 400 characters and apply filters like max_results and time_range. Enable search_depth=advanced for more relevant content and use metadata and regex to refine results. Combine LLMs with keyword filtering to boost accuracy.`);
                 }, 1000); // 1 second delay
             });
             

@@ -83,7 +83,10 @@ export class TextAgentEngine {
       this.currentStepIndex = 0;
     }
     
-    this._renderCurrentStep();
+    // this._renderCurrentStep();
+
+    // TODO: REMOVE - THIS IS A FAKEOUT FOR RECORDING
+    setTimeout(() => this._renderCurrentStep(), 12000);
     
     return this; // For chaining
   }
@@ -123,7 +126,7 @@ export class TextAgentEngine {
   /**
    * End the current text agent session
    */
-  end() {
+  async end() {
     // Clean up current step
     this._cleanupCurrentStep();
     
@@ -132,7 +135,7 @@ export class TextAgentEngine {
 
     // Initialize PopupStateManager when text agent ends
     const popupManager = new PopupStateManager({
-      platform: 'Sable',
+      platform: 'Tavily',
       primaryColor: this.config.primaryColor || '#FFFFFF',
       width: 380,
       onChatSubmit: async (message) => {
@@ -267,14 +270,15 @@ export class TextAgentEngine {
     } else {
       // Default arrow button
       popupOptions.onProceed = () => {
-        if (typeof step.onProceed === 'function') {
-          step.onProceed();
-        }
-        
-        // Auto-advance if configured or if no specific handler
-        if (step.autoAdvance || !step.onProceed) {
-          setTimeout(() => this.next(), step.autoAdvanceDelay || 1000);
-        }
+        console.log('[TextAgent] onProceed hooked – scheduling next in', step.autoAdvanceDelay || 1000);
+        const delay = step.autoAdvanceDelay || 1000;
+        setTimeout(async () => {
+            console.log('[TextAgent] delayed-next fired');
+            if (typeof step.onProceed === 'function') {
+                await step.onProceed();
+            }
+            this.next();
+        }, delay);
       };
     }
     
