@@ -7,6 +7,7 @@ import { waitForElement } from './elementSelector.js';
 import { isBrowser, safeWindow, safeDocument } from '../utils/browserAPI.js';
 import { highlightElement, removeHighlight } from '../ui/highlight.js';
 import { SimplePopupManager } from '../ui/SimplePopupManager.js';
+import { PopupStateManager } from '../ui/PopupStateManager.js';
 
 export class TextAgentEngine {
   /**
@@ -128,6 +129,21 @@ export class TextAgentEngine {
     
     this.isRunning = false;
     this.currentStepIndex = -1;
+
+    // Initialize PopupStateManager when text agent ends
+    const popupManager = new PopupStateManager({
+      platform: 'Sable',
+      primaryColor: this.config.primaryColor || '#FFFFFF',
+      width: 380,
+      onChatSubmit: async (message) => {
+        // Handle chat submission - can be customized based on your needs
+        console.log('Chat message received:', message);
+        return 'Thank you for your message. How else can I help you?';
+      }
+    });
+    
+    // Mount to document body
+    popupManager.mount(document.body);
     
     if (this.config.debug) {
       console.log('[SableTextAgent] Session ended');
@@ -204,6 +220,7 @@ export class TextAgentEngine {
       
       // Highlight the element if found
       if (element) {
+        console.log('Target element found:', element);
         highlightElement(element);
       }
       
@@ -265,14 +282,52 @@ export class TextAgentEngine {
     this.activePopupManager = new SimplePopupManager(popupOptions);
     this.activePopupManager.mount(popupOptions.parent);
     
-    // Position the popup if custom positioning is specified
-    if (step.position) {
+    // // Position the popup if custom positioning is specified
+    // if (step.position) {
+    //   const container = this.activePopupManager.container;
+    //   if (container) {
+    //     if (step.position.top !== undefined) container.style.top = typeof step.position.top === 'number' ? `${step.position.top}px` : step.position.top;
+    //     if (step.position.left !== undefined) container.style.left = typeof step.position.left === 'number' ? `${step.position.left}px` : step.position.left;
+    //     if (step.position.right !== undefined) container.style.right = typeof step.position.right === 'number' ? `${step.position.right}px` : step.position.right;
+    //     if (step.position.bottom !== undefined) container.style.bottom = typeof step.position.bottom === 'number' ? `${step.position.bottom}px` : step.position.bottom;
+    //   }
+    // }
+
+    // Position the popup relative to target element if specified
+    if (targetElement && step.targetElement && step.targetElement.position) {
       const container = this.activePopupManager.container;
-      if (container) {
-        if (step.position.top !== undefined) container.style.top = typeof step.position.top === 'number' ? `${step.position.top}px` : step.position.top;
-        if (step.position.left !== undefined) container.style.left = typeof step.position.left === 'number' ? `${step.position.left}px` : step.position.left;
-        if (step.position.right !== undefined) container.style.right = typeof step.position.right === 'number' ? `${step.position.right}px` : step.position.right;
-        if (step.position.bottom !== undefined) container.style.bottom = typeof step.position.bottom === 'number' ? `${step.position.bottom}px` : step.position.bottom;
+      const position = step.targetElement.position;
+      const elementRect = targetElement.getBoundingClientRect();
+      
+      // Reset any existing positioning
+      container.style.top = '';
+      container.style.left = '';
+      container.style.right = '';
+      container.style.bottom = '';
+      container.style.transform = '';
+      
+      // Calculate position based on the specified direction
+      switch (position) {
+        case 'top':
+          container.style.bottom = `${window.innerHeight - elementRect.top + 10}px`;
+          container.style.left = `${elementRect.left + (elementRect.width / 2)}px`;
+          container.style.transform = 'translateX(-50%)';
+          break;
+        case 'right':
+          container.style.left = `${elementRect.right + 10}px`;
+          container.style.top = `${elementRect.top + (elementRect.height / 2)}px`;
+          container.style.transform = 'translateY(-50%)';
+          break;
+        case 'bottom':
+          container.style.top = `${elementRect.bottom + 10}px`;
+          container.style.left = `${elementRect.left + (elementRect.width / 2)}px`;
+          container.style.transform = 'translateX(-50%)';
+          break;
+        case 'left':
+          container.style.right = `${window.innerWidth - elementRect.left + 10}px`;
+          container.style.top = `${elementRect.top + (elementRect.height / 2)}px`;
+          container.style.transform = 'translateY(-50%)';
+          break;
       }
     }
     

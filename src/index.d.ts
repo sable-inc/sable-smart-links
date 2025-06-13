@@ -200,6 +200,8 @@ export interface TextAgentStep {
     waitForElement?: boolean;
     /** Maximum time to wait for element in milliseconds */
     waitTimeout?: number;
+    /** Position to render the popup relative to target element */
+    position?: 'top' | 'right' | 'bottom' | 'left';
   };
   
   /** Whether to automatically advance to next step */
@@ -229,19 +231,19 @@ export interface TextAgentStep {
   /** Custom callback function called when step is executed */
   callback?: (element: HTMLElement | null, engine: any) => void;
   
-  /** Position of the popup relative to the viewport or target element */
-  position?: {
-    top?: string | number;
-    left?: string | number;
-    right?: string | number;
-    bottom?: string | number;
-  };
+  // /** Position of the popup relative to the viewport or target element */
+  // position?: {
+  //   top?: string | number;
+  //   left?: string | number;
+  //   right?: string | number;
+  //   bottom?: string | number;
+  // };
   
-  /** Custom CSS class names */
-  className?: {
-    container?: string;
-    text?: string;
-    secondaryText?: string;
-    buttons?: string;
-  };
+  // /** Custom CSS class names */
+  // className?: {
+  //   container?: string;
+  //   text?: string;
+  //   secondaryText?: string;
+  //   buttons?: string;
+  // };
 }

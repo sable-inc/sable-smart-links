@@ -81,7 +81,7 @@ class SableSmartLinks {
     const walkthroughId = params[this.config.walkthrough.paramName];
     
     if (walkthroughId) {
-      this.start(walkthroughId);
+      this.startWalkthrough(walkthroughId);
     }
   }
 

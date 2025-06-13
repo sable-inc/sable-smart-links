@@ -20,9 +20,10 @@ export class SimplePopupManager {
         this.container = document.createElement('div');
         Object.assign(this.container.style, {
             position: 'fixed',
-            top: '320px',
-            left: '32px',
-            zIndex: 2147483647,
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 2147483646,
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         });
 
