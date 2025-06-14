@@ -27,18 +27,26 @@ function injectTooltipStyles() {
   styleElement.textContent = `
     .${TOOLTIP_CLASS} {
       position: absolute;
-      background-color: #ffffff;
-      color: #333333;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      background: radial-gradient(
+        circle at center,
+        rgba(60, 60, 60, 0.5) 0%,
+        rgba(60, 60, 60, 0.65) 100%
+      );
+      color: #FFFFFF;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
       padding: 16px;
       width: 300px;
       max-width: 90vw;
       z-index: 99999;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
       font-size: 14px;
       line-height: 1.5;
-      animation: sable-tooltip-fade-in 0.3s ease-out;
+      animation: sable-tooltip-fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
     .${TOOLTIP_CLASS} * {
@@ -49,7 +57,7 @@ function injectTooltipStyles() {
       font-weight: 600;
       font-size: 16px;
       margin: 0 0 8px 0;
-      color: #000000;
+      color: #FFFFFF;
     }
     
     .${TOOLTIP_CLASS}-content {
@@ -73,21 +81,21 @@ function injectTooltipStyles() {
     }
     
     .${TOOLTIP_CLASS}-button-primary {
-      background-color: #3498db;
-      color: white;
-    }
-    
-    .${TOOLTIP_CLASS}-button-primary:hover {
-      background-color: #2980b9;
-    }
-    
-    .${TOOLTIP_CLASS}-button-secondary {
-      background-color: #f1f1f1;
+      background-color: rgba(255, 255, 255, 1);
       color: #333333;
     }
     
+    .${TOOLTIP_CLASS}-button-primary:hover {
+      background-color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .${TOOLTIP_CLASS}-button-secondary {
+      background-color: rgba(241, 241, 241, 0.8);
+      color: #FFFFFF;
+    }
+    
     .${TOOLTIP_CLASS}-button-secondary:hover {
-      background-color: #e1e1e1;
+      background-color: rgba(225, 225, 225, 0.6);
     }
     
     .${TOOLTIP_CLASS}-floating {
@@ -298,8 +306,6 @@ export function showTooltip(targetElement, content, options = {}) {
     </button>
   </div>`;
   
-  // Arrow element removed
-  
   // Set content
   tooltipEl.innerHTML += tooltipHTML;
   
@@ -310,7 +316,7 @@ export function showTooltip(targetElement, content, options = {}) {
   const { tooltipClass, tooltipStyle } = calculateTooltipPosition(
     targetElement,
     tooltipEl,
-    options.position
+    options.position || 'bottom'
   );
   
   // Apply position classes and styles
