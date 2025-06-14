@@ -165,5 +165,46 @@ export default [
       format: 'es'
     },
     plugins: [dts()]
+  },
+
+  // React components build (ESM)
+  {
+    input: 'src/react/index.ts',
+    output: {
+      dir: 'dist/react',
+      format: 'esm',
+      sourcemap: true
+    },
+    external,
+    plugins: [
+      ...commonPlugins,
+      typescript({
+        tsconfig: './tsconfig.json',
+        outDir: 'dist/react',
+        declarationDir: 'dist/react',
+        declaration: true,
+        rootDir: 'src'
+      }),
+      babel({
+        babelHelpers: 'bundled',
+        exclude: 'node_modules/**',
+        extensions: ['.js', '.jsx', '.ts', '.tsx'],
+        presets: [
+          ['@babel/preset-env', { targets: { esmodules: true } }],
+          '@babel/preset-typescript',
+          '@babel/preset-react'
+        ]
+      })
+    ]
+  },
+
+  // React components type definitions
+  {
+    input: 'src/react/index.ts',
+    output: {
+      dir: 'dist/react',
+      format: 'es'
+    },
+    plugins: [dts()]
   }
 ];

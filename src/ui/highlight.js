@@ -23,7 +23,7 @@ function injectHighlightStyles() {
       border: 2px solid #3498db;
       border-radius: 4px;
       background-color: rgba(52, 152, 219, 0.1);
-      z-index: 99998;
+      z-index: 2147483647;
       pointer-events: none;
     }
     .${HIGHLIGHT_ANIMATION_CLASS} {

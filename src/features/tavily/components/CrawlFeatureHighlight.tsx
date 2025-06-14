@@ -25,17 +25,23 @@ const highlightElement = (element: Element) => {
     const originalStyle = element.getAttribute('style') || '';
     const highlightStyle = `
         ${originalStyle}; 
-        outline: 5px solid #FF0000; 
-        box-shadow: 0 0 20px rgba(255, 0, 0, 0.9); 
-        transition: box-shadow 0.5s ease-in-out; 
-        animation: pulse-border 1s infinite alternate;
+        outline: 3px solid #0066ff; 
+        box-shadow: 0 0 15px rgba(0, 102, 255, 0.7); 
+        transition: all 0.3s ease-in-out; 
+        animation: pulse-border 1.5s infinite alternate;
+        position: relative;
+        z-index: 2147483646;
     `;
     
     const styleTag = document.createElement('style');
     styleTag.textContent = `
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
         @keyframes pulse-border {
-            0% { box-shadow: 0 0 15px rgba(255, 0, 0, 0.8); outline-color: #FF0000; }
-            100% { box-shadow: 0 0 25px rgba(255, 0, 0, 1); outline-color: #FF5500; }
+            0% { box-shadow: 0 0 10px rgba(0, 102, 255, 0.6); outline-color: #0066ff; }
+            100% { box-shadow: 0 0 20px rgba(0, 102, 255, 0.9); outline-color: #3399ff; }
         }
     `;
     document.head.appendChild(styleTag);
@@ -100,12 +106,15 @@ interface CrawlFeatureHighlightProps {
 export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ apiKey }) => {
     const [showHighlight, setShowHighlight] = useState(false);
     const [showChatbox, setShowChatbox] = useState(false);
-    const [buttonPosition, setButtonPosition] = useState({ top: 0, left: 0, width: 0 });
+    const [buttonPosition, setButtonPosition] = useState({ top: 0, left: 0, width: 0, height: 0 });
     const [exploreQuery, setExploreQuery] = useState('');
+    const [buttonStyle, setButtonStyle] = useState<{originalStyle: string, styleTag: HTMLStyleElement} | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleExploreSubmit = async () => {
-        if (!exploreQuery.trim()) return;
+        if (!exploreQuery.trim() || isLoading) return;
         
+        setIsLoading(true);
         try {
             const instructions = await generateCrawlInstructions({
                 query: exploreQuery.trim(),
@@ -146,6 +155,8 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
             setShowChatbox(false);
         } catch (error) {
             debugLog('error', 'Error:', error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -157,46 +168,39 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
     
     const handleCrawlClick = async () => {
         debugLog('info', 'Clicking crawl button');
-        const allFeatureTextElements = document.querySelectorAll('p.chakra-text');
-        
-        for (const element of allFeatureTextElements) {
-            const buttonText = element.textContent?.trim() || '';
-            if (buttonText.toLowerCase() === 'crawl') {
-                const button = element.closest('button');
-                if (button) {
-                    (button as HTMLButtonElement).click();
-                    await wait(1000);
-                    setShowChatbox(true);
-                    return;
-                }
-            }
+        const button = document.getElementById('crawl-button');
+        if (button) {
+            (button as HTMLButtonElement).click();
+            await wait(1000);
+            setShowChatbox(true);
         }
     };
     
     useEffect(() => {
         const checkForCrawlButton = () => {
-            // debugLog('info', 'Checking for crawl button');
-            const allFeatureTextElements = document.querySelectorAll('p.chakra-text');
+            const button = document.getElementById('crawl-button');
             
-            for (const element of allFeatureTextElements) {
-                const buttonText = element.textContent?.trim() || '';
-                if (buttonText.toLowerCase() === 'crawl') {
-                    // debugLog('info', 'Found crawl button');
-                    const button = element.closest('button');
-                    if (button) {
-                        const rect = button.getBoundingClientRect();
-                        setButtonPosition({
-                            top: rect.top,
-                            left: rect.left,
-                            width: rect.width
-                        });
-                        setShowHighlight(true);
-                        return;
-                    }
+            if (button) {
+                // Remove previous highlight if it exists
+                if (buttonStyle) {
+                    restoreElementStyle(button, buttonStyle);
                 }
+                
+                // Add blue highlight
+                const styleInfo = highlightElement(button);
+                setButtonStyle(styleInfo);
+                
+                const rect = button.getBoundingClientRect();
+                setButtonPosition({
+                    top: rect.top,
+                    left: rect.left,
+                    width: rect.width,
+                    height: rect.height
+                });
+                setShowHighlight(true);
+            } else {
+                setShowHighlight(false);
             }
-            // debugLog('info', 'Crawl button not found');
-            setShowHighlight(false);
         };
         
         checkForCrawlButton();
@@ -216,48 +220,51 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
     if (!showHighlight) return null;
 
     return (
-        <div style={{
-            position: 'fixed',
-            top: `${Math.max(buttonPosition.top - 100, 10)}px`,
-            left: `${buttonPosition.left}px`,
-            backgroundColor: 'rgba(60, 60, 60, 0.6)',  // Lighter and more transparent background
-            border: '1px solid rgba(80, 80, 80, 0.8)',  // Lighter border
-            padding: showChatbox ? '16px 20px' : '12px 16px',
-            borderRadius: showChatbox ? '12px' : '8px',
-            boxShadow: showChatbox ? '0 4px 20px rgba(0,0,0,0.15)' : '0 2px 10px rgba(0,0,0,0.1)',
-            zIndex: 2147483647,
-            pointerEvents: 'auto',
-            transition: 'all 0.3s ease-in-out',
-            width: showChatbox ? '400px' : '180px',
-            transform: showChatbox ? `translateX(${200}px)` : 'translateX(0)',
-            backdropFilter: 'blur(8px)',
+            <div style={{
+                position: 'fixed',
+                top: `${buttonPosition.top + window.scrollY}px`,
+                left: `${buttonPosition.left + buttonPosition.width + 12}px`,
+                backgroundColor: 'rgba(60, 60, 60, 0.95)',
+                border: '1px solid rgba(80, 80, 80, 0.8)',
+                padding: showChatbox ? '16px 20px' : '12px 16px',
+                borderRadius: '8px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+                zIndex: 2147483647,
+                pointerEvents: 'auto',
+                transition: 'all 0.3s ease-in-out',
+                width: showChatbox ? '400px' : '180px',
+                backdropFilter: 'blur(8px)',
+                transform: 'translateY(-50%)',
+                marginTop: `${buttonPosition.height / 2}px`,
+                maxHeight: '90vh',
+                overflowY: 'auto'
         }}>
             {!showChatbox ? (
                 // Compact view
                 <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
+                display: 'flex',
+                alignItems: 'center',
                     gap: '8px',
                     padding: '2px',
-                }}>
-                    <div>🐻‍❄️</div>
-                    <div style={{
-                        fontFamily: 'system-ui, -apple-system, sans-serif',
-                        fontSize: '14px',
+            }}>
+                <div>🐻‍❄️</div>
+                <div style={{
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    fontSize: '14px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '2px',
                         color: 'white',
                         lineHeight: '1.2',
-                    }}>
+                }}>
                         <div style={{ fontWeight: '500' }}>New Feature!</div>
                         <div>Explore</div>
                         <div>Crawl!</div>
-                    </div>
-                    <div 
-                        onClick={handleCrawlClick}
-                        style={{
-                            fontSize: '18px',
+                </div>
+                <div 
+                    onClick={handleCrawlClick}
+                    style={{
+                        fontSize: '18px',
                             cursor: 'pointer',
                             color: 'white',
                             display: 'flex',
@@ -265,11 +272,11 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
                             justifyContent: 'center',
                             flexShrink: 0,
                             marginLeft: '4px',
-                        }}
-                    >
-                        &gt;
-                    </div>
+                    }}
+                >
+                    &gt;
                 </div>
+            </div>
             ) : (
                 // Expanded view
                 <>
@@ -324,20 +331,35 @@ export const CrawlFeatureHighlight: React.FC<CrawlFeatureHighlightProps> = ({ ap
                                 e.stopPropagation();
                                 handleExploreSubmit();
                             }}
+                            disabled={isLoading}
                             style={{
                                 padding: '8px 16px',
-                                backgroundColor: '#0066cc',
+                                backgroundColor: '#66B2FF',
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: '6px',
-                                cursor: 'pointer',
+                                cursor: isLoading ? 'not-allowed' : 'pointer',
                                 fontSize: '14px',
                                 fontWeight: '500',
                                 fontFamily: 'system-ui, -apple-system, sans-serif',
                                 pointerEvents: 'auto',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minWidth: '70px',
+                                opacity: isLoading ? 0.8 : 1,
                             }}
                         >
-                            Enter
+                            {isLoading ? (
+                                <div style={{
+                                    width: '16px',
+                                    height: '16px',
+                                    border: '2px solid rgba(255, 255, 255, 0.3)',
+                                    borderTopColor: 'white',
+                                    borderRadius: '50%',
+                                    animation: 'spin 1s linear infinite',
+                                }} />
+                            ) : 'Enter'}
                         </button>
                     </div>
                 </>
