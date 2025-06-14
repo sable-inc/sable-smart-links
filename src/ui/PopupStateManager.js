@@ -134,7 +134,7 @@ export class PopupStateManager {
             const response = await new Promise(resolve => {
                 setTimeout(() => {
                     // TODO: Replace with actual API call
-                    resolve(`For best results with Tavily Search, use short, focused queries under 400 characters and apply filters like max_results and time_range. Enable search_depth=advanced for more relevant content and use metadata and regex to refine results. Combine LLMs with keyword filtering to boost accuracy.`);
+                    resolve(`For optimal Tavily Search results, use specific queries with context and combine filters like topic, time_range, and max_results to target your needs. Enable search_depth=advanced and include_answer=advanced for richer content and detailed LLM summaries, and use include_domains or exclude_domains to refine sources. For deeper insights, leverage metadata fields and post-process results to extract structured information from top sources.`);
                 }, 1000); // 1 second delay
             });
             
