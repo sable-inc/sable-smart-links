@@ -134,7 +134,7 @@ export class PopupStateManager {
             const response = await new Promise(resolve => {
                 setTimeout(() => {
                     // TODO: Replace with actual API call
-                    resolve(`For optimal Tavily Search results, use specific queries and combine filters like topic, time_range, and max_results. Enable search_depth=advanced and include_answer=advanced for richer content, and use include_domains or exclude_domains to refine sources. Leverage metadata fields and post-process results for deeper insights.`);
+                    resolve(`The most effective way to use Tavily Search is to craft specific queries with clear context: For basic searches, the most commonly used filters are topic, search depth, and time range. For more targeted results, use include and exclude domains to control your sources.`);
                 }, 1000); // 1 second delay
             });
             
