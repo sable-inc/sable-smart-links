@@ -14,7 +14,8 @@ export class SimplePopup {
             onYesNo: config.onYesNo || (() => {}),
             primaryColor: config.primaryColor || '#FFFFFF',
             onMinimize: config.onMinimize || (() => {}),
-            onPositionChange: config.onPositionChange || (() => {})
+            onPositionChange: config.onPositionChange || (() => {}),
+            includeTextBox: config.includeTextBox || false,
         };
 
         // State
@@ -121,6 +122,7 @@ export class SimplePopup {
             padding: '0 4px',
             marginTop: '4px',
             width: 'fit-content',
+            flexDirection: 'column',
         });
 
         // Text container
@@ -165,6 +167,25 @@ export class SimplePopup {
 
         container.appendChild(textContainer);
         container.appendChild(buttonContainer);
+
+        // Add textbox if needed
+        if (this.config.includeTextBox) {
+            const inputBox = document.createElement('input');
+            inputBox.type = 'text';
+            inputBox.placeholder = 'Type here...';
+            Object.assign(inputBox.style, {
+                width: '95%',
+                marginTop: '10px',
+                padding: '8px',
+                borderRadius: '6px',
+                border: '1px solid #ccc',
+                fontSize: '15px',
+                color: '#222',
+            });
+            container.appendChild(inputBox);
+            this.inputBox = inputBox;
+        }
+
         return container;
     }
 

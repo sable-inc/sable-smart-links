@@ -130,19 +130,31 @@ export class PopupStateManager {
         messagesComponent.setThinking(true);
         
         try {
-            // Simulate API call (replace with actual API call to this.config.onChatSubmit)
-            const response = await new Promise(resolve => {
-                setTimeout(() => {
-                    // TODO: Replace with actual API call
-                    resolve(`The most effective way to use Tavily Search is to craft specific queries with clear context: For basic searches, the most commonly used filters are topic, search depth, and time range. For more targeted results, use include and exclude domains to control your sources.`);
-                }, 1000); // 1 second delay
+            // Call the Tavily Copilot backend API
+            const apiUrl = "https://f07sqn76ak.execute-api.us-east-1.amazonaws.com/dev/tavily-copilot/tavily-copilot";
+            const response = await fetch(apiUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ question: userMessage }) // userMessage is the user's input
             });
-            
+            const data = await response.json();
+
+            // Parse the answer from the nested body
+            let answer = "Sorry, I couldn't get an answer from the backend.";
+            if (data.body) {
+                try {
+                    const parsedBody = JSON.parse(data.body);
+                    answer = parsedBody.answer || answer;
+                } catch (e) {
+                    // If parsing fails, fallback to the default error message
+                }
+            }
+
             // Hide thinking indicator
             messagesComponent.setThinking(false);
             
             // Add assistant message to our internal array
-            this.messages.push({ type: 'assistant', content: response });
+            this.messages.push({ type: 'assistant', content: answer });
             
             // Re-render to update the DOM with the new message
             this.render();

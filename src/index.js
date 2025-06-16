@@ -7,6 +7,7 @@ import { parseUrlParameters } from './core/urlParser.js';
 import { WalkthroughEngine } from './core/walkthroughEngine.js';
 import { TextAgentEngine } from './core/textAgentEngine.js';
 import { isBrowser, safeDocument } from './utils/browserAPI.js';
+import { addEvent, debounce } from './utils/events.js';
 
 // Import Tavily features
 export * from './config';
@@ -141,6 +142,44 @@ class SableSmartLinks {
       console.error('[SableSmartLinks] TextAgentEngine not initialized');
       return null;
     }
+
+    // Handle triggerOnTyping
+    if (options.triggerOnTyping) {
+      const { selector, on = 'start', stopDelay = 1000 } = options.triggerOnTyping;
+      const input = document.querySelector(selector);
+      if (!input) {
+        setTimeout(() => this.showPopup(options), 500);
+        return null;
+      }
+
+      let hasStarted = false;
+      let cleanup = null;
+
+      const show = () => {
+        if (cleanup) cleanup();
+        this.textAgentEngine.showPopup(options);
+      };
+
+      if (on === 'start') {
+        const handler = () => {
+          if (!hasStarted && input.value.length > 0) {
+            hasStarted = true;
+            show();
+          }
+        };
+        cleanup = addEvent(input, 'input', handler);
+      } else if (on === 'stop') {
+        const handler = debounce(() => {
+          show();
+        }, stopDelay);
+        cleanup = addEvent(input, 'input', handler);
+      }
+
+      // Optionally store cleanup for later
+      this._popupTypingCleanup = cleanup;
+      return null;
+    }
+
     return this.textAgentEngine.showPopup(options);
   }
 

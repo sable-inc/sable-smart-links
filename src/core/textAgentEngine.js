@@ -8,6 +8,7 @@ import { isBrowser, safeWindow, safeDocument } from '../utils/browserAPI.js';
 import { highlightElement, removeHighlight } from '../ui/highlight.js';
 import { SimplePopupManager } from '../ui/SimplePopupManager.js';
 import { PopupStateManager } from '../ui/PopupStateManager.js';
+import { addEvent, debounce } from '../utils/events.js';
 
 export class TextAgentEngine {
   /**
@@ -83,12 +84,71 @@ export class TextAgentEngine {
       this.currentStepIndex = 0;
     }
     
-    // this._renderCurrentStep();
-
-    // TODO: REMOVE - THIS IS A FAKEOUT FOR RECORDING
-    setTimeout(() => this._renderCurrentStep(), 12000);
+    // Check for triggerOnTyping property
+    const step = this.steps[this.currentStepIndex];
+    if (step && step.triggerOnTyping) {
+      this._setupTypingTrigger(step);
+    } else {
+      setTimeout(() => this._renderCurrentStep(), 1200);
+    }
     
     return this; // For chaining
+  }
+  
+  /**
+   * Set up typing trigger for a step
+   * @private
+   */
+  _setupTypingTrigger(step) {
+    const { selector, on = 'start', stopDelay = 1000 } = step.triggerOnTyping;
+    const input = document.querySelector(selector);
+    if (!input) {
+      setTimeout(() => this._setupTypingTrigger(step), 500);
+      return;
+    }
+
+    let hasStarted = false;
+    let cleanup = null;
+
+    const showStep = () => {
+      if (cleanup) cleanup();
+      this._renderCurrentStep();
+    };
+
+    // The exact string you want to match
+    const exactMatch = "Compare the performance of Tesla and Ford in the EV market";
+
+    // Show immediately if the value already matches
+    if (input.value === exactMatch) {
+      showStep();
+      return;
+    }
+
+    if (on === 'start') {
+      const handler = () => {
+        if (!hasStarted && input.value.length > 0) {
+          hasStarted = true;
+          showStep();
+        }
+        // Also show if the value matches exactly
+        if (input.value === exactMatch) {
+          showStep();
+        }
+      };
+      cleanup = addEvent(input, 'input', handler);
+    } else if (on === 'stop') {
+      const handler = debounce(() => {
+        // Show if the value matches exactly
+        if (input.value === exactMatch) {
+          showStep();
+        } else {
+          showStep();
+        }
+      }, stopDelay);
+      cleanup = addEvent(input, 'input', handler);
+    }
+
+    this._typingCleanup = cleanup;
   }
   
   /**
@@ -181,6 +241,23 @@ export class TextAgentEngine {
     
     const step = this.steps[this.currentStepIndex];
     
+    // --- CONDITIONAL POPUP LOGIC ---
+    let shouldShow = true;
+    if (typeof step.showIf === "function") {
+      shouldShow = step.showIf();
+    } else if (typeof step.showIf === "string" && this.config.functionRegistry) {
+      const fn = this.config.functionRegistry[step.showIf];
+      if (typeof fn === "function") {
+        shouldShow = fn();
+      }
+    }
+    if (!shouldShow) {
+      // Skip this step and go to the next one
+      this.next();
+      return;
+    }
+    // --- END CONDITIONAL POPUP LOGIC ---
+    
     if (this.config.debug) {
       console.log(`[SableTextAgent] Rendering step ${this.currentStepIndex + 1}/${this.steps.length}`, step);
     }
@@ -250,7 +327,8 @@ export class TextAgentEngine {
       boxWidth: step.boxWidth || this.config.defaultBoxWidth,
       buttonType: step.buttonType || 'arrow',
       primaryColor: step.primaryColor || this.config.primaryColor,
-      parent: safeDocument?.body || document.body
+      parent: safeDocument?.body || document.body,
+      includeTextBox: step.includeTextBox || false,
     };
     
     // Set up callbacks

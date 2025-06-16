@@ -11,6 +11,7 @@ export class SimplePopupManager {
             onProceed: config.onProceed || (() => {}),
             onYesNo: config.onYesNo || (() => {}),
             primaryColor: config.primaryColor || '#FFFFFF',
+            includeTextBox: config.includeTextBox || false,
         };
 
         // Single state variable

@@ -126,6 +126,7 @@ export class SableSmartLinks {
   // Popup methods
   showPopup(options: PopupOptions): { unmount: () => void; mount: (parent: HTMLElement) => void } | null;
   showComplexPopup(options: PopupOptions): { unmount: () => void; mount: (parent: HTMLElement) => void } | null;
+  closeAllPopups(): void;
 }
 
 declare const instance: SableSmartLinks;
@@ -230,6 +231,8 @@ export interface TextAgentStep {
   
   /** Custom callback function called when step is executed */
   callback?: (element: HTMLElement | null, engine: any) => void;
+  
+  includeTextBox?: boolean;
   
   // /** Position of the popup relative to the viewport or target element */
   // position?: {
