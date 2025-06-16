@@ -3,11 +3,16 @@
  * This module creates a spotlight effect that darkens everything except the highlighted element
  */
 
+import { isBrowser, safeDocument } from '../utils/browserAPI.js';
+import { getElementPosition, isElementInViewport, createPositionObserver, removePositionObserver, applyPositionWithDelay } from '../utils/positioning.js';
+
 const SPOTLIGHT_CLASS = 'sable-spotlight';
 const SPOTLIGHT_CONTAINER_ID = 'sable-spotlight-container';
 
-// Keep track of active spotlights
+// Keep track of active spotlights, observers and delayed positioning tasks
 let activeSpotlights = [];
+let activeObserverIds = [];
+let activeDelayedTasks = [];
 
 /**
  * Create and inject the necessary CSS for the spotlight
@@ -76,11 +81,14 @@ function getSpotlightContainer() {
 
 /**
  * Create a spotlight effect around an element
- * @param {Element} element - The DOM element to spotlight
+ * @param {Element} element - Element to spotlight
  * @param {Object} options - Spotlight options
+ * @param {number} options.padding - Padding around element in pixels
+ * @param {number} options.opacity - Opacity of the overlay
+ * @param {string} options.color - Color of the overlay
+ * @param {number} options.offsetX - Horizontal offset in pixels
+ * @param {number} options.offsetY - Vertical offset in pixels
  * @param {boolean} [options.animate=true] - Whether to animate the spotlight
- * @param {number} [options.padding=5] - Padding around the element in pixels
- * @param {number} [options.opacity=0.5] - Opacity of the darkened area (0-1)
  * @param {boolean} [options.closeOnClick=false] - Whether clicking outside the spotlight should remove it
  * @param {Function} [options.onClose] - Callback when spotlight is closed by clicking outside
  * @returns {HTMLElement} The created spotlight element
@@ -104,10 +112,8 @@ export function createSpotlight(element, options = {}) {
     onClose = null
   } = options;
   
-  // Get element position and dimensions
-  const rect = element.getBoundingClientRect();
-  const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-  const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+  // Get element position and dimensions using unified positioning utility
+  const position = getElementPosition(element, padding);
   
   // Create the spotlight element
   const spotlightEl = document.createElement('div');
@@ -117,10 +123,10 @@ export function createSpotlight(element, options = {}) {
   }
   
   // Position and size the spotlight
-  spotlightEl.style.left = `${rect.left + scrollLeft - padding}px`;
-  spotlightEl.style.top = `${rect.top + scrollTop - padding}px`;
-  spotlightEl.style.width = `${rect.width + (padding * 2)}px`;
-  spotlightEl.style.height = `${rect.height + (padding * 2)}px`;
+  spotlightEl.style.left = `${position.left}px`;
+  spotlightEl.style.top = `${position.top}px`;
+  spotlightEl.style.width = `${position.width}px`;
+  spotlightEl.style.height = `${position.height}px`;
   
   // Add to DOM using the container
   const container = getSpotlightContainer();
@@ -128,6 +134,30 @@ export function createSpotlight(element, options = {}) {
   
   // Track this spotlight
   activeSpotlights.push(spotlightEl);
+  
+  // Create a position observer to keep the spotlight aligned with the element
+  const updateSpotlightPosition = (targetElement, uiElement) => {
+    const newPosition = getElementPosition(targetElement, padding, {
+      offsetX: options.offsetX || 0, 
+      offsetY: options.offsetY || 0
+    });
+    uiElement.style.left = `${newPosition.left}px`;
+    uiElement.style.top = `${newPosition.top}px`;
+    uiElement.style.width = `${newPosition.width}px`;
+    uiElement.style.height = `${newPosition.height}px`;
+  };
+  
+  // Apply delayed positioning for better accuracy
+  const delayedTaskId = applyPositionWithDelay(element, spotlightEl, updateSpotlightPosition, 100);
+  if (delayedTaskId) {
+    activeDelayedTasks.push(delayedTaskId);
+  }
+  
+  // Create position observer for continuous tracking
+  const observerId = createPositionObserver(element, spotlightEl, updateSpotlightPosition);
+  if (observerId) {
+    activeObserverIds.push(observerId);
+  }
   
   // Add click handler to the document if needed
   if (closeOnClick) {
@@ -159,46 +189,25 @@ export function createSpotlight(element, options = {}) {
   return spotlightEl;
 }
 
-// This function is no longer needed as its functionality has been merged into createSpotlight
-
 /**
  * Remove all active spotlights
  */
 export function removeSpotlights() {
-  // Remove all spotlight elements from the container
-  const container = getSpotlightContainer();
-  
-  // Fade out and remove each spotlight
+  // Remove all active spotlights
   activeSpotlights.forEach(spotlight => {
-    if (spotlight) {
-      // Apply fade out effect
-      spotlight.style.opacity = '0';
-      
-      // Remove after animation completes
-      setTimeout(() => {
-        if (spotlight.parentNode) {
-          spotlight.parentNode.removeChild(spotlight);
-        }
-      }, 300);
+    if (spotlight.parentNode) {
+      spotlight.parentNode.removeChild(spotlight);
     }
   });
   
-  // Clear the tracking array
-  activeSpotlights = [];
+  // Remove all position observers
+  activeObserverIds.forEach(id => {
+    removePositionObserver(id);
+  });
+  
+  // Clear the arrays
+  activeSpotlights.length = 0;
+  activeObserverIds.length = 0;
 }
 
-/**
- * Check if an element is currently visible in the viewport
- * @param {Element} element - The element to check
- * @returns {boolean} Whether the element is in the viewport
- */
-function isElementInViewport(element) {
-  const rect = element.getBoundingClientRect();
-  
-  return (
-    rect.top >= 0 &&
-    rect.left >= 0 &&
-    rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-    rect.right <= (window.innerWidth || document.documentElement.clientWidth)
-  );
-}
+// Using the unified isElementInViewport from positioningUtils.js

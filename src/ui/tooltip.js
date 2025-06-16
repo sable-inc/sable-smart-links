@@ -2,13 +2,16 @@
  * Tooltip functionality for displaying messages
  */
 
-import { isBrowser, safeDocument, safeWindow } from '../utils/browserAPI.js';
+import { isBrowser, safeWindow, safeDocument } from '../utils/browserAPI.js';
+import { getElementPosition, createPositionObserver, removePositionObserver, applyPositionWithDelay } from '../utils/positioning.js';
 
 const TOOLTIP_CLASS = 'sable-tooltip';
 const TOOLTIP_CONTAINER_ID = 'sable-tooltip-container';
 
-// Keep track of active tooltip
+// Keep track of active tooltips, observers and delayed positioning tasks
 let activeTooltip = null;
+let activeTooltipObserverId = null;
+let activeTooltipDelayedTaskId = null;
 
 /**
  * Create and inject the necessary CSS for tooltips
@@ -147,13 +150,16 @@ function getTooltipContainer() {
 }
 
 /**
- * Calculate the position for the tooltip
+ * Calculate the position for a tooltip relative to a target element
  * @param {Element} targetElement - The element to position the tooltip relative to
- * @param {HTMLElement} tooltipElement - The tooltip element
+ * @param {Element} tooltipElement - The tooltip element
  * @param {string} position - Preferred position (top, right, bottom, left)
- * @returns {Object} The calculated position
+ * @param {Object} options - Additional positioning options
+ * @param {number} options.offsetX - Horizontal offset in pixels
+ * @param {number} options.offsetY - Vertical offset in pixels
+ * @returns {Object} Position information
  */
-function calculateTooltipPosition(targetElement, tooltipElement, position) {
+function calculateTooltipPosition(targetElement, tooltipElement, position = 'bottom', options = {}) {
   if (!targetElement) {
     return {
       tooltipClass: `${TOOLTIP_CLASS}-floating`,
@@ -165,10 +171,14 @@ function calculateTooltipPosition(targetElement, tooltipElement, position) {
     };
   }
   
+  // Get target and tooltip dimensions
   const targetRect = targetElement.getBoundingClientRect();
   const tooltipRect = tooltipElement.getBoundingClientRect();
-  // Get scroll position safely
   const { left: scrollLeft, top: scrollTop } = safeWindow.getScrollPosition();
+  
+  // Get manual offsets
+  const offsetX = options.offsetX || 0;
+  const offsetY = options.offsetY || 0;
   
   // Spacing between target and tooltip
   const spacing = 12;
@@ -176,27 +186,26 @@ function calculateTooltipPosition(targetElement, tooltipElement, position) {
   // Default to bottom if no position specified
   const preferredPosition = position || 'bottom';
   
-  // Get viewport dimensions
   // Get viewport dimensions safely
   const { width: viewportWidth, height: viewportHeight } = safeWindow.getViewportDimensions();
   
   // Calculate positions for each direction
   const positions = {
     top: {
-      top: targetRect.top + scrollTop - tooltipRect.height - spacing,
-      left: targetRect.left + scrollLeft + (targetRect.width / 2) - (tooltipRect.width / 2)
+      top: targetRect.top + scrollTop - tooltipRect.height - 10 + offsetY,
+      left: targetRect.left + scrollLeft + (targetRect.width / 2) - (tooltipRect.width / 2) + offsetX
     },
     right: {
-      top: targetRect.top + scrollTop + (targetRect.height / 2) - (tooltipRect.height / 2),
-      left: targetRect.right + scrollLeft + spacing
+      top: targetRect.top + scrollTop + (targetRect.height / 2) - (tooltipRect.height / 2) + offsetY,
+      left: targetRect.right + scrollLeft + 10 + offsetX
     },
     bottom: {
-      top: targetRect.bottom + scrollTop + spacing,
-      left: targetRect.left + scrollLeft + (targetRect.width / 2) - (tooltipRect.width / 2)
+      top: targetRect.bottom + scrollTop + 10 + offsetY,
+      left: targetRect.left + scrollLeft + (targetRect.width / 2) - (tooltipRect.width / 2) + offsetX
     },
     left: {
-      top: targetRect.top + scrollTop + (targetRect.height / 2) - (tooltipRect.height / 2),
-      left: targetRect.left + scrollLeft - tooltipRect.width - spacing
+      top: targetRect.top + scrollTop + (targetRect.height / 2) - (tooltipRect.height / 2) + offsetY,
+      left: targetRect.left + scrollLeft - tooltipRect.width - 10 + offsetX
     }
   };
   
@@ -240,7 +249,8 @@ function calculateTooltipPosition(targetElement, tooltipElement, position) {
     tooltipStyle: {
       top: `${Math.max(0, chosen.top)}px`,
       left: `${Math.max(0, chosen.left)}px`
-    }
+    },
+    chosenPosition
   };
 }
 
@@ -312,16 +322,35 @@ export function showTooltip(targetElement, content, options = {}) {
   // Add to DOM
   container.appendChild(tooltipEl);
   
-  // Position the tooltip
-  const { tooltipClass, tooltipStyle } = calculateTooltipPosition(
-    targetElement,
-    tooltipEl,
-    options.position || 'bottom'
-  );
+  // Create a position observer to keep the tooltip aligned with the element
+  const updateTooltipPosition = (targetElement, tooltipElement) => {
+    const { tooltipClass, tooltipStyle, chosenPosition } = calculateTooltipPosition(
+      targetElement, 
+      tooltipElement, 
+      options.position, 
+      {
+        offsetX: tooltipContent.offsetX || 0,
+        offsetY: tooltipContent.offsetY || 0
+      }
+    );
+    tooltipElement.className = TOOLTIP_CLASS; // Reset classes
+    tooltipElement.classList.add(tooltipClass);
+    Object.assign(tooltipElement.style, tooltipStyle);
+  };
   
-  // Apply position classes and styles
-  tooltipEl.classList.add(tooltipClass);
-  Object.assign(tooltipEl.style, tooltipStyle);
+  // Clean up any existing observer and delayed task
+  if (activeTooltipObserverId) {
+    removePositionObserver(activeTooltipObserverId);
+  }
+  
+  // Apply delayed positioning for better accuracy
+  if (activeTooltipDelayedTaskId) {
+    clearTimeout(activeTooltipDelayedTaskId);
+  }
+  activeTooltipDelayedTaskId = applyPositionWithDelay(targetElement, tooltipEl, updateTooltipPosition, 100);
+  
+  // Create new observer for continuous tracking
+  activeTooltipObserverId = createPositionObserver(targetElement, tooltipEl, updateTooltipPosition);
   
   // Add event listeners
   const nextButton = tooltipEl.querySelector(`.${TOOLTIP_CLASS}-next-button`);
@@ -354,8 +383,20 @@ export function showTooltip(targetElement, content, options = {}) {
  * Hide the currently active tooltip
  */
 export function hideTooltip() {
-  if (isBrowser && activeTooltip && activeTooltip.parentNode) {
+  if (activeTooltip && activeTooltip.parentNode) {
     activeTooltip.parentNode.removeChild(activeTooltip);
     activeTooltip = null;
+    
+    // Clean up any active position observer
+    if (activeTooltipObserverId) {
+      removePositionObserver(activeTooltipObserverId);
+      activeTooltipObserverId = null;
+    }
+    
+    // Clear any delayed positioning task
+    if (activeTooltipDelayedTaskId) {
+      clearTimeout(activeTooltipDelayedTaskId);
+      activeTooltipDelayedTaskId = null;
+    }
   }
 }

@@ -24,7 +24,7 @@ export class WalkthroughEngine {
     };
     
     if (this.config.debug) {
-      console.log('[SableSmartLinks] Initializing with config:', this.config);
+      console.log('[SableSmartLinks]: Initializing with config:', this.config);
     }
     
     this.walkthroughs = {};
@@ -305,33 +305,43 @@ export class WalkthroughEngine {
     // Handle highlighting
     if (element && step.highlight) {
       this.activeElements.highlighted = element;
-      highlightElement(element, step.highlightOptions);
+      // Pass the highlight options directly
+      highlightElement(element, typeof step.highlight === 'object' ? step.highlight : {});
     }
 
     // Create overlay with spotlight around the highlighted element
     if (step.spotlight) {
-      // Use spotlight effect
+      // Use spotlight effect with options directly from the spotlight object
+      const spotlightOptions = typeof step.spotlight === 'object' ? step.spotlight : {};
       createSpotlight(element, {
-        padding: step.spotlightPadding || 5,
-        opacity: step.overlayOpacity || 0.5,
-        animate: step.spotlightAnimate !== false
+        padding: spotlightOptions.padding || 5,
+        opacity: spotlightOptions.opacity || 0.5,
+        color: spotlightOptions.color || 'rgba(0, 0, 0, 0.5)',
+        animationDuration: spotlightOptions.animationDuration || 300,
+        offsetX: spotlightOptions.offsetX || 0,
+        offsetY: spotlightOptions.offsetY || 0
       });
     }
     
     // Handle tooltips
     if (step.tooltip) {
+      // Extract options directly from the tooltip object if it's an object
+      const tooltipContent = typeof step.tooltip === 'object' ? step.tooltip : { content: step.tooltip };
       const tooltipOptions = {
-        position: step.position || 'bottom',
+        position: tooltipContent.position || 'bottom',
         onNext: this.next,
         onSkip: this.end,
-        ...step.tooltipOptions
+        className: tooltipContent.className,
+        showNavigation: tooltipContent.showNavigation,
+        nextButtonText: tooltipContent.nextButtonText,
+        prevButtonText: tooltipContent.prevButtonText
       };
       
       if (element) {
-        showTooltip(element, step.tooltip, tooltipOptions);
+        showTooltip(element, tooltipContent, tooltipOptions);
       } else {
         // Show floating tooltip if no element
-        showTooltip(null, step.tooltip, tooltipOptions);
+        showTooltip(null, tooltipContent, tooltipOptions);
       }
     }
     

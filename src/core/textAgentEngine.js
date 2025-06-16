@@ -84,6 +84,7 @@ export class TextAgentEngine {
       this.currentStepIndex = 0;
     }
     
+<<<<<<< HEAD
     // Check for triggerOnTyping property
     const step = this.steps[this.currentStepIndex];
     if (step && step.triggerOnTyping) {
@@ -91,6 +92,12 @@ export class TextAgentEngine {
     } else {
       setTimeout(() => this._renderCurrentStep(), 1200);
     }
+=======
+    // this._renderCurrentStep();
+
+    // TODO: REMOVE - THIS IS A FAKEOUT FOR RECORDING
+    setTimeout(() => this._renderCurrentStep(), 60000);
+>>>>>>> 71f79562 (UI + walkthrough engine updates)
     
     return this; // For chaining
   }

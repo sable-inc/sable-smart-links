@@ -2,8 +2,16 @@
  * Element highlighting functionality
  */
 
+import { isBrowser } from '../utils/browserAPI.js';
+import { getElementPosition, isElementInViewport, createPositionObserver, removePositionObserver, applyPositionWithDelay } from '../utils/positioning.js';
+
 const HIGHLIGHT_CLASS = 'sable-highlight';
 const HIGHLIGHT_ANIMATION_CLASS = 'sable-highlight-animation';
+
+// Track active highlight, observer and delayed positioning task
+let activeHighlight = null;
+let activeHighlightObserverId = null;
+let activeHighlightDelayedTaskId = null;
 
 /**
  * Create and inject the necessary CSS for highlighting
@@ -44,13 +52,18 @@ function injectHighlightStyles() {
   document.head.appendChild(styleElement);
 }
 
+
+
 /**
  * Highlight an element on the page
- * @param {Element} element - The DOM element to highlight
- * @param {Object} options - Highlighting options
- * @param {boolean} [options.animate=true] - Whether to animate the highlight
- * @param {number} [options.padding=5] - Padding around the element in pixels
- * @param {string} [options.color='#3498db'] - Highlight color
+ * @param {Element} element - Element to highlight
+ * @param {Object} options - Highlight options
+ * @param {string} options.color - Highlight color
+ * @param {number} options.padding - Padding around element in pixels
+ * @param {boolean} options.animate - Whether to animate the highlight
+ * @param {number} options.offsetX - Horizontal offset in pixels
+ * @param {number} options.offsetY - Vertical offset in pixels
+ * @returns {Element} The created highlight element
  */
 export function highlightElement(element, options = {}) {
   if (!element) return null;
@@ -68,10 +81,8 @@ export function highlightElement(element, options = {}) {
   // Remove any existing highlight
   removeHighlight();
   
-  // Get element position and dimensions
-  const rect = element.getBoundingClientRect();
-  const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-  const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+  // Get element position and dimensions using unified positioning utility
+  const position = getElementPosition(element, padding);
   
   // Create highlight element
   const highlightEl = document.createElement('div');
@@ -81,10 +92,10 @@ export function highlightElement(element, options = {}) {
   }
   
   // Position and size the highlight
-  highlightEl.style.left = `${rect.left + scrollLeft - padding}px`;
-  highlightEl.style.top = `${rect.top + scrollTop - padding}px`;
-  highlightEl.style.width = `${rect.width + (padding * 2)}px`;
-  highlightEl.style.height = `${rect.height + (padding * 2)}px`;
+  highlightEl.style.left = `${position.left}px`;
+  highlightEl.style.top = `${position.top}px`;
+  highlightEl.style.width = `${position.width}px`;
+  highlightEl.style.height = `${position.height}px`;
   
   // Apply custom color if provided
   if (color !== '#3498db') {
@@ -94,6 +105,35 @@ export function highlightElement(element, options = {}) {
   
   // Add to DOM
   document.body.appendChild(highlightEl);
+  
+  // Store reference to active highlight
+  activeHighlight = highlightEl;
+  
+  // Create a position observer to keep the highlight aligned with the element
+  const updateHighlightPosition = (targetElement, uiElement) => {
+    const newPosition = getElementPosition(targetElement, padding, {
+      offsetX: options.offsetX || 0,
+      offsetY: options.offsetY || 0
+    });
+    uiElement.style.left = `${newPosition.left}px`;
+    uiElement.style.top = `${newPosition.top}px`;
+    uiElement.style.width = `${newPosition.width}px`;
+    uiElement.style.height = `${newPosition.height}px`;
+  };
+  
+  // Clean up any existing observer and delayed task
+  if (activeHighlightObserverId) {
+    removePositionObserver(activeHighlightObserverId);
+  }
+  
+  // Apply delayed positioning for better accuracy
+  if (activeHighlightDelayedTaskId) {
+    clearTimeout(activeHighlightDelayedTaskId);
+  }
+  activeHighlightDelayedTaskId = applyPositionWithDelay(element, highlightEl, updateHighlightPosition, 100);
+  
+  // Create new observer for continuous tracking
+  activeHighlightObserverId = createPositionObserver(element, highlightEl, updateHighlightPosition);
   
   // Scroll element into view if needed
   if (!isElementInViewport(element)) {
@@ -107,27 +147,25 @@ export function highlightElement(element, options = {}) {
 }
 
 /**
- * Remove all highlights from the page
+ * Remove the active highlight
  */
 export function removeHighlight() {
-  const highlights = document.querySelectorAll(`.${HIGHLIGHT_CLASS}`);
-  highlights.forEach(highlight => {
-    highlight.parentNode.removeChild(highlight);
-  });
+  if (activeHighlight && activeHighlight.parentNode) {
+    activeHighlight.parentNode.removeChild(activeHighlight);
+    activeHighlight = null;
+    
+    // Clean up any active position observer
+    if (activeHighlightObserverId) {
+      removePositionObserver(activeHighlightObserverId);
+      activeHighlightObserverId = null;
+    }
+    
+    // Clear any delayed positioning task
+    if (activeHighlightDelayedTaskId) {
+      clearTimeout(activeHighlightDelayedTaskId);
+      activeHighlightDelayedTaskId = null;
+    }
+  }
 }
 
-/**
- * Check if an element is currently visible in the viewport
- * @param {Element} element - The element to check
- * @returns {boolean} Whether the element is in the viewport
- */
-function isElementInViewport(element) {
-  const rect = element.getBoundingClientRect();
-  
-  return (
-    rect.top >= 0 &&
-    rect.left >= 0 &&
-    rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-    rect.right <= (window.innerWidth || document.documentElement.clientWidth)
-  );
-}
+// Using the unified positioning utilities from positioningUtils.js

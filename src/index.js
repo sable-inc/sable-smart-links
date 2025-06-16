@@ -78,6 +78,9 @@ class SableSmartLinks {
    * Initialize the library and check for walkthrough parameters
    */
   init() {
+    if (this.config.debug) {
+      console.log('[SableSmartLinks: SANITY CHECK] Initializing library...');
+    }
     const params = parseUrlParameters();
     const walkthroughId = params[this.config.walkthrough.paramName];
     

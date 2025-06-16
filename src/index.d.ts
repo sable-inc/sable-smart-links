@@ -36,20 +36,54 @@ export interface SableSmartLinksConfig {
 export interface WalkthroughStep {
   /** CSS selector for the target element */
   selector?: string;
-  /** Whether to highlight the element */
-  highlight?: boolean;
-  /** Options for highlighting */
-  highlightOptions?: Record<string, any>;
-  /** Whether to create a spotlight effect */
-  spotlight?: boolean;
+  /** Highlight configuration for the element */
+  highlight?: {
+    /** Color of the highlight */
+    color?: string;
+    /** Padding around the element in pixels */
+    padding?: number;
+    /** Whether to animate the highlight */
+    animate?: boolean;
+    /** Custom CSS classes to add */
+    className?: string;
+    /** Horizontal offset in pixels (positive = right, negative = left) */
+    offsetX?: number;
+    /** Vertical offset in pixels (positive = down, negative = up) */
+    offsetY?: number;
+  };
+  /** Spotlight configuration for the element */
+  spotlight?: {
+    /** Padding around the element in pixels */
+    padding?: number;
+    /** Opacity of the overlay */
+    opacity?: number;
+    /** Color of the overlay */
+    color?: string;
+    /** Animation duration in milliseconds */
+    animationDuration?: number;
+    /** Horizontal offset in pixels (positive = right, negative = left) */
+    offsetX?: number;
+    /** Vertical offset in pixels (positive = down, negative = up) */
+    offsetY?: number;
+  };
   /** Tooltip content to display */
   tooltip?: string | {
     title?: string;
     content: string;
     position?: 'top' | 'right' | 'bottom' | 'left';
+    /** Custom CSS classes to add */
+    className?: string;
+    /** Whether to show next/previous buttons */
+    showNavigation?: boolean;
+    /** Custom button text */
+    nextButtonText?: string;
+    /** Custom button text */
+    prevButtonText?: string;
+    /** Horizontal offset in pixels (positive = right, negative = left) */
+    offsetX?: number;
+    /** Vertical offset in pixels (positive = down, negative = up) */
+    offsetY?: number;
   };
-  /** Options for tooltip display */
-  tooltipOptions?: Record<string, any>;
   /** Action to perform on the element */
   action?: {
     /** Type of action to perform */
