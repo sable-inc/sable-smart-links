@@ -275,6 +275,15 @@ export interface TextAgentStep {
   callback?: (element: HTMLElement | null, engine: any) => void;
   
   includeTextBox?: boolean;
+
+  triggerOnTyping?: {
+    /** CSS selector for the input element */
+    selector: string;
+    /** When to trigger the popup: 'start' (when typing begins), 'stop' (when typing stops), or 'change' (on any value change) */
+    on?: 'start' | 'stop' | 'change';
+    /** Delay in ms before showing popup when on='stop' (default: 1000) */
+    stopDelay?: number;
+  };
   
   // /** Position of the popup relative to the viewport or target element */
   // position?: {

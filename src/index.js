@@ -176,6 +176,36 @@ class SableSmartLinks {
           show();
         }, stopDelay);
         cleanup = addEvent(input, 'input', handler);
+      } else if (on === 'change') {
+        // Track the previous value to detect any change, not just user typing
+        let previousValue = input.value;
+        
+        // Use MutationObserver to detect programmatic changes
+        const observer = new MutationObserver((mutations) => {
+          if (input.value !== previousValue) {
+            previousValue = input.value;
+            show();
+          }
+        });
+        
+        // Observe the input for attribute changes
+        observer.observe(input, { attributes: true, attributeFilter: ['value'] });
+        
+        // Also listen for user input events
+        const inputHandler = () => {
+          if (input.value !== previousValue) {
+            previousValue = input.value;
+            show();
+          }
+        };
+        
+        const inputCleanup = addEvent(input, 'input', inputHandler);
+        
+        // Combined cleanup function
+        cleanup = () => {
+          observer.disconnect();
+          inputCleanup();
+        };
       }
 
       // Optionally store cleanup for later
