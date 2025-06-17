@@ -114,15 +114,25 @@ export class SimplePopup {
     }
 
     createContent() {
-        const container = document.createElement('div');
-        Object.assign(container.style, {
+        // Create a main container for all elements
+        const mainContainer = document.createElement('div');
+        Object.assign(mainContainer.style, {
             display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
+            flexDirection: 'column',
+            gap: '10px',
             padding: '0 4px',
             marginTop: '4px',
             width: 'fit-content',
-            flexDirection: this.config.buttonType === 'arrow' ? 'row' : 'column',
+        });
+
+        // Create a row container for text and button
+        const rowContainer = document.createElement('div');
+        Object.assign(rowContainer.style, {
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: '4px',
+            width: 'fit-content',
         });
 
         // Text container
@@ -165,28 +175,40 @@ export class SimplePopup {
             buttonContainer.appendChild(yesNoButtons.render());
         }
 
-        container.appendChild(textContainer);
-        container.appendChild(buttonContainer);
+        // Add text and button to the row container
+        rowContainer.appendChild(textContainer);
+        
+        // For arrow button, add it to the row. For yes-no buttons, add them below the text
+        if (this.config.buttonType === 'arrow') {
+            rowContainer.appendChild(buttonContainer);
+        } else {
+            mainContainer.appendChild(rowContainer);
+            mainContainer.appendChild(buttonContainer);
+        }
 
-        // Add textbox if needed
+        // Add the row container to the main container if it's not already added
+        if (this.config.buttonType === 'arrow') {
+            mainContainer.appendChild(rowContainer);
+        }
+
+        // Add textbox if needed - always at the bottom
         if (this.config.includeTextBox) {
             const inputBox = document.createElement('input');
             inputBox.type = 'text';
             inputBox.placeholder = 'Type here...';
             Object.assign(inputBox.style, {
                 width: '95%',
-                marginTop: '10px',
                 padding: '8px',
                 borderRadius: '6px',
                 border: '1px solid #ccc',
                 fontSize: '15px',
                 color: '#222',
             });
-            container.appendChild(inputBox);
+            mainContainer.appendChild(inputBox);
             this.inputBox = inputBox;
         }
 
-        return container;
+        return mainContainer;
     }
 
     startAnimationSequence() {

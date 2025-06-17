@@ -35,7 +35,7 @@ export class TextAgentEngine {
     this.currentStepIndex = -1;
     this.isRunning = false;
     this.activePopupManager = null;
-    this.activePopups = [];
+    this._finalPopupAdded = false;
     
     // Bind methods
     this.next = this.next.bind(this);
@@ -163,7 +163,16 @@ export class TextAgentEngine {
       this.currentStepIndex++;
       this._renderCurrentStep();
     } else {
-      this.end();
+      // We've reached the end of the steps
+      // Check if we need to show the final popup
+      if (!this._finalPopupAdded) {
+        this._addFinalPopupStep();
+        this._finalPopupAdded = true;
+        // The walkthrough is technically done, but we keep it in "running" state
+        // so the popup can remain visible until explicitly closed
+      } else {
+        this.end();
+      }
     }
     
     return this; // For chaining
@@ -191,23 +200,15 @@ export class TextAgentEngine {
     // Clean up current step
     this._cleanupCurrentStep();
     
+    // Clean up final popup if it exists
+    if (this._finalPopupManager) {
+      this._finalPopupManager.unmount();
+      this._finalPopupManager = null;
+    }
+    
     this.isRunning = false;
     this.currentStepIndex = -1;
-
-    // Initialize PopupStateManager when text agent ends
-    const popupManager = new PopupStateManager({
-      platform: 'Tavily',
-      primaryColor: this.config.primaryColor || '#FFFFFF',
-      width: 380,
-      onChatSubmit: async (message) => {
-        // Handle chat submission - can be customized based on your needs
-        console.log('Chat message received:', message);
-        return 'Thank you for your message. How else can I help you?';
-      }
-    });
-    
-    // Mount to document body
-    popupManager.mount(document.body);
+    this._finalPopupAdded = false;
     
     if (this.config.debug) {
       console.log('[SableTextAgent] Session ended');
@@ -433,17 +434,6 @@ export class TextAgentEngine {
     if (typeof step.callback === 'function') {
       step.callback(targetElement, this);
     }
-
-    // Register this popup
-    this.activePopups.push({
-      id: step.id || step.text || `popup-${Date.now()}`,
-      unmount: () => {
-        this.activePopupManager.unmount();
-        if (this.activePopupManager === this.activePopupManager) {
-          this.activePopupManager = null;
-        }
-      }
-    });
   }
   
   /**
@@ -561,17 +551,6 @@ export class TextAgentEngine {
     const popupManager = new SimplePopupManager({ ...defaultOptions, ...options });
     this.activePopupManager = popupManager;
     popupManager.mount(options.parent || defaultOptions.parent);
-    
-    // Register this popup
-    this.activePopups.push({
-      id: options.id || options.text || `popup-${Date.now()}`,
-      unmount: () => {
-        popupManager.unmount();
-        if (this.activePopupManager === popupManager) {
-          this.activePopupManager = null;
-        }
-      }
-    });
 
     return {
       unmount: () => {
@@ -579,27 +558,32 @@ export class TextAgentEngine {
         if (this.activePopupManager === popupManager) {
           this.activePopupManager = null;
         }
-        // Remove from activePopups
-        this.activePopups = this.activePopups.filter(p => p.unmount !== popupManager.unmount);
       },
       mount: (newParent) => popupManager.mount(newParent)
     };
   }
-
+  
   /**
-   * Closes all active popups managed by the TextAgentEngine.
-   * Optionally, you can provide an array of popup IDs to keep open.
-   * @param {Array<string>} [exceptIds=[]] - Array of popup IDs to exclude from closing.
+   * Add a final popup step with the chat interface
+   * @private
    */
-  closeAllPopups(exceptIds = []) {
-    this.activePopups.forEach(popup => {
-      if (!exceptIds.includes(popup.id)) {
-        popup.unmount();
+  _addFinalPopupStep() {
+    // Initialize PopupStateManager for the final step
+    const popupManager = new PopupStateManager({
+      platform: 'Tavily',
+      primaryColor: this.config.primaryColor || '#FFFFFF',
+      width: 380,
+      onChatSubmit: async (message) => {
+        // Handle chat submission - can be customized based on your needs
+        console.log('Chat message received:', message);
+        return 'Thank you for your message. How else can I help you?';
       }
     });
-    // Keep only the popups that were not closed
-    this.activePopups = this.activePopups.filter(popup => exceptIds.includes(popup.id));
-    // Also clean up highlights
-    removeHighlight();
+    
+    // Mount to document body
+    popupManager.mount(document.body);
+    
+    // Store reference for cleanup
+    this._finalPopupManager = popupManager;
   }
 }

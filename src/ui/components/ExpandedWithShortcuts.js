@@ -2,17 +2,19 @@ import { ShortcutsAndRecents } from './ShortcutsAndRecents.js';
 import { ChatInput } from './ChatInput.js';
 
 export class ExpandedWithShortcuts {
-    constructor({ shortcuts, onQuerySelect, chatInput, primaryColor, onSubmit }) {
+    constructor({ shortcuts, productWalkthroughs, onQuerySelect, onWalkthroughSelect, chatInput, primaryColor, onSubmit }) {
         this.element = this.createElement({ 
             shortcuts, 
-            onQuerySelect, 
+            productWalkthroughs,
+            onQuerySelect,
+            onWalkthroughSelect, 
             chatInput, 
             primaryColor,
             onSubmit 
         });
     }
 
-    createElement({ shortcuts, onQuerySelect, chatInput, primaryColor, onSubmit }) {
+    createElement({ shortcuts, productWalkthroughs, onQuerySelect, onWalkthroughSelect, chatInput, primaryColor, onSubmit }) {
         const container = document.createElement('div');
         Object.assign(container.style, {
             display: 'flex',
@@ -28,7 +30,9 @@ export class ExpandedWithShortcuts {
 
         const shortcutsAndRecents = new ShortcutsAndRecents({
             shortcuts,
-            onQuerySelect
+            productWalkthroughs,
+            onQuerySelect,
+            onWalkthroughSelect
         });
 
         container.appendChild(shortcutsAndRecents.render());

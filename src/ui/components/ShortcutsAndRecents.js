@@ -1,8 +1,10 @@
 // components/ShortcutsAndRecents.js
 export class ShortcutsAndRecents {
-    constructor({ shortcuts, onQuerySelect }) {
+    constructor({ shortcuts, productWalkthroughs, onQuerySelect, onWalkthroughSelect }) {
         this.shortcuts = shortcuts;
+        this.productWalkthroughs = productWalkthroughs;
         this.onQuerySelect = onQuerySelect;
+        this.onWalkthroughSelect = onWalkthroughSelect || onQuerySelect; // Fallback to onQuerySelect if no walkthrough handler
         this.element = this.createElement();
     }
 
@@ -11,17 +13,22 @@ export class ShortcutsAndRecents {
         Object.assign(container.style, {
             display: 'flex',
             flexDirection: 'column',
-            gap: '0',
+            gap: '8px',
             padding: '0 0 16px 0',
         });
 
-        // Shortcuts Section only (Recents section removed)
+        // Add Shortcuts section
         container.appendChild(this.createSection('Shortcuts', this.shortcuts));
+        
+        // Add Product Walkthroughs section
+        if (this.productWalkthroughs && this.productWalkthroughs.length > 0) {
+            container.appendChild(this.createSection('Product Walkthroughs', this.productWalkthroughs, true));
+        }
 
         return container;
     }
 
-    createSection(title, items) {
+    createSection(title, items, isWalkthrough = false) {
         const section = document.createElement('div');
         Object.assign(section.style, {
             padding: '0 4px',
@@ -68,8 +75,13 @@ export class ShortcutsAndRecents {
                 itemElement.style.backgroundColor = 'transparent';
                 itemElement.style.color = 'rgba(255, 255, 255, 0.5)';
             });
-
-            itemElement.addEventListener('click', () => this.onQuerySelect(item));
+            
+            // Handle different item types and use appropriate handler
+            if (isWalkthrough) {
+                itemElement.addEventListener('click', () => this.onWalkthroughSelect(item));
+            } else {
+                itemElement.addEventListener('click', () => this.onQuerySelect(item));
+            }
 
             const icon = document.createElement('span');
             Object.assign(icon.style, {
@@ -77,10 +89,13 @@ export class ShortcutsAndRecents {
                 opacity: '0.25',
                 color: 'rgba(255, 255, 255, 0.3)',
             });
-            icon.textContent = '📖';
+            
+            // Use different icon for walkthroughs
+            icon.textContent = isWalkthrough ? '🔍' : '📖';
 
             const text = document.createElement('span');
-            text.textContent = item;
+            // Handle both string items and object items with text property
+            text.textContent = typeof item === 'object' && item.text ? item.text : item;
 
             itemElement.appendChild(icon);
             itemElement.appendChild(text);

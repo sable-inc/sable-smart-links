@@ -14,6 +14,7 @@ export class PopupStateManager {
             primaryColor: config.primaryColor || '#FFFFFF',
             width: config.width || 380,
             onChatSubmit: config.onChatSubmit || (() => {}),
+            onWalkthroughSelect: config.onWalkthroughSelect || (() => {}),
         };
 
         // State variables
@@ -22,9 +23,15 @@ export class PopupStateManager {
         this.messages = [];
         this.chatInput = '';
         this.shortcuts = [
-            'Differences between Search, Extract, and Crawl',
-            'Edit your billing configuration',
-            'Creating a team',
+            'What are best practices using Tavily search?',
+            'How does billing work?',
+        ];
+        
+        // Product walkthroughs with associated URLs or actions
+        this.productWalkthroughs = [
+            { text: 'Billing page tour', url: '/billing?walkthrough=billing' },
+            { text: 'API playground tour', url: '/playground?walkthrough=api-playground' },
+            { text: 'Team creation tour', url: '/settings?walkthrough=team-create' }
         ];
 
         // Dragging state
@@ -196,9 +203,28 @@ export class PopupStateManager {
         }
     }
 
-    handleShortcutSelect = (text) => {
-        this.chatInput = text;
+    handleShortcutSelect = (shortcut) => {
+        this.chatInput = shortcut;
         this.handleSubmit();
+    }
+    
+    handleWalkthroughSelect = (walkthrough) => {
+        // If walkthrough is an object with url property, navigate or trigger action
+        if (typeof walkthrough === 'object' && walkthrough.url) {
+            console.log('Navigating to walkthrough:', walkthrough.url);
+            
+            // Actually navigate to the URL
+            if (walkthrough.url.startsWith('/') || walkthrough.url.startsWith('http')) {
+                window.location.href = walkthrough.url;
+            }
+            
+            // Also call the configured handler with the walkthrough object
+            this.config.onWalkthroughSelect(walkthrough);
+        } else {
+            // Fallback to treating it as a regular query
+            this.chatInput = typeof walkthrough === 'object' ? walkthrough.text : walkthrough;
+            this.handleSubmit();
+        }
     }
 
     transitionTo(newState) {
@@ -372,7 +398,9 @@ export class PopupStateManager {
 
                 this.components.expandedWithShortcuts = new ExpandedWithShortcuts({
                     shortcuts: this.shortcuts,
+                    productWalkthroughs: this.productWalkthroughs,
                     onQuerySelect: this.handleShortcutSelect,
+                    onWalkthroughSelect: this.handleWalkthroughSelect,
                     chatInput: chatInput,
                     primaryColor: this.config.primaryColor,
                     onMinimize: this.handleMinimize,
