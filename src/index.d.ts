@@ -218,7 +218,7 @@ export interface TextAgentStep {
   buttonType?: 'arrow' | 'yes-no';
   
   /** Callback function when proceed/continue button is clicked */
-  onProceed?: () => void;
+  onProceed?: ((textInput?: string) => void | Promise<void>) | (() => void | Promise<void>);
   
   /** Callback function for yes/no buttons (receives boolean indicating 'yes' selection) */
   onYesNo?: (isYes: boolean) => void;

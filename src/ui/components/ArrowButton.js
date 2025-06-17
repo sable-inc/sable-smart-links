@@ -1,10 +1,11 @@
 // components/ArrowButton.js
 export class ArrowButton {
     constructor(onClick) {
-        this.element = this.createButton(onClick);
+        this.onClick = onClick;
+        this.element = this.createButton();
     }
 
-    createButton(onClick) {
+    createButton() {
         const button = document.createElement('button');
         Object.assign(button.style, {
             padding: '5px',
@@ -34,7 +35,10 @@ export class ArrowButton {
             button.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
         });
 
-        button.addEventListener('click', onClick);
+        button.addEventListener('click', () => {
+            console.log('[ArrowButton] Calling onClick directly');
+            this.onClick();
+        });
 
         // Add SVG icon with corrected attribute names
         button.innerHTML = `

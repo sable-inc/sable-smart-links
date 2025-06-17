@@ -168,7 +168,17 @@ export class SimplePopup {
 
         // Add button based on type
         if (this.config.buttonType === 'arrow') {
-            const arrowButton = new ArrowButton(this.config.onProceed);
+            const arrowButton = new ArrowButton(() => {
+                const textInput = this.inputBox ? this.inputBox.value : undefined;
+                console.log('[SimplePopup] Input box exists:', !!this.inputBox);
+                console.log('[SimplePopup] Raw input box value:', this.inputBox?.value);
+                console.log('[SimplePopup] Processed textInput:', textInput);
+                
+                // Call onProceed with an object that matches the expected format
+                this.config.onProceed({
+                    textInput: textInput
+                });
+            });
             buttonContainer.appendChild(arrowButton.render());
         } else {
             const yesNoButtons = new YesNoButtons(this.config.onYesNo, this.config.primaryColor);
@@ -204,6 +214,17 @@ export class SimplePopup {
                 fontSize: '15px',
                 color: '#222',
             });
+            
+            // Add enter key handler
+            inputBox.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const inputValue = inputBox.value;
+                    this.config.onProceed({
+                        textInput: inputValue
+                    });
+                }
+            });
+            
             mainContainer.appendChild(inputBox);
             this.inputBox = inputBox;
         }
