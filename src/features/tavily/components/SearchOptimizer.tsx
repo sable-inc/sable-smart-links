@@ -190,9 +190,9 @@ export const SearchOptimizer: React.FC<SearchOptimizerProps> = ({ apiKey }) => {
 
     const CopilotPopup = () => {
         if (!showCopilotPopup) return null;
-        
-        return (
-            <div 
+
+    return (
+        <div 
                 ref={copilotRef}
                 style={{
                     position: 'fixed',
@@ -341,10 +341,10 @@ export const SearchOptimizer: React.FC<SearchOptimizerProps> = ({ apiKey }) => {
                 <div 
                     ref={initialPopupRef}
                     onMouseDown={handleInitialPopupMouseDown}
-                    style={{
+            style={{
                         position: 'fixed',
-                        top: `${position.top}px`,
-                        left: `${position.left}px`,
+                top: `${position.top}px`,
+                left: `${position.left}px`,
                         zIndex: 2147483647,
                         display: 'flex',
                         flexDirection: 'column',
@@ -391,8 +391,8 @@ export const SearchOptimizer: React.FC<SearchOptimizerProps> = ({ apiKey }) => {
                         lineHeight: '1.4',
                         wordWrap: 'break-word',
                     }}>
-                        Would you like me to optimize the search parameters for your query?
-                    </div>
+                Would you like me to optimize the search parameters for your query?
+            </div>
 
                     {/* Button container */}
                     <div style={{
@@ -401,8 +401,8 @@ export const SearchOptimizer: React.FC<SearchOptimizerProps> = ({ apiKey }) => {
                         justifyContent: 'flex-end',
                         marginLeft: 'auto',
                     }}>
-                        <button
-                            onClick={handleOptimize}
+                <button
+                    onClick={handleOptimize}
                             style={{
                                 padding: '6px 16px',
                                 borderRadius: '8px',
@@ -422,11 +422,11 @@ export const SearchOptimizer: React.FC<SearchOptimizerProps> = ({ apiKey }) => {
                                 e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
                                 e.currentTarget.style.transform = 'scale(1)';
                             }}
-                        >
-                            Yes
-                        </button>
-                        <button
-                            onClick={() => setIsVisible(false)}
+                >
+                    Yes
+                </button>
+                <button
+                    onClick={() => setIsVisible(false)}
                             style={{
                                 padding: '6px 16px',
                                 borderRadius: '8px',
@@ -446,13 +446,13 @@ export const SearchOptimizer: React.FC<SearchOptimizerProps> = ({ apiKey }) => {
                                 e.currentTarget.style.backgroundColor = 'rgba(80, 80, 80, 0.6)';
                                 e.currentTarget.style.transform = 'scale(1)';
                             }}
-                        >
-                            No
-                        </button>
-                    </div>
-                </div>
+                >
+                    No
+                </button>
+            </div>
+        </div>
             )}
             <CopilotPopup />
         </>
     );
-}; 
+};

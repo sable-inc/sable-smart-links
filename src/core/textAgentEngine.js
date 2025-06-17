@@ -57,6 +57,35 @@ export class TextAgentEngine {
     if (this.config.debug) {
       console.log(`[SableTextAgent] Registered ${this.steps.length} steps`);
     }
+
+    // Check if any steps have a requiredSelector and verify it exists
+    const shouldRegister = this.steps.every(step => {
+      if (!step.requiredSelector) return true;
+      
+      // Handle both XPath and CSS selectors
+      if (step.requiredSelector.startsWith('//')) {
+        // XPath selector
+        const element = document.evaluate(
+          step.requiredSelector,
+          document,
+          null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE,
+          null
+        ).singleNodeValue;
+        return !!element;
+      } else {
+        // CSS selector
+        const element = document.querySelector(step.requiredSelector);
+        return !!element;
+      }
+    });
+
+    if (!shouldRegister) {
+      if (this.config.debug) {
+        console.log(`[SableTextAgent] Required selector not found, skipping registration`);
+      }
+      return;
+    }
     
     // Auto-start if configured
     if (this.config.autoStart && this.steps.length > 0) {
@@ -547,10 +576,35 @@ export class TextAgentEngine {
     // Clean up any existing popup
     this._cleanupCurrentStep();
 
+    // --- New: Find target element if specified ---
+    let targetElement = null;
+    if (options.targetElement && options.targetElement.selector) {
+      targetElement = document.evaluate
+        ? document.evaluate(
+            options.targetElement.selector,
+            document,
+            null,
+            XPathResult.FIRST_ORDERED_NODE_TYPE,
+            null
+          ).singleNodeValue
+        : document.querySelector(options.targetElement.selector);
+    }
+
     // Create and mount the popup
     const popupManager = new SimplePopupManager({ ...defaultOptions, ...options });
     this.activePopupManager = popupManager;
     popupManager.mount(options.parent || defaultOptions.parent);
+    
+    // Register this popup
+    this.activePopups.push({
+      id: options.id || options.text || `popup-${Date.now()}`,
+      unmount: () => {
+        popupManager.unmount();
+        if (this.activePopupManager === popupManager) {
+          this.activePopupManager = null;
+        }
+      }
+    });
 
     return {
       unmount: () => {
@@ -558,6 +612,8 @@ export class TextAgentEngine {
         if (this.activePopupManager === popupManager) {
           this.activePopupManager = null;
         }
+        // Remove from activePopups
+        this.activePopups = this.activePopups.filter(p => p.unmount !== popupManager.unmount);
       },
       mount: (newParent) => popupManager.mount(newParent)
     };

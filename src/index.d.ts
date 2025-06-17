@@ -174,6 +174,9 @@ export default instance;
  * Options for showing a popup
  */
 export interface PopupOptions {
+  /** XPath or CSS selector that must exist for this popup to be shown */
+  requiredSelector?: string;
+  
   id?: string; // <-- Add this line
   /** The text to display in the popup */
   text: string;
@@ -195,6 +198,9 @@ export interface PopupOptions {
  * Text Agent Step configuration
  */
 export interface TextAgentStep {
+  /** XPath or CSS selector that must exist for this step to be registered */
+  requiredSelector?: string;
+
   /** Unique identifier for the step (will be auto-generated if not provided) */
   id?: string;
   
