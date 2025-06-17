@@ -21,15 +21,10 @@ export class PopupStateManager {
         this.previousState = null; // Store the state before minimization
         this.messages = [];
         this.chatInput = '';
-        this.recentQueries = [
-            'When should I use Tavily Search vs Crawl?',
-            'What are the best practices for Tavily Search?',
-            'Can you explain what Tavily Extract does?'
-        ];
         this.shortcuts = [
-            'Best practices for Tavily Search',
-            'Upgrade to a production API key',
-            'Set up your billing address'
+            'Differences between Search, Extract, and Crawl',
+            'Edit your billing configuration',
+            'Creating a team',
         ];
 
         // Dragging state
@@ -376,7 +371,6 @@ export class PopupStateManager {
                 });
 
                 this.components.expandedWithShortcuts = new ExpandedWithShortcuts({
-                    recentQueries: this.recentQueries,
                     shortcuts: this.shortcuts,
                     onQuerySelect: this.handleShortcutSelect,
                     chatInput: chatInput,

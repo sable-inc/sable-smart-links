@@ -2,9 +2,8 @@ import { ShortcutsAndRecents } from './ShortcutsAndRecents.js';
 import { ChatInput } from './ChatInput.js';
 
 export class ExpandedWithShortcuts {
-    constructor({ recentQueries, shortcuts, onQuerySelect, chatInput, primaryColor, onSubmit }) {
+    constructor({ shortcuts, onQuerySelect, chatInput, primaryColor, onSubmit }) {
         this.element = this.createElement({ 
-            recentQueries, 
             shortcuts, 
             onQuerySelect, 
             chatInput, 
@@ -13,7 +12,7 @@ export class ExpandedWithShortcuts {
         });
     }
 
-    createElement({ recentQueries, shortcuts, onQuerySelect, chatInput, primaryColor, onSubmit }) {
+    createElement({ shortcuts, onQuerySelect, chatInput, primaryColor, onSubmit }) {
         const container = document.createElement('div');
         Object.assign(container.style, {
             display: 'flex',
@@ -28,7 +27,6 @@ export class ExpandedWithShortcuts {
         });
 
         const shortcutsAndRecents = new ShortcutsAndRecents({
-            recentQueries,
             shortcuts,
             onQuerySelect
         });

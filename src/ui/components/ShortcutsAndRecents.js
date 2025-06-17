@@ -1,7 +1,6 @@
 // components/ShortcutsAndRecents.js
 export class ShortcutsAndRecents {
-    constructor({ recentQueries, shortcuts, onQuerySelect }) {
-        this.recentQueries = recentQueries;
+    constructor({ shortcuts, onQuerySelect }) {
         this.shortcuts = shortcuts;
         this.onQuerySelect = onQuerySelect;
         this.element = this.createElement();
@@ -13,12 +12,10 @@ export class ShortcutsAndRecents {
             display: 'flex',
             flexDirection: 'column',
             gap: '0',
-            padding: '0 0 64px 0',
+            padding: '0 0 16px 0',
         });
 
-        // Recents Section
-        container.appendChild(this.createSection('Recents', this.recentQueries));
-        // Shortcuts Section
+        // Shortcuts Section only (Recents section removed)
         container.appendChild(this.createSection('Shortcuts', this.shortcuts));
 
         return container;
@@ -28,7 +25,7 @@ export class ShortcutsAndRecents {
         const section = document.createElement('div');
         Object.assign(section.style, {
             padding: '0 4px',
-            marginTop: title === 'Shortcuts' ? '16px' : '0',
+            marginTop: '0',
         });
 
         const heading = document.createElement('h3');

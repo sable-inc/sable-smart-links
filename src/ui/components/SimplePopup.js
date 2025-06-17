@@ -122,7 +122,7 @@ export class SimplePopup {
             padding: '0 4px',
             marginTop: '4px',
             width: 'fit-content',
-            flexDirection: 'column',
+            flexDirection: this.config.buttonType === 'arrow' ? 'row' : 'column',
         });
 
         // Text container

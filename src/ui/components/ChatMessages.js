@@ -135,10 +135,22 @@ export class ChatMessages {
         // Show the cursor during typing
         cursor.style.display = 'inline-block';
         
+        // Scroll frequency - only scroll every few characters to improve performance
+        const scrollFrequency = 5;
+        
         for (let i = 0; i <= text.length; i++) {
             textSpan.textContent = text.slice(0, i);
+            
+            // Scroll to bottom periodically during typing and on line breaks
+            if (i % scrollFrequency === 0 || text[i-1] === '\n') {
+                this.scrollToBottom();
+            }
+            
             await new Promise(resolve => setTimeout(resolve, charDelay));
         }
+        
+        // Final scroll to ensure we're at the bottom when animation completes
+        this.scrollToBottom();
         
         // Hide cursor after animation completes
         cursor.style.display = 'none';
