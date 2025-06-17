@@ -16,6 +16,7 @@ export class SimplePopup {
             onMinimize: config.onMinimize || (() => {}),
             onPositionChange: config.onPositionChange || (() => {}),
             includeTextBox: config.includeTextBox || false,
+            fontSize: config.fontSize || '15px'
         };
 
         // State
@@ -141,7 +142,7 @@ export class SimplePopup {
             width: `${this.config.boxWidth}px`,
             padding: '4px 4px',
             color: this.config.primaryColor,
-            fontSize: '15px',
+            fontSize: this.config.fontSize,
             fontWeight: '400',
             letterSpacing: '-0.01em',
             wordWrap: 'break-word',
@@ -211,7 +212,7 @@ export class SimplePopup {
                 padding: '8px',
                 borderRadius: '6px',
                 border: '1px solid #ccc',
-                fontSize: '15px',
+                fontSize: this.config.fontSize || '15px', // Match the text font size
                 color: '#222',
             });
             

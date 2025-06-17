@@ -183,6 +183,8 @@ export interface PopupOptions {
   text: string;
   /** Width of the popup in pixels (default: 300) */
   boxWidth?: number;
+  /** Font size of the popup text in pixels (default: '15px') */
+  fontSize?: string;
   /** Type of buttons to show (default: 'arrow') */
   buttonType?: 'arrow' | 'yes-no';
   /** Callback when proceed/continue is clicked */
@@ -204,6 +206,8 @@ export interface TextAgentStep {
 
   /** Unique identifier for the step (will be auto-generated if not provided) */
   id?: string;
+
+  fontSize?: string;
   
   /** Main text content to display in the popup */
   text: string;

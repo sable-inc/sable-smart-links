@@ -12,6 +12,7 @@ export class SimplePopupManager {
             onYesNo: config.onYesNo || (() => {}),
             primaryColor: config.primaryColor || '#FFFFFF',
             includeTextBox: config.includeTextBox || false,
+            fontSize: config.fontSize || '15px'
         };
 
         // Single state variable
@@ -94,7 +95,8 @@ export class SimplePopupManager {
                 position: this.position,
                 onPositionChange: (newPosition) => {
                     this.position = newPosition;
-                }
+                },
+                fontSize: this.config.fontSize // Explicitly pass it through
             });
 
             // Reset container styles for full popup

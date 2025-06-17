@@ -619,6 +619,7 @@ export class TextAgentEngine {
    * @param {Function} [options.onProceed] - Callback when proceed/continue is clicked
    * @param {Function} [options.onYesNo] - Callback for yes/no buttons (receives boolean)
    * @param {string} [options.primaryColor='#FFFFFF'] - Primary color for the popup
+   * @param {string} [options.fontSize='15px'] - Font size of the popup text in pixels
    * @param {HTMLElement} [options.parent=document.body] - Parent element to mount the popup to
    * @returns {Object} Popup manager instance with mount/unmount methods
    */
@@ -633,7 +634,8 @@ export class TextAgentEngine {
       boxWidth: this.config.defaultBoxWidth || 300,
       buttonType: 'arrow',
       primaryColor: this.config.primaryColor || '#FFFFFF',
-      parent: safeDocument?.body || document.body
+      parent: safeDocument?.body || document.body,
+      fontSize: this.config.fontSize || '15px'
     };
 
     // Clean up any existing popup
