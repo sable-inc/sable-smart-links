@@ -174,6 +174,7 @@ export default instance;
  * Options for showing a popup
  */
 export interface PopupOptions {
+  id?: string; // <-- Add this line
   /** The text to display in the popup */
   text: string;
   /** Width of the popup in pixels (default: 300) */

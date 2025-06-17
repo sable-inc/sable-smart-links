@@ -35,6 +35,7 @@ export class TextAgentEngine {
     this.currentStepIndex = -1;
     this.isRunning = false;
     this.activePopupManager = null;
+    this.activePopups = [];
     
     // Bind methods
     this.next = this.next.bind(this);
@@ -364,17 +365,6 @@ export class TextAgentEngine {
     this.activePopupManager = new SimplePopupManager(popupOptions);
     this.activePopupManager.mount(popupOptions.parent);
     
-    // // Position the popup if custom positioning is specified
-    // if (step.position) {
-    //   const container = this.activePopupManager.container;
-    //   if (container) {
-    //     if (step.position.top !== undefined) container.style.top = typeof step.position.top === 'number' ? `${step.position.top}px` : step.position.top;
-    //     if (step.position.left !== undefined) container.style.left = typeof step.position.left === 'number' ? `${step.position.left}px` : step.position.left;
-    //     if (step.position.right !== undefined) container.style.right = typeof step.position.right === 'number' ? `${step.position.right}px` : step.position.right;
-    //     if (step.position.bottom !== undefined) container.style.bottom = typeof step.position.bottom === 'number' ? `${step.position.bottom}px` : step.position.bottom;
-    //   }
-    // }
-
     // Position the popup relative to target element if specified
     if (targetElement && step.targetElement && step.targetElement.position) {
       const position = step.targetElement.position;
@@ -443,6 +433,17 @@ export class TextAgentEngine {
     if (typeof step.callback === 'function') {
       step.callback(targetElement, this);
     }
+
+    // Register this popup
+    this.activePopups.push({
+      id: step.id || step.text || `popup-${Date.now()}`,
+      unmount: () => {
+        this.activePopupManager.unmount();
+        if (this.activePopupManager === this.activePopupManager) {
+          this.activePopupManager = null;
+        }
+      }
+    });
   }
   
   /**
@@ -561,14 +562,44 @@ export class TextAgentEngine {
     this.activePopupManager = popupManager;
     popupManager.mount(options.parent || defaultOptions.parent);
     
+    // Register this popup
+    this.activePopups.push({
+      id: options.id || options.text || `popup-${Date.now()}`,
+      unmount: () => {
+        popupManager.unmount();
+        if (this.activePopupManager === popupManager) {
+          this.activePopupManager = null;
+        }
+      }
+    });
+
     return {
       unmount: () => {
         popupManager.unmount();
         if (this.activePopupManager === popupManager) {
           this.activePopupManager = null;
         }
+        // Remove from activePopups
+        this.activePopups = this.activePopups.filter(p => p.unmount !== popupManager.unmount);
       },
       mount: (newParent) => popupManager.mount(newParent)
     };
+  }
+
+  /**
+   * Closes all active popups managed by the TextAgentEngine.
+   * Optionally, you can provide an array of popup IDs to keep open.
+   * @param {Array<string>} [exceptIds=[]] - Array of popup IDs to exclude from closing.
+   */
+  closeAllPopups(exceptIds = []) {
+    this.activePopups.forEach(popup => {
+      if (!exceptIds.includes(popup.id)) {
+        popup.unmount();
+      }
+    });
+    // Keep only the popups that were not closed
+    this.activePopups = this.activePopups.filter(popup => exceptIds.includes(popup.id));
+    // Also clean up highlights
+    removeHighlight();
   }
 }

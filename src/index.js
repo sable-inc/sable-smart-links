@@ -263,6 +263,17 @@ class SableSmartLinks {
     this.textAgentEngine.end();
     return this;
   }
+
+  /**
+   * Closes all active popups managed by the text agent engine.
+   * Optionally, you can provide an array of popup IDs to keep open.
+   * @param {Array<string>} [exceptIds=[]] - Array of popup IDs to exclude from closing.
+   */
+  closeAllPopups(exceptIds = []) {
+    if (this.textAgentEngine && typeof this.textAgentEngine.closeAllPopups === 'function') {
+      this.textAgentEngine.closeAllPopups(exceptIds);
+    }
+  }
 }
 
 // Export as both a class and a singleton instance
