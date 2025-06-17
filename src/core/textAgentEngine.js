@@ -36,11 +36,27 @@ export class TextAgentEngine {
     this.isRunning = false;
     this.activePopupManager = null;
     this._finalPopupAdded = false;
+    this.activeSteps = new Set(); // Track which steps are currently active
+    this.registeredAgents = new Map(); // Store registered agents
+    
+    // Only set up observer if we're in a browser environment
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      this.observer = new MutationObserver(() => this.checkVisibleElements());
+      this.observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true
+      });
+    }
     
     // Bind methods
     this.next = this.next.bind(this);
     this.previous = this.previous.bind(this);
     this.end = this.end.bind(this);
+
+    // Add these lines after other state management variables
+    this.activeSteps = new Set(); // Track which steps are currently active
+    this.registeredAgents = new Map(); // Store registered agents
   }
   
   /**
@@ -49,47 +65,81 @@ export class TextAgentEngine {
    * @param {Array<TextAgentStep>} steps - Array of text agent steps
    */
   register(id, steps) {
-    this.steps = steps.map(step => ({
+    console.log(`[SableTextAgent] Registering agent "${id}" with ${steps.length} steps`);
+    
+    // Store the original registration
+    this.registeredAgents.set(id, steps.map(step => ({
       ...step,
       id: step.id || `${id}-${Math.random().toString(36).substr(2, 9)}`
-    }));
-    
-    if (this.config.debug) {
-      console.log(`[SableTextAgent] Registered ${this.steps.length} steps`);
-    }
+    })));
 
-    // Check if any steps have a requiredSelector and verify it exists
-    const shouldRegister = this.steps.every(step => {
-      if (!step.requiredSelector) return true;
-      
-      // Handle both XPath and CSS selectors
-      if (step.requiredSelector.startsWith('//')) {
-        // XPath selector
-        const element = document.evaluate(
-          step.requiredSelector,
-          document,
-          null,
-          XPathResult.FIRST_ORDERED_NODE_TYPE,
-          null
-        ).singleNodeValue;
-        return !!element;
-      } else {
-        // CSS selector
-        const element = document.querySelector(step.requiredSelector);
-        return !!element;
-      }
-    });
-
-    if (!shouldRegister) {
-      if (this.config.debug) {
-        console.log(`[SableTextAgent] Required selector not found, skipping registration`);
-      }
+    // Initial check for visible elements
+    this.checkVisibleElements();
+  }
+  
+  /**
+   * Check which elements are currently visible and update active steps
+   * @private
+   */
+  checkVisibleElements() {
+    // Skip if not in browser environment
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
       return;
     }
     
-    // Auto-start if configured
-    if (this.config.autoStart && this.steps.length > 0) {
-      this.start();
+    const previouslyActive = new Set(this.activeSteps);
+    this.activeSteps.clear();
+
+    // Check each registered agent's steps
+    for (const [id, steps] of this.registeredAgents.entries()) {
+      const visibleSteps = steps.filter(step => {
+        if (!step.requiredSelector) return true;
+
+        let element;
+        if (step.requiredSelector.startsWith('//')) {
+          element = document.evaluate(
+            step.requiredSelector,
+            document,
+            null,
+            XPathResult.FIRST_ORDERED_NODE_TYPE,
+            null
+          ).singleNodeValue;
+        } else {
+          element = document.querySelector(step.requiredSelector);
+        }
+
+        const isVisible = !!element;
+        if (isVisible) {
+          this.activeSteps.add(step.id);
+        }
+        return isVisible;
+      });
+
+      // Update current steps if they've changed
+      const hasChanges = 
+        visibleSteps.length > 0 && 
+        (!this.steps.length || 
+         !this.steps.every(s => visibleSteps.some(vs => vs.id === s.id)));
+
+      if (hasChanges) {
+        console.log(`[SableTextAgent] Updating active steps for "${id}"`, visibleSteps);
+        this.steps = visibleSteps;
+        
+        // Only auto-start if this is a new activation
+        const isNewActivation = visibleSteps.some(step => 
+          !previouslyActive.has(step.id)
+        );
+        
+        if (isNewActivation && this.config.autoStart) {
+          console.log(`[SableTextAgent] Auto-starting agent "${id}"`);
+          this.start();
+        }
+      } else if (this.steps.length && visibleSteps.length === 0) {
+        // All elements disappeared, clear steps
+        console.log(`[SableTextAgent] All elements gone for "${id}", clearing steps`);
+        this.steps = [];
+        this.end(); // End the current session if elements disappear
+      }
     }
   }
   
@@ -594,7 +644,56 @@ export class TextAgentEngine {
     const popupManager = new SimplePopupManager({ ...defaultOptions, ...options });
     this.activePopupManager = popupManager;
     popupManager.mount(options.parent || defaultOptions.parent);
-    
+
+    // --- New: Position the popup relative to target element if specified ---
+    if (targetElement && options.targetElement.position) {
+      const position = options.targetElement.position;
+      const elementRect = targetElement.getBoundingClientRect();
+      const popupRect = popupManager.container.getBoundingClientRect();
+      const popupWidth = popupRect.width || 200;
+      const popupHeight = popupRect.height || 100;
+      const margin = 10;
+      let newPosition = {};
+
+      switch (position) {
+        case 'top':
+          newPosition = {
+            top: elementRect.top - popupHeight - margin,
+            left: elementRect.left - popupWidth + elementRect.width / 2
+          };
+          popupManager.container.style.transform = 'translateX(-50%)';
+          break;
+        case 'right':
+          newPosition = {
+            top: elementRect.top - popupHeight / 2 + elementRect.height / 2,
+            left: elementRect.right + margin
+          };
+          popupManager.container.style.transform = 'translateY(-50%)';
+          break;
+        case 'bottom':
+          newPosition = {
+            top: elementRect.bottom + margin,
+            left: elementRect.left - popupWidth + elementRect.width / 2
+          };
+          // popupManager.container.style.transform = 'translateX(-50%)';
+          break;
+        case 'left':
+          newPosition = {
+            top: elementRect.top - popupHeight / 2 + elementRect.height / 2,
+            left: elementRect.left - 2 * popupWidth - margin
+          };
+          popupManager.container.style.transform = 'translateY(-50%)';
+          break;
+        default:
+          newPosition = {
+            top: elementRect.top + elementRect.height / 2,
+            left: elementRect.left + elementRect.width / 2
+          };
+          popupManager.container.style.transform = 'translate(-50%, -50%)';
+      }
+      popupManager.updatePosition(newPosition);
+    }
+
     // Register this popup
     this.activePopups.push({
       id: options.id || options.text || `popup-${Date.now()}`,
@@ -612,7 +711,6 @@ export class TextAgentEngine {
         if (this.activePopupManager === popupManager) {
           this.activePopupManager = null;
         }
-        // Remove from activePopups
         this.activePopups = this.activePopups.filter(p => p.unmount !== popupManager.unmount);
       },
       mount: (newParent) => popupManager.mount(newParent)
@@ -641,5 +739,14 @@ export class TextAgentEngine {
     
     // Store reference for cleanup
     this._finalPopupManager = popupManager;
+  }
+
+  /**
+   * Clean up when destroying the engine
+   */
+  destroy() {
+    if (this.observer) {
+      this.observer.disconnect();
+    }
   }
 }

@@ -135,6 +135,7 @@ export class WalkthroughEngine {
   _restoreWalkthrough(): Promise<void>;
 }
 
+
 export class SableSmartLinks {
   constructor(config?: SableSmartLinksConfig);
   
