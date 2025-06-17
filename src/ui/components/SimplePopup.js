@@ -169,15 +169,15 @@ export class SimplePopup {
         // Add button based on type
         if (this.config.buttonType === 'arrow') {
             const arrowButton = new ArrowButton(() => {
-                const textInput = this.inputBox ? this.inputBox.value : undefined;
+                const textInput = this.inputBox ? this.inputBox.value : '';
                 console.log('[SimplePopup] Input box exists:', !!this.inputBox);
-                console.log('[SimplePopup] Raw input box value:', this.inputBox?.value);
-                console.log('[SimplePopup] Processed textInput:', textInput);
+                console.log('[SimplePopup] Raw input box value:', textInput);
                 
-                // Call onProceed with an object that matches the expected format
-                this.config.onProceed({
-                    textInput: textInput
-                });
+                // Pass the string value directly
+                if (typeof this.config.onProceed === 'function') {
+                    console.log('function called arrow button')
+                    this.config.onProceed(textInput);
+                }
             });
             buttonContainer.appendChild(arrowButton.render());
         } else {
@@ -218,10 +218,11 @@ export class SimplePopup {
             // Add enter key handler
             inputBox.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    const inputValue = inputBox.value;
-                    this.config.onProceed({
-                        textInput: inputValue
-                    });
+                    const textInput = inputBox.value;
+                    if (typeof this.config.onProceed === 'function') {
+                        console.log('function called input box')
+                        this.config.onProceed(textInput);
+                    }
                 }
             });
             

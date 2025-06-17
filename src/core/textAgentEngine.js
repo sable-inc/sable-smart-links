@@ -427,20 +427,33 @@ export class TextAgentEngine {
         }
       };
     } else {
-      // Default arrow button
-      popupOptions.onProceed = () => {
-        console.log('[TextAgent] onProceed hooked – scheduling next in', step.autoAdvanceDelay || 1000);
-        const delay = step.autoAdvanceDelay || 1000;
-        setTimeout(async () => {
+      if (step.includeTextBox) {
+        popupOptions.onProceed = (textInput) => {
+          console.log('[TextAgent] onProceed hooked – scheduling next in', step.autoAdvanceDelay || 1000);
+          const delay = step.autoAdvanceDelay || 1000;
+          setTimeout(async () => {
             console.log('[TextAgent] delayed-next fired');
             if (typeof step.onProceed === 'function') {
-                await step.onProceed();
+              await step.onProceed(textInput);
             }
             this.next();
-        }, delay);
-      };
+          }, delay); 
+        };
+      } else {
+          // Default arrow button
+          popupOptions.onProceed = () => {
+            console.log('[TextAgent] onProceed hooked – scheduling next in', step.autoAdvanceDelay || 1000);
+            const delay = step.autoAdvanceDelay || 1000;
+            setTimeout(async () => {
+                console.log('[TextAgent] delayed-next fired');
+                if (typeof step.onProceed === 'function') {
+                    await step.onProceed(); 
+                }
+                this.next();
+            }, delay);
+          };
+      }
     }
-    
     // Create and mount the popup
     this.activePopupManager = new SimplePopupManager(popupOptions);
     this.activePopupManager.mount(popupOptions.parent);
