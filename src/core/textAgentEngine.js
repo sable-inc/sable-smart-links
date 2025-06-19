@@ -477,7 +477,7 @@ export class TextAgentEngine {
           // Position popup so its bottom edge is above the target element
           newPosition = {
             top: elementRect.top - popupHeight - margin,
-            left: elementRect.left - popupWidth + (elementRect.width / 2)
+            left: elementRect.left + (elementRect.width / 2)
           };
           // Center horizontally
           this.activePopupManager.container.style.transform = 'translateX(-50%)';
@@ -485,7 +485,7 @@ export class TextAgentEngine {
         case 'right':
           // Position popup so its left edge is to the right of the target element
           newPosition = {
-            top: elementRect.top - popupHeight / 2 + (elementRect.height / 2),
+            top: elementRect.top + (elementRect.height / 2),
             left: elementRect.right + margin
           };
           // Center vertically
@@ -495,19 +495,19 @@ export class TextAgentEngine {
           // Position popup so its top edge is below the target element
           newPosition = {
             top: elementRect.bottom + margin,
-            left: elementRect.left - popupWidth + (elementRect.width / 2)
+            left: elementRect.left + (elementRect.width / 2)
           };
-          // // Center horizontally
-          // this.activePopupManager.container.style.transform = 'translateX(-50%)';
+          // Center horizontally
+          this.activePopupManager.container.style.transform = 'translateX(-50%)';
           break;
         case 'left':
           // Position popup so its right edge is to the left of the target element
           newPosition = {
-            top: elementRect.top - popupHeight / 2 + (elementRect.height / 2),
-            left: elementRect.left - (2 * popupWidth) - margin
+            top: elementRect.top + (elementRect.height / 2),
+            left: elementRect.left - margin
           };
-          // Center vertically
-          this.activePopupManager.container.style.transform = 'translateY(-50%)';
+          // Center vertically and position to the left
+          this.activePopupManager.container.style.transform = 'translate(-100%, -50%)';
           break;
         default:
           // Default to centered on the element
@@ -672,39 +672,48 @@ export class TextAgentEngine {
 
       switch (position) {
         case 'top':
+          // Position popup so its bottom edge is above the target element
           newPosition = {
             top: elementRect.top - popupHeight - margin,
-            left: elementRect.left - popupWidth + elementRect.width / 2
+            left: elementRect.left + (elementRect.width / 2)
           };
-          popupManager.container.style.transform = 'translateX(-50%)';
+          // Center horizontally
+          this.activePopupManager.container.style.transform = 'translateX(-50%)';
           break;
         case 'right':
+          // Position popup so its left edge is to the right of the target element
           newPosition = {
-            top: elementRect.top - popupHeight / 2 + elementRect.height / 2,
+            top: elementRect.top + (elementRect.height / 2),
             left: elementRect.right + margin
           };
-          popupManager.container.style.transform = 'translateY(-50%)';
+          // Center vertically
+          this.activePopupManager.container.style.transform = 'translateY(-50%)';
           break;
         case 'bottom':
+          // Position popup so its top edge is below the target element
           newPosition = {
             top: elementRect.bottom + margin,
-            left: elementRect.left - popupWidth + elementRect.width / 2
+            left: elementRect.left + (elementRect.width / 2)
           };
-          // popupManager.container.style.transform = 'translateX(-50%)';
+          // Center horizontally
+          this.activePopupManager.container.style.transform = 'translateX(-50%)';
           break;
         case 'left':
+          // Position popup so its right edge is to the left of the target element
           newPosition = {
-            top: elementRect.top - popupHeight / 2 + elementRect.height / 2,
-            left: elementRect.left - 2 * popupWidth - margin
+            top: elementRect.top + (elementRect.height / 2),
+            left: elementRect.left - margin
           };
-          popupManager.container.style.transform = 'translateY(-50%)';
+          // Center vertically and position to the left
+          this.activePopupManager.container.style.transform = 'translate(-100%, -50%)';
           break;
         default:
+          // Default to centered on the element
           newPosition = {
-            top: elementRect.top + elementRect.height / 2,
-            left: elementRect.left + elementRect.width / 2
+            top: elementRect.top + (elementRect.height / 2),
+            left: elementRect.left + (elementRect.width / 2)
           };
-          popupManager.container.style.transform = 'translate(-50%, -50%)';
+          this.activePopupManager.container.style.transform = 'translate(-50%, -50%)';
       }
       popupManager.updatePosition(newPosition);
     }

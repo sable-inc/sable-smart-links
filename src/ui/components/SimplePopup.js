@@ -216,19 +216,62 @@ export class SimplePopup {
                 color: '#222',
             });
             
+            // Create thinking indicator (hidden by default)
+            const thinkingIndicator = document.createElement('div');
+            thinkingIndicator.style.display = 'none';
+            thinkingIndicator.style.marginTop = '8px';
+            thinkingIndicator.style.fontSize = '14px';
+            thinkingIndicator.style.color = '#555';
+            thinkingIndicator.innerHTML = `
+                <div style="display: flex; align-items: center;">
+                    <div class="spinner" style="
+                        border: 2px solid #f3f3f3;
+                        border-top: 2px solid #3498db;
+                        border-radius: 50%;
+                        width: 12px;
+                        height: 12px;
+                        margin-right: 8px;
+                        animation: spin 1s linear infinite;
+                    "></div>
+                    <span>Thinking...</span>
+                </div>
+            `;
+            
+            // Add the spinner animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `;
+            document.head.appendChild(style);
+            
             // Add enter key handler
             inputBox.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     const textInput = inputBox.value;
                     if (typeof this.config.onProceed === 'function') {
+                        // Show thinking indicator
+                        inputBox.disabled = true;
+                        thinkingIndicator.style.display = 'block';
+                        
+                        // Call the onProceed function
                         console.log('function called input box')
-                        this.config.onProceed(textInput);
+                        Promise.resolve(this.config.onProceed(textInput))
+                            .finally(() => {
+                                // Restore the input box state when done
+                                inputBox.disabled = false;
+                                thinkingIndicator.style.display = 'none';
+                            });
                     }
                 }
             });
             
             mainContainer.appendChild(inputBox);
+            mainContainer.appendChild(thinkingIndicator);
             this.inputBox = inputBox;
+            this.thinkingIndicator = thinkingIndicator;
         }
 
         return mainContainer;

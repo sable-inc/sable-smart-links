@@ -31,7 +31,7 @@ export class PopupStateManager {
         this.productWalkthroughs = [
             { text: 'Billing page tour', url: '/billing?walkthrough=billing' },
             { text: 'API playground tour', url: '/playground?walkthrough=api-playground' },
-            { text: 'Team creation tour', url: '/settings?walkthrough=team-create' }
+            { text: 'Team creation tour', url: '/settings?walkthrough=create-team' }
         ];
 
         // Dragging state
