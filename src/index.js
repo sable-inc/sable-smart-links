@@ -6,8 +6,11 @@
 import { parseUrlParameters } from './core/urlParser.js';
 import { WalkthroughEngine } from './core/walkthroughEngine.js';
 import { TextAgentEngine } from './core/textAgentEngine.js';
+import { NovaVoiceEngine } from './core/novaVoiceEngine.js';
+import { VoicePopup } from './ui/components/VoicePopup.js';
 import { isBrowser, safeDocument } from './utils/browserAPI.js';
 import { addEvent, debounce } from './utils/events.js';
+import { debugLog } from './config.js';
 
 // Import Tavily features
 export * from './config';
@@ -33,6 +36,23 @@ class SableSmartLinks {
         enableChatInput: false,
         persistState: true
       },
+      voice: {
+        enabled: false,
+        engine: 'nova',
+        serverUrl: 'ws://localhost:3001',
+        ui: {
+          position: 'bottom-right',
+          buttonText: {
+            start: 'Start Voice Chat',
+            stop: 'End Chat'
+          },
+          theme: {
+            primaryColor: '#FFFFFF',
+            backgroundColor: 'rgba(60, 60, 60, 0.9)'
+          }
+        },
+        systemPrompt: "You are a helpful assistant. Keep your responses concise and conversational."
+      },
       ...config,
       // Deep merge for nested objects
       walkthrough: {
@@ -40,6 +60,14 @@ class SableSmartLinks {
       },
       textAgent: {
         ...(config.textAgent || {})
+      },
+      voice: {
+        ...this.config?.voice,
+        ...(config.voice || {}),
+        ui: {
+          ...this.config?.voice?.ui,
+          ...(config.voice?.ui || {})
+        }
       }
     };
     
@@ -53,6 +81,11 @@ class SableSmartLinks {
       debug: this.config.debug,
       ...this.config.textAgent
     });
+
+    // Initialize voice engine if enabled
+    if (this.config.voice.enabled) {
+      this.initializeVoiceEngine();
+    }
     
     // Bind methods
     this.showPopup = this.showPopup.bind(this);
@@ -61,6 +94,7 @@ class SableSmartLinks {
     this.nextTextAgentStep = this.nextTextAgentStep.bind(this);
     this.previousTextAgentStep = this.previousTextAgentStep.bind(this);
     this.endTextAgent = this.endTextAgent.bind(this);
+    this.toggleVoiceChat = this.toggleVoiceChat.bind(this);
     
     // Auto-start walkthrough if enabled and in browser
     const shouldAutoStart = this.config.walkthrough?.autoStart !== false;
@@ -71,6 +105,90 @@ class SableSmartLinks {
       } else {
         this.init();
       }
+    }
+  }
+
+  /**
+   * Initialize voice engine and UI
+   * @private
+   */
+  initializeVoiceEngine() {
+    try {
+      // Create voice engine based on config
+      if (this.config.voice.engine === 'nova') {
+        this.voiceEngine = new NovaVoiceEngine({
+          serverUrl: this.config.voice.serverUrl,
+          systemPrompt: this.config.voice.systemPrompt
+        });
+      } else {
+        debugLog('warn', 'Unknown voice engine:', this.config.voice.engine);
+        return;
+      }
+
+      // Set up voice engine callbacks
+      this.voiceEngine.setCallbacks({
+        onTextOutput: (text) => {
+          if (this.voicePopup) {
+            this.voicePopup.addMessage(text, false);
+          }
+        },
+        onError: (error) => {
+          debugLog('error', 'Voice engine error:', error);
+          if (this.voicePopup) {
+            this.voicePopup.setStatus('Error: ' + error.message);
+            this.voicePopup.setActive(false);
+          }
+        },
+        onStatusChange: (status) => {
+          if (this.voicePopup) {
+            this.voicePopup.setStatus(status);
+          }
+        }
+      });
+
+      // Create voice popup
+      this.voicePopup = new VoicePopup({
+        ...this.config.voice.ui,
+        onToggle: this.toggleVoiceChat,
+        onMinimize: () => {
+          // Handle minimize if needed
+        }
+      });
+
+      // Mount voice popup to DOM
+      if (isBrowser) {
+        safeDocument.body.appendChild(this.voicePopup.render());
+      }
+
+      debugLog('info', 'Voice engine initialized successfully');
+    } catch (error) {
+      debugLog('error', 'Failed to initialize voice engine:', error);
+    }
+  }
+
+  /**
+   * Toggle voice chat on/off
+   */
+  async toggleVoiceChat() {
+    if (!this.voiceEngine) {
+      debugLog('error', 'Voice engine not initialized');
+      return;
+    }
+
+    try {
+      if (this.voiceEngine.isRunning()) {
+        await this.voiceEngine.stop();
+        this.voicePopup?.setActive(false);
+        this.voicePopup?.setStatus('Stopped');
+      } else {
+        await this.voiceEngine.start();
+        this.voicePopup?.setActive(true);
+        this.voicePopup?.setStatus('Starting...');
+      }
+    } catch (error) {
+      debugLog('error', 'Error toggling voice chat:', error);
+      this.voicePopup?.setStatus('Error: ' + error.message);
+      this.voicePopup?.setActive(false);
     }
   }
   
@@ -302,6 +420,58 @@ class SableSmartLinks {
   closeAllPopups(exceptIds = []) {
     if (this.textAgentEngine && typeof this.textAgentEngine.closeAllPopups === 'function') {
       this.textAgentEngine.closeAllPopups(exceptIds);
+    }
+  }
+
+  /**
+   * Enable voice chat
+   * @param {VoiceConfig} voiceConfig - Voice configuration
+   */
+  enableVoiceChat(voiceConfig = {}) {
+    this.config.voice = {
+      ...this.config.voice,
+      enabled: true,
+      ...voiceConfig
+    };
+    
+    if (!this.voiceEngine) {
+      this.initializeVoiceEngine();
+    }
+  }
+
+  /**
+   * Disable voice chat
+   */
+  async disableVoiceChat() {
+    if (this.voiceEngine && this.voiceEngine.isRunning()) {
+      await this.voiceEngine.stop();
+    }
+    
+    if (this.voicePopup) {
+      this.voicePopup.destroy();
+      this.voicePopup = null;
+    }
+    
+    this.voiceEngine = null;
+    this.config.voice.enabled = false;
+  }
+
+  /**
+   * Cleanup and destroy the instance
+   */
+  destroy() {
+    // Stop and cleanup voice engine
+    if (this.voiceEngine) {
+      this.disableVoiceChat();
+    }
+    
+    // Cleanup other engines
+    if (this.textAgentEngine) {
+      this.textAgentEngine.destroy();
+    }
+    
+    if (this.walkthroughEngine) {
+      this.walkthroughEngine.end();
     }
   }
 }
