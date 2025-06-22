@@ -2,12 +2,11 @@ import { ChatMessages } from './ChatMessages.js';
 import { ChatInput } from './ChatInput.js';
 
 export class ExpandedWithMessages {
-    constructor({ messages, chatInput, primaryColor, onMinimize, customButtons = [] }) {
+    constructor({ messages, chatInput, primaryColor, customButtons = [] }) {
         console.log('ExpandedWithMessages constructor called with messages:', messages);
         this.messages = messages || []; // Store messages and initialize as empty array if undefined
         this.chatInput = chatInput;
         this.primaryColor = primaryColor;
-        this.onMinimize = onMinimize;
         this.customButtons = customButtons;
         this.messagesComponent = null; // Store reference to the ChatMessages component
         this.element = this.createElement({ messages, chatInput, primaryColor });
@@ -24,31 +23,6 @@ export class ExpandedWithMessages {
             transform: 'translateY(0)',
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         });
-        
-        // Add header with minimize button if onMinimize is provided
-        if (this.onMinimize) {
-            const header = document.createElement('div');
-            Object.assign(header.style, {
-                display: 'flex',
-                justifyContent: 'flex-end',
-                marginBottom: '8px'
-            });
-            
-            const minimizeButton = document.createElement('button');
-            minimizeButton.innerHTML = '−'; // Unicode minus sign
-            Object.assign(minimizeButton.style, {
-                background: 'transparent',
-                border: 'none',
-                color: this.primaryColor,
-                fontSize: '20px',
-                cursor: 'pointer',
-                padding: '0 8px',
-                lineHeight: '20px'
-            });
-            minimizeButton.addEventListener('click', this.onMinimize);
-            header.appendChild(minimizeButton);
-            container.appendChild(header);
-        }
         
         console.log('Creating ChatMessages component');
         this.messagesComponent = new ChatMessages({

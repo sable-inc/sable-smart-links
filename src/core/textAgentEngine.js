@@ -24,9 +24,8 @@ export class TextAgentEngine {
       primaryColor: '#FFFFFF',
       defaultBoxWidth: 300,
       finalPopupConfig: {
-        enableRestart: true,
-        restartButtonText: 'Restart Guide',
-        finalMessageText: 'How was your experience with this guide?'
+        enableChat: true,
+        sections: []
       },
       triggerButton: {
         enabled: false,
@@ -91,6 +90,7 @@ export class TextAgentEngine {
     }
     
     // Create trigger button if enabled
+    console.log('[SableTextAgent] Trigger button enabled:', this.config.triggerButton.enabled);
     if (this.config.triggerButton.enabled) {
       this._createTriggerButton();
     }
@@ -786,6 +786,7 @@ export class TextAgentEngine {
    */
   _createTriggerButton() {
     // Check if we should show the button based on current URL path
+    console.log('[SableTextAgent] Checking trigger button visibility', this._shouldShowTriggerButton());
     if (!this._shouldShowTriggerButton()) {
       return;
     }
@@ -846,7 +847,7 @@ export class TextAgentEngine {
       document.body.appendChild(button);
     }
     
-    // Add URL change listener to show/hide button based on path
+    // Add URL change listener to show/hide the trigger button
     this._addUrlChangeListener();
   }
   
@@ -861,7 +862,8 @@ export class TextAgentEngine {
       return true;
     }
     
-    const currentPath = window.location.pathname;
+    const currentPath = safeWindow.location.pathname;
+    console.log('[TextAgent] Current path:', currentPath);
     
     // Check if current path matches any of the specified paths
     return this.config.triggerButton.urlPaths.some(path => {
@@ -963,7 +965,7 @@ export class TextAgentEngine {
     if (!this.triggerButtonElement) return;
     
     // Function to update button visibility
-    const updateButtonVisibility = () => {
+    const updateButtonVisibility = () => { 
       if (this._shouldShowTriggerButton()) {
         this.triggerButtonElement.style.display = '';
       } else {
@@ -984,7 +986,7 @@ export class TextAgentEngine {
   }
   
   /**
-   * Add a final popup step with the chat interface and restart button
+   * Add a final popup step with the chat interface
    * @private
    */
   _addFinalPopupStep() {
@@ -1007,35 +1009,16 @@ export class TextAgentEngine {
       }
     }
     
-    // Define shortcuts and product walkthroughs if configured
-    const shortcuts = this.config.finalPopupConfig?.shortcuts || [];
-    const productWalkthroughs = this.config.finalPopupConfig?.productWalkthroughs || [];
+    // Get sections from configuration
+    const sections = this.config.finalPopupConfig?.sections || [];
     
     // Initialize PopupStateManager for the final step
     const popupManager = new PopupStateManager({
       platform: 'Sable',
       primaryColor: this.config.primaryColor || '#FFFFFF',
       width: 380,
-      // Add custom buttons including restart
-      customButtons: this.config.finalPopupConfig?.enableRestart ? [
-        {
-          text: this.config.finalPopupConfig?.restartButtonText || 'Restart Guide',
-          onClick: () => this._restartLastAgent(),
-          primary: true
-        }
-      ] : [],
-      initialMessage: this.config.finalPopupConfig?.finalMessageText || 'How was your experience with this guide?',
-      shortcuts: shortcuts,
-      productWalkthroughs: productWalkthroughs,
-      showShortcuts: this.config.finalPopupConfig?.showShortcuts !== false && shortcuts.length > 0,
-      showWalkthroughs: this.config.finalPopupConfig?.showWalkthroughs !== false && productWalkthroughs.length > 0,
-      // Disable chat input for the final popup
-      enableChatInput: false,
-      onWalkthroughSelect: (walkthrough) => {
-        if (walkthrough && walkthrough.url) {
-          window.location.href = walkthrough.url;
-        }
-      }
+      sections: sections,
+      enableChat: this.config.finalPopupConfig.enableChat
     });
     
     // Mount to document body
@@ -1061,17 +1044,15 @@ export class TextAgentEngine {
   }
   
   /**
-   * Restart the last active text agent
-   * @private
+   * Restart the text agent from a specific step
+   * @param {string|null} stepId - ID of the step to restart from, or null to restart from beginning
+   * @param {Function|null} beforeRestartCallback - Optional callback to execute before restarting
+   * @public
    */
-  _restartLastAgent() {
-    if (!this.lastActiveAgentId) {
-      console.warn('[SableTextAgent] No last active agent to restart');
-      return;
-    }
-    
-    if (this.config.debug) {
-      console.log(`[SableTextAgent] Restarting agent: ${this.lastActiveAgentId}`);
+  restart(stepId = null, beforeRestartCallback = null) {
+    // Execute callback if provided
+    if (typeof beforeRestartCallback === 'function') {
+      beforeRestartCallback();
     }
     
     // End the current session (including removing the final popup)
@@ -1080,6 +1061,11 @@ export class TextAgentEngine {
     // Reset state
     this._finalPopupAdded = false;
     
+    if (!this.lastActiveAgentId) {
+      console.warn('[SableTextAgent] No last active agent to restart');
+      return;
+    }
+    
     // Get the steps for the last active agent
     const steps = this.registeredAgents.get(this.lastActiveAgentId);
     if (!steps || steps.length === 0) {
@@ -1087,8 +1073,42 @@ export class TextAgentEngine {
       return;
     }
     
-    // Set the steps and start from the beginning
+    // Set the steps
     this.steps = steps;
-    this.start();
+    
+    if (!stepId) {
+      // No specific step ID, restart from the beginning
+      this.currentStepIndex = 0;
+      if (this.config.debug) {
+        console.log(`[SableTextAgent] Restarting agent from beginning: ${this.lastActiveAgentId}`);
+      }
+      this.start();
+      return;
+    }
+    
+    // Find the step with the matching ID
+    const stepIndex = this.steps.findIndex(step => step.id === stepId);
+    if (stepIndex !== -1) {
+      // Set the current step index to the found step
+      this.currentStepIndex = stepIndex;
+      if (this.config.debug) {
+        console.log(`[SableTextAgent] Restarting agent from step ${stepId}: ${this.lastActiveAgentId}`);
+      }
+      // Start the agent from the specified step
+      this.start();
+    } else {
+      console.warn(`[SableTextAgent] Step with ID "${stepId}" not found, restarting from beginning`);
+      this.currentStepIndex = 0;
+      this.start();
+    }
+  }
+  
+  /**
+   * Restart the last active text agent from the beginning
+   * @private
+   */
+  _restartLastAgent() {
+    // Use the new restart method with no specific step ID
+    this.restart();
   }
 }

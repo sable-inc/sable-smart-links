@@ -79,8 +79,14 @@ class SableSmartLinks {
    */
   init() {
     if (this.config.debug) {
-      console.log('[SableSmartLinks: SANITY CHECK] Initializing library...');
+      console.log('[SableSmartLinks] Initializing library...');
     }
+    
+    // Initialize the TextAgentEngine
+    if (this.textAgentEngine) {
+      this.textAgentEngine.init();
+    }
+    
     const params = parseUrlParameters();
     const walkthroughId = params[this.config.walkthrough.paramName];
     

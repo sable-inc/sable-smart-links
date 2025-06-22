@@ -14,20 +14,20 @@ export class PopupStateManager {
             primaryColor: config.primaryColor || '#FFFFFF',
             width: config.width || 380,
             onChatSubmit: config.onChatSubmit || (() => {}),
-            onWalkthroughSelect: config.onWalkthroughSelect || (() => {}),
             customButtons: config.customButtons || [],
             initialMessage: config.initialMessage || null,
-            shortcuts: config.shortcuts || [],
-            productWalkthroughs: config.productWalkthroughs || []
+            sections: config.sections || [],
+            enableChat: config.enableChat !== undefined ? config.enableChat : true
         };
 
         // State variables
-        this.currentState = 'textInput'; // possible states: 'textInput', 'expanded', 'messages', 'minimized'
+        // If chat is disabled, start in expanded state with shortcuts
+        this.currentState = this.config.enableChat ? 'textInput' : 'expanded';
         this.previousState = null; // Store the state before minimization
         this.messages = [];
         
         // If we have an initial message, add it and start in messages state
-        if (this.config.initialMessage) {
+        if (this.config.initialMessage && this.config.enableChat) {
             this.messages.push({
                 role: 'assistant',
                 content: this.config.initialMessage,
@@ -37,11 +37,6 @@ export class PopupStateManager {
         }
         
         this.chatInput = '';
-        // Only use shortcuts from config, no defaults
-        this.shortcuts = this.config.shortcuts || [];
-        
-        // Only use product walkthroughs from config, no defaults
-        this.productWalkthroughs = this.config.productWalkthroughs || [];
         
         // Dragging state
         this.position = { top: 360, left: 660 };
@@ -212,29 +207,7 @@ export class PopupStateManager {
         }
     }
 
-    handleShortcutSelect = (shortcut) => {
-        this.chatInput = shortcut;
-        this.handleSubmit();
-    }
-    
-    handleWalkthroughSelect = (walkthrough) => {
-        // If walkthrough is an object with url property, navigate or trigger action
-        if (typeof walkthrough === 'object' && walkthrough.url) {
-            console.log('Navigating to walkthrough:', walkthrough.url);
-            
-            // Actually navigate to the URL
-            if (walkthrough.url.startsWith('/') || walkthrough.url.startsWith('http')) {
-                window.location.href = walkthrough.url;
-            }
-            
-            // Also call the configured handler with the walkthrough object
-            this.config.onWalkthroughSelect(walkthrough);
-        } else {
-            // Fallback to treating it as a regular query
-            this.chatInput = typeof walkthrough === 'object' ? walkthrough.text : walkthrough;
-            this.handleSubmit();
-        }
-    }
+    // No legacy handlers needed - sections handle their own selection logic
 
     transitionTo(newState) {
         console.log(`Transitioning from ${this.currentState} to ${newState}`);
@@ -384,6 +357,12 @@ export class PopupStateManager {
                 break;
 
             case 'textInput':
+                // If chat is disabled, switch to expanded state instead
+                if (!this.config.enableChat) {
+                    this.transitionTo('expanded');
+                    return;
+                }
+                
                 this.components.textInputOnly = new TextInputOnly({
                     onSubmit: this.handleSubmit,
                     onInputChange: this.handleInputChange,
@@ -397,28 +376,30 @@ export class PopupStateManager {
                 break;
 
             case 'expanded':
-                const chatInput = new ChatInput({
+                const chatInput = this.config.enableChat ? new ChatInput({
                     value: this.chatInput,
                     onChange: (e) => this.handleInputChange(e),
                     onSubmit: () => this.handleSubmit(),
                     platform: this.config.platform,
                     primaryColor: this.config.primaryColor
-                });
+                }) : null;
 
                 this.components.expandedWithShortcuts = new ExpandedWithShortcuts({
-                    shortcuts: this.shortcuts,
-                    productWalkthroughs: this.productWalkthroughs,
-                    onQuerySelect: this.handleShortcutSelect,
-                    onWalkthroughSelect: this.handleWalkthroughSelect,
+                    sections: this.config.sections,
                     chatInput: chatInput,
                     primaryColor: this.config.primaryColor,
-                    onMinimize: this.handleMinimize,
                     onSubmit: () => this.handleSubmit()
                 });
                 component = this.components.expandedWithShortcuts;
                 break;
 
             case 'messages':
+                // If chat is disabled, switch to expanded state instead
+                if (!this.config.enableChat) {
+                    this.transitionTo('expanded');
+                    return;
+                }
+                
                 console.log('Creating ExpandedWithMessages component with messages:', this.messages);
                 const chatInputForMessages = new ChatInput({
                     value: this.chatInput,
@@ -432,7 +413,6 @@ export class PopupStateManager {
                     messages: this.messages,
                     chatInput: chatInputForMessages,
                     primaryColor: this.config.primaryColor,
-                    onMinimize: this.handleMinimize,
                     customButtons: this.config.customButtons
                 });
                 component = this.components.expandedWithMessages;
@@ -455,20 +435,3 @@ export class PopupStateManager {
         this.container.remove();
     }
 }
-
-
-
-            
-// Usage example:
-// const popup = new PopupStateManager({
-//     platform: 'Sable',
-//     primaryColor: '#FFFFFF',
-//     width: 380,
-//     onChatSubmit: async (message) => {
-//         // Handle chat submission
-//         return 'Response from assistant';
-//     }
-// });
-
-// // Mount to document body or any other element
-// popup.mount(document.body);

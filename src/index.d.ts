@@ -22,34 +22,32 @@ export interface SableSmartLinksConfig {
     defaultState?: 'expanded' | 'collapsed';
     /** Position of the text agent (default: 'right') */
     position?: 'top' | 'right' | 'bottom' | 'left';
-    /** Whether to enable chat input (default: false) */
-    enableChatInput?: boolean;
     /** Whether to persist state across page reloads (default: true) */
     persistState?: boolean;
-    
     /** Configuration for the final popup shown at the end of a text agent session */
     finalPopupConfig?: {
-      /** Enable the restart button in the final popup (default: true) */
-      enableRestart?: boolean;
-      /** Text for the restart button (default: 'Restart Guide') */
-      restartButtonText?: string;
-      /** Message shown in the final popup (default: 'How was your experience with this guide?') */
-      finalMessageText?: string;
-      /** List of shortcut messages to display in the final popup */
-      shortcuts?: string[];
-      /** List of product walkthroughs to display in the final popup */
-      productWalkthroughs?: Array<{
-        /** Display text for the walkthrough */
-        text: string;
-        /** URL to navigate to when the walkthrough is selected */
-        url: string;
+      /** Whether to enable chat input (default: true) */
+      enableChat?: boolean;
+      /** 
+       * Custom sections to display in the final popup
+       * Each section can have its own title, items, and behavior
+       */
+      sections?: Array<{
+        /** Title of the section */
+        title: string;
+        /** Icon to display next to items (emoji or URL) */
+        icon?: string;
+        /** Items to display in this section */
+        items: Array<{
+          /** Display text for the item */
+          text: string;
+          /** Additional data needed for the handler */
+          data?: any;
+        }>;
+        /** Handler function to execute when an item in this section is selected */
+        onSelect: (item: any) => void;
       }>;
-      /** Whether to show the shortcuts section (default: true) */
-      showShortcuts?: boolean;
-      /** Whether to show the product walkthroughs section (default: true) */
-      showWalkthroughs?: boolean;
     };
-    
     /** Configuration for the trigger button */
     triggerButton?: {
       /** Enable the trigger button (default: false) */

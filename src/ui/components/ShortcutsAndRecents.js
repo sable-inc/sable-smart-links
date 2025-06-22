@@ -1,10 +1,7 @@
 // components/ShortcutsAndRecents.js
 export class ShortcutsAndRecents {
-    constructor({ shortcuts, productWalkthroughs, onQuerySelect, onWalkthroughSelect }) {
-        this.shortcuts = shortcuts;
-        this.productWalkthroughs = productWalkthroughs;
-        this.onQuerySelect = onQuerySelect;
-        this.onWalkthroughSelect = onWalkthroughSelect || onQuerySelect; // Fallback to onQuerySelect if no walkthrough handler
+    constructor({ sections }) {
+        this.sections = sections || [];
         this.element = this.createElement();
     }
 
@@ -17,18 +14,30 @@ export class ShortcutsAndRecents {
             padding: '0 0 16px 0',
         });
 
-        // Add Shortcuts section
-        container.appendChild(this.createSection('Shortcuts', this.shortcuts));
-        
-        // Add Product Walkthroughs section
-        if (this.productWalkthroughs && this.productWalkthroughs.length > 0) {
-            container.appendChild(this.createSection('Product Walkthroughs', this.productWalkthroughs, true));
+        // Render sections
+        if (this.sections && this.sections.length > 0) {
+            this.sections.forEach(section => {
+                container.appendChild(this.createSection(
+                    section.title,
+                    section.items,
+                    section.icon,
+                    section.onSelect
+                ));
+            });
         }
 
         return container;
     }
 
-    createSection(title, items, isWalkthrough = false) {
+    /**
+     * Creates a section with items, icon and handler
+     * @param {string} title - The section title
+     * @param {Array} items - Array of items to display
+     * @param {string} icon - Icon to display (emoji or URL)
+     * @param {Function} onSelectHandler - Handler function when an item is selected
+     * @returns {HTMLElement} - The section element
+     */
+    createSection(title, items, icon = '📄', onSelectHandler) {
         const section = document.createElement('div');
         Object.assign(section.style, {
             padding: '0 4px',
@@ -76,29 +85,25 @@ export class ShortcutsAndRecents {
                 itemElement.style.color = 'rgba(255, 255, 255, 0.5)';
             });
             
-            // Handle different item types and use appropriate handler
-            if (isWalkthrough) {
-                itemElement.addEventListener('click', () => this.onWalkthroughSelect(item));
-            } else {
-                itemElement.addEventListener('click', () => this.onQuerySelect(item));
-            }
+            // Use the provided handler function
+            itemElement.addEventListener('click', () => onSelectHandler(item));
 
-            const icon = document.createElement('span');
-            Object.assign(icon.style, {
+            const iconElement = document.createElement('span');
+            Object.assign(iconElement.style, {
                 fontSize: '12px',
                 opacity: '0.25',
                 color: 'rgba(255, 255, 255, 0.3)',
             });
             
-            // Use different icon for walkthroughs
-            icon.textContent = isWalkthrough ? '🔍' : '📖';
+            // Use the provided icon
+            iconElement.textContent = icon;
 
-            const text = document.createElement('span');
+            const textElement = document.createElement('span');
             // Handle both string items and object items with text property
-            text.textContent = typeof item === 'object' && item.text ? item.text : item;
+            textElement.textContent = typeof item === 'object' && item.text ? item.text : item;
 
-            itemElement.appendChild(icon);
-            itemElement.appendChild(text);
+            itemElement.appendChild(iconElement);
+            itemElement.appendChild(textElement);
             itemsContainer.appendChild(itemElement);
         });
 
