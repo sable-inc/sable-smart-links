@@ -5,6 +5,7 @@
 
 import { VoiceEngine } from './voiceEngine.js';
 import { debugLog } from '../config.js';
+import { AudioPlayer } from '../audio/lib/play/AudioPlayer.js';
 
 export class NovaVoiceEngine extends VoiceEngine {
     constructor(config) {
@@ -14,8 +15,13 @@ export class NovaVoiceEngine extends VoiceEngine {
       this.mediaStream = null;
       this.processor = null;
       this.sourceNode = null;
-      this.audioPlayer = null;
       this.sessionInitialized = false;
+      this.samplingRatio = 1;
+      this.TARGET_SAMPLE_RATE = 16000;
+      this.isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
+      
+      // Initialize the proper AudioPlayer
+      this.audioPlayer = new AudioPlayer();
     }
 
     async start() {
@@ -27,7 +33,7 @@ export class NovaVoiceEngine extends VoiceEngine {
         try {
             this.onStatusChange?.('Initializing...');
             
-            // Initialize audio context
+            // Initialize audio first (like the original)
             await this.initAudio();
             
             // Connect to WebSocket server
@@ -40,7 +46,7 @@ export class NovaVoiceEngine extends VoiceEngine {
             await this.startAudioStreaming();
             
             this.isActive = true;
-            this.onStatusChange?.('Active - Speak now');
+            this.onStatusChange?.('Streaming... Speak now');
             
             debugLog('info', 'Voice engine started successfully');
           } catch (error) {
@@ -79,6 +85,11 @@ export class NovaVoiceEngine extends VoiceEngine {
             this.socket.disconnect();
             }
     
+            // Stop the AudioPlayer
+            if (this.audioPlayer) {
+                this.audioPlayer.stop();
+            }
+    
             this.onStatusChange?.('Stopped');
             debugLog('info', 'Voice engine stopped');
         } catch (error) {
@@ -88,7 +99,9 @@ export class NovaVoiceEngine extends VoiceEngine {
 
     async initAudio() {
         try {
-          // Request microphone access
+          this.onStatusChange?.('Requesting microphone access...');
+          
+          // Request microphone access (exactly like original)
           this.mediaStream = await navigator.mediaDevices.getUserMedia({
             audio: {
               echoCancellation: true,
@@ -97,11 +110,23 @@ export class NovaVoiceEngine extends VoiceEngine {
             }
           });
     
-          // Create audio context
-          this.audioContext = new AudioContext({
-            sampleRate: 16000
-          });
+          // Create audio context (exactly like original)
+          if (this.isFirefox) {
+            this.audioContext = new AudioContext();
+          } else {
+            this.audioContext = new AudioContext({
+              sampleRate: this.TARGET_SAMPLE_RATE
+            });
+          }
     
+          // Calculate sampling ratio (exactly like original)
+          this.samplingRatio = this.audioContext.sampleRate / this.TARGET_SAMPLE_RATE;
+          debugLog('info', `AudioContext sampleRate: ${this.audioContext.sampleRate}, samplingRatio: ${this.samplingRatio}`);
+          
+          // Initialize the AudioPlayer
+          await this.audioPlayer.start();
+    
+          this.onStatusChange?.('Microphone ready');
           debugLog('info', 'Audio initialized successfully');
         } catch (error) {
           throw new Error(`Failed to initialize audio: ${error.message}`);
@@ -111,7 +136,13 @@ export class NovaVoiceEngine extends VoiceEngine {
     async connectWebSocket() {
         return new Promise((resolve, reject) => {
           try {
-            // Use Socket.IO client (assuming it's available globally)
+            this.onStatusChange?.('Connecting to server...');
+            
+            // Check if io is available globally
+            if (typeof io === 'undefined') {
+              throw new Error('Socket.IO client not available. Please include socket.io-client in your page.');
+            }
+    
             this.socket = io(this.config.serverUrl || 'ws://localhost:3001');
     
             this.socket.on('connect', () => {
@@ -160,17 +191,23 @@ export class NovaVoiceEngine extends VoiceEngine {
     async initializeSession() {
         if (!this.socket) throw new Error('WebSocket not connected');
     
-        // Send initialization events
-        this.socket.emit('promptStart');
-        
-        if (this.config.systemPrompt) {
-          this.socket.emit('systemPrompt', this.config.systemPrompt);
+        this.onStatusChange?.('Initializing session...');
+    
+        try {
+          // Send initialization events (exactly like original)
+          this.socket.emit('promptStart');
+          
+          if (this.config.systemPrompt) {
+            this.socket.emit('systemPrompt', this.config.systemPrompt);
+          }
+          
+          this.socket.emit('audioStart');
+          
+          this.sessionInitialized = true;
+          debugLog('info', 'Session initialized');
+        } catch (error) {
+          throw new Error(`Failed to initialize session: ${error.message}`);
         }
-        
-        this.socket.emit('audioStart');
-        
-        this.sessionInitialized = true;
-        debugLog('info', 'Session initialized');
     }
 
     async startAudioStreaming() {
@@ -178,45 +215,53 @@ export class NovaVoiceEngine extends VoiceEngine {
           throw new Error('Audio not initialized');
         }
     
-        // Create audio processing chain
+        // Create audio processing chain (exactly like original)
         this.sourceNode = this.audioContext.createMediaStreamSource(this.mediaStream);
-        this.processor = this.audioContext.createScriptProcessor(512, 1, 1);
+        
+        if (this.audioContext.createScriptProcessor) {
+          this.processor = this.audioContext.createScriptProcessor(512, 1, 1);
     
-        this.processor.onaudioprocess = (e) => {
-          if (!this.isActive) return;
+          this.processor.onaudioprocess = (e) => {
+            if (!this.isActive) return;
     
-          const inputData = e.inputBuffer.getChannelData(0);
-          const pcmData = new Int16Array(inputData.length);
+            const inputData = e.inputBuffer.getChannelData(0);
+            const numSamples = Math.round(inputData.length / this.samplingRatio);
+            const pcmData = this.isFirefox ? new Int16Array(numSamples) : new Int16Array(inputData.length);
     
-          // Convert to 16-bit PCM
-          for (let i = 0; i < inputData.length; i++) {
-            pcmData[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
-          }
+            // Convert to 16-bit PCM (exactly like original)
+            if (this.isFirefox) {
+              for (let i = 0; i < inputData.length; i++) {
+                pcmData[i] = Math.max(-1, Math.min(1, inputData[i * this.samplingRatio])) * 0x7FFF;
+              }
+            } else {
+              for (let i = 0; i < inputData.length; i++) {
+                pcmData[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
+              }
+            }
     
-          // Convert to base64 and send
-          const base64Data = this.arrayBufferToBase64(pcmData.buffer);
-          this.socket?.emit('audioInput', base64Data);
-        };
+            // Convert to base64 and send (exactly like original)
+            const base64Data = this.arrayBufferToBase64(pcmData.buffer);
+            this.socket?.emit('audioInput', base64Data);
+          };
     
-        this.sourceNode.connect(this.processor);
-        this.processor.connect(this.audioContext.destination);
+          this.sourceNode.connect(this.processor);
+          this.processor.connect(this.audioContext.destination);
+        }
     
         debugLog('info', 'Audio streaming started');
     }
 
     playAudio(audioData) {
-        if (!this.audioContext) return;
-    
+        if (!this.audioPlayer || !this.audioPlayer.initialized) {
+            debugLog('error', 'AudioPlayer not initialized');
+            return;
+        }
+
         try {
-          const audioBuffer = this.audioContext.createBuffer(1, audioData.length, 24000);
-          audioBuffer.getChannelData(0).set(audioData);
-    
-          const source = this.audioContext.createBufferSource();
-          source.buffer = audioBuffer;
-          source.connect(this.audioContext.destination);
-          source.start();
+            // Use the proper AudioPlayer instead of createBufferSource
+            this.audioPlayer.playAudio(audioData);
         } catch (error) {
-          debugLog('error', 'Error playing audio:', error);
+            debugLog('error', 'Error playing audio:', error);
         }
     }
 
@@ -242,12 +287,13 @@ export class NovaVoiceEngine extends VoiceEngine {
     }
 
     arrayBufferToBase64(buffer) {
+        // Use the exact same method as the original
+        const binary = [];
         const bytes = new Uint8Array(buffer);
-        let binary = '';
         for (let i = 0; i < bytes.byteLength; i++) {
-          binary += String.fromCharCode(bytes[i]);
+          binary.push(String.fromCharCode(bytes[i]));
         }
-        return window.btoa(binary);
+        return btoa(binary.join(''));
     }
 }
 

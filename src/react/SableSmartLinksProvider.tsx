@@ -27,6 +27,12 @@ interface SableSmartLinksContextType {
     primaryColor?: string;
     parent?: HTMLElement;
   }) => { unmount: () => void; mount: (newParent: HTMLElement) => void; } | null;
+  
+  // Voice Agent methods
+  toggleVoiceChat: () => Promise<void>;
+  isVoiceChatActive: () => boolean;
+  enableVoiceChat: (voiceConfig?: VoiceConfig) => void;
+  disableVoiceChat: () => Promise<void>;
 }
 
 const SableSmartLinksContext = createContext<SableSmartLinksContextType | null>(null);
@@ -37,6 +43,23 @@ export interface SableSmartLinksProviderProps {
   autoInit?: boolean;
   walkthroughs?: Record<string, WalkthroughStep[]>;
   textAgents?: Record<string, TextAgentStep[]>;
+  voice?: {
+    enabled?: boolean;
+    engine?: 'nova';
+    serverUrl?: string;
+    systemPrompt?: string;
+    ui?: {
+      position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+      buttonText?: {
+        start?: string;
+        stop?: string;
+      };
+      theme?: {
+        primaryColor?: string;
+        backgroundColor?: string;
+      };
+    };
+  };
 }
 
 /**
@@ -45,6 +68,7 @@ export interface SableSmartLinksProviderProps {
  */
 export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = ({
   config = {},
+  voice = {},
   children,
   autoInit = true,
   walkthroughs = {},
@@ -54,13 +78,21 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
   const isMounted = useRef(false);
 
   useEffect(() => {
-    // Only run on client-side
     if (!isBrowser) return;
     
-    isMounted.current = true;
+    // Merge voice prop with config.voice (voice prop takes precedence)
+    const mergedConfig = {
+      ...config,
+      voice: {
+        ...config.voice,  // Base voice config
+        ...voice          // Override with voice prop
+      }
+    };
     
-    // Create a new instance with the provided config
-    sableInstance.current = new SableSmartLinks(config);
+    console.log('[SableSmartLinksProvider] Merged config:', mergedConfig);
+    sableInstance.current = new SableSmartLinks(mergedConfig);
+    
+    isMounted.current = true;
     
     // Register any walkthroughs provided via props
     Object.entries(walkthroughs).forEach(([id, steps]) => {
@@ -85,7 +117,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
         sableInstance.current.endTextAgent();
       }
     };
-  }, [config, autoInit, walkthroughs, textAgents]);
+  }, [config, autoInit, walkthroughs, textAgents, voice]);
   
   const contextValue = {
     // Walkthrough methods
@@ -164,6 +196,20 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
         return sableInstance.current.showPopup(options);
       }
       return null;
+    },
+    
+    // Voice methods
+    toggleVoiceChat: async () => {
+      if (sableInstance.current) {
+        await sableInstance.current.toggleVoiceChat();
+      }
+    },
+    
+    isVoiceChatActive: () => {
+      if (sableInstance.current) {
+        return sableInstance.current.isVoiceChatActive();
+      }
+      return false;
     }
   };
 

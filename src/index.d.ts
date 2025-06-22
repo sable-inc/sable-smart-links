@@ -27,7 +27,44 @@ export interface SableSmartLinksConfig {
     /** Whether to persist state across page reloads (default: true) */
     persistState?: boolean;
   };
+  
+    /* --------------------------------------------------------------------- */
+    /* ----------------------  NEW  VOICE-AGENT BLOCK  --------------------- */
+    /* --------------------------------------------------------------------- */
+  
+  voice?: {
+    /** Turn the voice popup on (default: false) */
+    enabled?: boolean;
+
+    /** Low-level engine to use */
+    engine?: 'nova' | 'openai' | 'custom';
+
+    /** WebSocket endpoint, e.g. `ws://localhost:3001` */
+    serverUrl?: string;
+
+    /** System prompt sent at `promptStart` */
+    systemPrompt?: string;
+
+    /** Popup look-and-feel */
+    ui?: {
+      /** Screen corner for the widget (default: bottom-right) */
+      position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+
+      buttonText?: {
+        start?: string;   // text before session starts   (default: “Start Voice Chat”)
+        stop?: string;    // text while session is active (default: “End Chat”)
+      };
+
+      theme?: {
+        /** Primary colour for buttons / accents */
+        primaryColor?: string;
+        /** Background colour of the popup */
+        backgroundColor?: string;
+      };
+    };
+  };
 }
+
 
 /**
  * Type definitions for Smart Link walkthroughs
@@ -138,18 +175,18 @@ export class WalkthroughEngine {
 
 export class SableSmartLinks {
   constructor(config?: SableSmartLinksConfig);
-  
-  // Core methods
+
+  /* ------------- core ------------- */
   init(): void;
-  
-  // Walkthrough methods
+
+  /* ----- walkthrough API ---------- */
   restoreWalkthrough(): void;
   registerWalkthrough(id: string, steps: WalkthroughStep[]): void;
   startWalkthrough(walkthroughId: string): boolean;
   nextWalkthroughStep(): void;
   endWalkthrough(): void;
-  
-  // Text Agent methods
+
+  /* ----- text-agent API ----------- */
   registerTextAgent(id: string, steps: TextAgentStep[]): void;
   startTextAgent(agentId?: string): void;
   nextTextAgentStep(): void;
@@ -157,8 +194,14 @@ export class SableSmartLinks {
   toggleTextAgentExpand(): void;
   sendTextAgentMessage(message: string): void;
   endTextAgent(): void;
-  
-  // Popup methods
+
+  /* ----- voice-agent helpers ------ */
+  /** Enable the voice widget at runtime (merges with existing config) */
+  enableVoiceChat(voiceConfig?: SableSmartLinksConfig['voice']): void;
+  /** Disable voice widget and close session */
+  disableVoiceChat(): Promise<void>;
+
+  /* ----- popup helpers ------------ */
   showPopup(options: PopupOptions): { unmount: () => void; mount: (parent: HTMLElement) => void } | null;
   showComplexPopup(options: PopupOptions): { unmount: () => void; mount: (parent: HTMLElement) => void } | null;
   closeAllPopups(): void;
