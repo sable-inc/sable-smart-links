@@ -26,6 +26,60 @@ export interface SableSmartLinksConfig {
     enableChatInput?: boolean;
     /** Whether to persist state across page reloads (default: true) */
     persistState?: boolean;
+    
+    /** Configuration for the final popup shown at the end of a text agent session */
+    finalPopupConfig?: {
+      /** Enable the restart button in the final popup (default: true) */
+      enableRestart?: boolean;
+      /** Text for the restart button (default: 'Restart Guide') */
+      restartButtonText?: string;
+      /** Message shown in the final popup (default: 'How was your experience with this guide?') */
+      finalMessageText?: string;
+      /** List of shortcut messages to display in the final popup */
+      shortcuts?: string[];
+      /** List of product walkthroughs to display in the final popup */
+      productWalkthroughs?: Array<{
+        /** Display text for the walkthrough */
+        text: string;
+        /** URL to navigate to when the walkthrough is selected */
+        url: string;
+      }>;
+      /** Whether to show the shortcuts section (default: true) */
+      showShortcuts?: boolean;
+      /** Whether to show the product walkthroughs section (default: true) */
+      showWalkthroughs?: boolean;
+    };
+    
+    /** Configuration for the trigger button */
+    triggerButton?: {
+      /** Enable the trigger button (default: false) */
+      enabled?: boolean;
+      /** Text displayed on the button (default: 'Start Guide') */
+      text?: string;
+      /** Position of the button when not attached to a specific element */
+      position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+      /** CSS selector for the element to attach the button to */
+      targetSelector?: string | null;
+      /** URL paths where the button should be shown (empty array means all paths) */
+      urlPaths?: string[];
+      /** Custom styles for the button */
+      style?: {
+        /** Background color of the button */
+        backgroundColor?: string;
+        /** Text color of the button */
+        color?: string;
+        /** Border radius of the button */
+        borderRadius?: string;
+        /** Padding of the button */
+        padding?: string;
+        /** Font size of the button text */
+        fontSize?: string;
+        /** Box shadow of the button */
+        boxShadow?: string;
+        /** Any other CSS properties */
+        [key: string]: string | undefined;
+      };
+    };
   };
 }
 
@@ -178,7 +232,7 @@ export interface PopupOptions {
   /** XPath or CSS selector that must exist for this popup to be shown */
   requiredSelector?: string;
   
-  id?: string; // <-- Add this line
+  id?: string; 
   /** The text to display in the popup */
   text: string;
   /** Width of the popup in pixels (default: 300) */

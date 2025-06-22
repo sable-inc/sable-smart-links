@@ -3,11 +3,11 @@
  * A library for creating guided product walkthroughs triggered by URL parameters
  */
 
-import { parseUrlParameters } from './core/urlParser.js';
 import { WalkthroughEngine } from './core/walkthroughEngine.js';
 import { TextAgentEngine } from './core/textAgentEngine.js';
-import { isBrowser, safeDocument } from './utils/browserAPI.js';
+import { isBrowser, safeDocument } from './utils/browserApi.js';
 import { addEvent, debounce } from './utils/events.js';
+import { parseUrlParameters } from './utils/urlParser.js';
 
 // Import Tavily features
 export * from './config';

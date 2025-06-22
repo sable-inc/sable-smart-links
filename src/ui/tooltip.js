@@ -2,7 +2,7 @@
  * Tooltip functionality for displaying messages
  */
 
-import { isBrowser, safeWindow, safeDocument } from '../utils/browserAPI.js';
+import { isBrowser, safeWindow, safeDocument } from '../utils/browserApi.js';
 import { getElementPosition, createPositionObserver, removePositionObserver, applyPositionWithDelay } from '../utils/positioning.js';
 
 const TOOLTIP_CLASS = 'sable-tooltip';

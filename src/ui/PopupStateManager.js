@@ -15,25 +15,34 @@ export class PopupStateManager {
             width: config.width || 380,
             onChatSubmit: config.onChatSubmit || (() => {}),
             onWalkthroughSelect: config.onWalkthroughSelect || (() => {}),
+            customButtons: config.customButtons || [],
+            initialMessage: config.initialMessage || null,
+            shortcuts: config.shortcuts || [],
+            productWalkthroughs: config.productWalkthroughs || []
         };
 
         // State variables
         this.currentState = 'textInput'; // possible states: 'textInput', 'expanded', 'messages', 'minimized'
         this.previousState = null; // Store the state before minimization
         this.messages = [];
-        this.chatInput = '';
-        this.shortcuts = [
-            'What are best practices using Tavily search?',
-            'How does billing work?',
-        ];
         
-        // Product walkthroughs with associated URLs or actions
-        this.productWalkthroughs = [
-            { text: 'Billing page tour', url: '/billing?walkthrough=billing' },
-            { text: 'API playground tour', url: '/playground?walkthrough=api-playground' },
-            { text: 'Team creation tour', url: '/settings?walkthrough=create-team' }
-        ];
-
+        // If we have an initial message, add it and start in messages state
+        if (this.config.initialMessage) {
+            this.messages.push({
+                role: 'assistant',
+                content: this.config.initialMessage,
+                timestamp: Date.now()
+            });
+            this.currentState = 'messages';
+        }
+        
+        this.chatInput = '';
+        // Only use shortcuts from config, no defaults
+        this.shortcuts = this.config.shortcuts || [];
+        
+        // Only use product walkthroughs from config, no defaults
+        this.productWalkthroughs = this.config.productWalkthroughs || [];
+        
         // Dragging state
         this.position = { top: 360, left: 660 };
         this.isDragging = false;
@@ -423,7 +432,8 @@ export class PopupStateManager {
                     messages: this.messages,
                     chatInput: chatInputForMessages,
                     primaryColor: this.config.primaryColor,
-                    onMinimize: this.handleMinimize
+                    onMinimize: this.handleMinimize,
+                    customButtons: this.config.customButtons
                 });
                 component = this.components.expandedWithMessages;
                 break;
@@ -462,13 +472,3 @@ export class PopupStateManager {
 
 // // Mount to document body or any other element
 // popup.mount(document.body);
-
-
-
-
-
-
-
-
-
-

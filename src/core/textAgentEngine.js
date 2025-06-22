@@ -3,8 +3,8 @@
  * Core functionality for managing and executing text agent guides using SimplePopupManager
  */
 
-import { waitForElement } from './elementSelector.js';
-import { isBrowser, safeWindow, safeDocument } from '../utils/browserAPI.js';
+import { waitForElement } from '../utils/elementSelector.js';
+import { isBrowser, safeWindow, safeDocument } from '../utils/browserApi.js';
 import { highlightElement, removeHighlight } from '../ui/highlight.js';
 import { SimplePopupManager } from '../ui/SimplePopupManager.js';
 import { PopupStateManager } from '../ui/PopupStateManager.js';
@@ -23,6 +23,26 @@ export class TextAgentEngine {
       autoStart: true,
       primaryColor: '#FFFFFF',
       defaultBoxWidth: 300,
+      finalPopupConfig: {
+        enableRestart: true,
+        restartButtonText: 'Restart Guide',
+        finalMessageText: 'How was your experience with this guide?'
+      },
+      triggerButton: {
+        enabled: false,
+        text: 'Start Guide',
+        position: 'bottom-right', // 'bottom-right', 'bottom-left', 'top-right', 'top-left'
+        targetSelector: null, // CSS selector to pin the button to
+        urlPaths: [], // Array of URL paths where the button should be shown
+        style: {
+          backgroundColor: '#4A90E2',
+          color: '#FFFFFF',
+          borderRadius: '20px',
+          padding: '8px 16px',
+          fontSize: '14px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
+        }
+      },
       ...config
     };
     
@@ -38,6 +58,8 @@ export class TextAgentEngine {
     this._finalPopupAdded = false;
     this.activeSteps = new Set(); // Track which steps are currently active
     this.registeredAgents = new Map(); // Store registered agents
+    this.lastActiveAgentId = null; // Track the ID of the last active agent
+    this.triggerButtonElement = null; // Reference to the trigger button element
     
     // Only set up observer if we're in a browser environment
     if (typeof window !== 'undefined' && typeof document !== 'undefined') {
@@ -57,6 +79,23 @@ export class TextAgentEngine {
     // Add these lines after other state management variables
     this.activeSteps = new Set(); // Track which steps are currently active
     this.registeredAgents = new Map(); // Store registered agents
+  }
+  
+  /**
+   * Initialize the engine
+   * @returns {TextAgentEngine} - The engine instance
+   */
+  init() {
+    if (this.config.debug) {
+      console.log('[SableTextAgent] Initializing');
+    }
+    
+    // Create trigger button if enabled
+    if (this.config.triggerButton.enabled) {
+      this._createTriggerButton();
+    }
+    
+    return this;
   }
   
   /**
@@ -742,19 +781,260 @@ export class TextAgentEngine {
   }
   
   /**
-   * Add a final popup step with the chat interface
+   * Create and position the trigger button
+   * @private
+   */
+  _createTriggerButton() {
+    // Check if we should show the button based on current URL path
+    if (!this._shouldShowTriggerButton()) {
+      return;
+    }
+    
+    // Create button element
+    const button = document.createElement('button');
+    button.textContent = this.config.triggerButton.text;
+    button.className = 'sable-text-agent-trigger';
+    
+    // Apply styles
+    Object.assign(button.style, {
+      position: 'fixed',
+      zIndex: '9999',
+      cursor: 'pointer',
+      border: 'none',
+      outline: 'none',
+      transition: 'all 0.3s ease',
+      ...this.config.triggerButton.style
+    });
+    
+    // Position the button if no target selector is provided
+    if (!this.config.triggerButton.targetSelector) {
+      this._positionTriggerButton(button);
+    }
+    
+    // Add click event listener
+    button.addEventListener('click', () => {
+      if (this.lastActiveAgentId) {
+        this.start(this.lastActiveAgentId);
+      } else {
+        // Start the first registered agent if no specific agent was last used
+        const firstAgentId = Array.from(this.registeredAgents.keys())[0];
+        if (firstAgentId) {
+          this.start(firstAgentId);
+        } else {
+          console.warn('[SableTextAgent] No agents registered to start');
+        }
+      }
+    });
+    
+    // Add hover effect
+    button.addEventListener('mouseenter', () => {
+      button.style.transform = 'scale(1.05)';
+    });
+    
+    button.addEventListener('mouseleave', () => {
+      button.style.transform = 'scale(1)';
+    });
+    
+    // Store reference to the button
+    this.triggerButtonElement = button;
+    
+    // If there's a target selector, wait for the element and append the button
+    if (this.config.triggerButton.targetSelector) {
+      this._attachButtonToTarget();
+    } else {
+      // Otherwise, append to body
+      document.body.appendChild(button);
+    }
+    
+    // Add URL change listener to show/hide button based on path
+    this._addUrlChangeListener();
+  }
+  
+  /**
+   * Check if the trigger button should be shown based on current URL path
+   * @private
+   * @returns {boolean} - Whether the button should be shown
+   */
+  _shouldShowTriggerButton() {
+    // If no URL paths are specified, show on all paths
+    if (!this.config.triggerButton.urlPaths || this.config.triggerButton.urlPaths.length === 0) {
+      return true;
+    }
+    
+    const currentPath = window.location.pathname;
+    
+    // Check if current path matches any of the specified paths
+    return this.config.triggerButton.urlPaths.some(path => {
+      // Support exact match
+      if (path === currentPath) {
+        return true;
+      }
+      
+      // Support wildcard match (e.g., '/products/*')
+      if (path.endsWith('*')) {
+        const basePath = path.slice(0, -1);
+        return currentPath.startsWith(basePath);
+      }
+      
+      return false;
+    });
+  }
+  
+  /**
+   * Position the trigger button based on the position config
+   * @private
+   * @param {HTMLElement} button - The button element
+   */
+  _positionTriggerButton(button) {
+    const position = this.config.triggerButton.position || 'bottom-right';
+    
+    switch (position) {
+      case 'bottom-right':
+        Object.assign(button.style, {
+          bottom: '20px',
+          right: '20px'
+        });
+        break;
+      case 'bottom-left':
+        Object.assign(button.style, {
+          bottom: '20px',
+          left: '20px'
+        });
+        break;
+      case 'top-right':
+        Object.assign(button.style, {
+          top: '20px',
+          right: '20px'
+        });
+        break;
+      case 'top-left':
+        Object.assign(button.style, {
+          top: '20px',
+          left: '20px'
+        });
+        break;
+      default:
+        // Default to bottom-right
+        Object.assign(button.style, {
+          bottom: '20px',
+          right: '20px'
+        });
+    }
+  }
+  
+  /**
+   * Attach the trigger button to a target element
+   * @private
+   */
+  async _attachButtonToTarget() {
+    if (!this.config.triggerButton.targetSelector || !this.triggerButtonElement) {
+      return;
+    }
+    
+    try {
+      const targetElement = await waitForElement(this.config.triggerButton.targetSelector);
+      
+      if (targetElement) {
+        // Reset position styles when attaching to a target
+        Object.assign(this.triggerButtonElement.style, {
+          position: 'relative',
+          top: 'auto',
+          right: 'auto',
+          bottom: 'auto',
+          left: 'auto'
+        });
+        
+        targetElement.appendChild(this.triggerButtonElement);
+        
+        if (this.config.debug) {
+          console.log(`[SableTextAgent] Attached trigger button to element: ${this.config.triggerButton.targetSelector}`);
+        }
+      }
+    } catch (error) {
+      console.error(`[SableTextAgent] Failed to attach trigger button to target: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Add listener for URL changes to show/hide the trigger button
+   * @private
+   */
+  _addUrlChangeListener() {
+    if (!this.triggerButtonElement) return;
+    
+    // Function to update button visibility
+    const updateButtonVisibility = () => {
+      if (this._shouldShowTriggerButton()) {
+        this.triggerButtonElement.style.display = '';
+      } else {
+        this.triggerButtonElement.style.display = 'none';
+      }
+    };
+    
+    // Listen for popstate events (browser back/forward)
+    window.addEventListener('popstate', updateButtonVisibility);
+    
+    // Use a MutationObserver to detect URL changes from client-side routing
+    const observer = new MutationObserver(debounce(() => {
+      updateButtonVisibility();
+    }, 100));
+    
+    // Observe the document title as it often changes with client-side routing
+    observer.observe(document.querySelector('title'), { subtree: true, characterData: true, childList: true });
+  }
+  
+  /**
+   * Add a final popup step with the chat interface and restart button
    * @private
    */
   _addFinalPopupStep() {
+    // Save the current agent ID before showing the final popup
+    if (this.steps.length > 0) {
+      // Find which agent these steps belong to
+      for (const [id, agentSteps] of this.registeredAgents.entries()) {
+        // Check if the current steps match this agent's steps
+        const matchingSteps = this.steps.filter(step => 
+          agentSteps.some(agentStep => agentStep.id === step.id)
+        );
+        
+        if (matchingSteps.length > 0) {
+          this.lastActiveAgentId = id;
+          if (this.config.debug) {
+            console.log(`[SableTextAgent] Saved last active agent ID: ${id}`);
+          }
+          break;
+        }
+      }
+    }
+    
+    // Define shortcuts and product walkthroughs if configured
+    const shortcuts = this.config.finalPopupConfig?.shortcuts || [];
+    const productWalkthroughs = this.config.finalPopupConfig?.productWalkthroughs || [];
+    
     // Initialize PopupStateManager for the final step
     const popupManager = new PopupStateManager({
-      platform: 'Tavily',
+      platform: 'Sable',
       primaryColor: this.config.primaryColor || '#FFFFFF',
       width: 380,
-      onChatSubmit: async (message) => {
-        // Handle chat submission - can be customized based on your needs
-        console.log('Chat message received:', message);
-        return 'Thank you for your message. How else can I help you?';
+      // Add custom buttons including restart
+      customButtons: this.config.finalPopupConfig?.enableRestart ? [
+        {
+          text: this.config.finalPopupConfig?.restartButtonText || 'Restart Guide',
+          onClick: () => this._restartLastAgent(),
+          primary: true
+        }
+      ] : [],
+      initialMessage: this.config.finalPopupConfig?.finalMessageText || 'How was your experience with this guide?',
+      shortcuts: shortcuts,
+      productWalkthroughs: productWalkthroughs,
+      showShortcuts: this.config.finalPopupConfig?.showShortcuts !== false && shortcuts.length > 0,
+      showWalkthroughs: this.config.finalPopupConfig?.showWalkthroughs !== false && productWalkthroughs.length > 0,
+      // Disable chat input for the final popup
+      enableChatInput: false,
+      onWalkthroughSelect: (walkthrough) => {
+        if (walkthrough && walkthrough.url) {
+          window.location.href = walkthrough.url;
+        }
       }
     });
     
@@ -772,5 +1052,43 @@ export class TextAgentEngine {
     if (this.observer) {
       this.observer.disconnect();
     }
+    
+    // Remove trigger button if it exists
+    if (this.triggerButtonElement && this.triggerButtonElement.parentNode) {
+      this.triggerButtonElement.parentNode.removeChild(this.triggerButtonElement);
+      this.triggerButtonElement = null;
+    }
+  }
+  
+  /**
+   * Restart the last active text agent
+   * @private
+   */
+  _restartLastAgent() {
+    if (!this.lastActiveAgentId) {
+      console.warn('[SableTextAgent] No last active agent to restart');
+      return;
+    }
+    
+    if (this.config.debug) {
+      console.log(`[SableTextAgent] Restarting agent: ${this.lastActiveAgentId}`);
+    }
+    
+    // End the current session (including removing the final popup)
+    this.end();
+    
+    // Reset state
+    this._finalPopupAdded = false;
+    
+    // Get the steps for the last active agent
+    const steps = this.registeredAgents.get(this.lastActiveAgentId);
+    if (!steps || steps.length === 0) {
+      console.warn(`[SableTextAgent] No steps found for agent: ${this.lastActiveAgentId}`);
+      return;
+    }
+    
+    // Set the steps and start from the beginning
+    this.steps = steps;
+    this.start();
   }
 }

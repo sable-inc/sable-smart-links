@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, createContext, useContext } from 'react';
 import { SableSmartLinks, SableSmartLinksConfig, WalkthroughStep, TextAgentStep } from '../index';
-import { isBrowser } from '../utils/browserAPI';
+import { isBrowser } from '../utils/browserApi';
 
 interface SableSmartLinksContextType {
   // Walkthrough methods
