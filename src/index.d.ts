@@ -284,10 +284,15 @@ export interface TextAgentStep {
   fontSize?: string;
   
   /** Main text content to display in the popup */
-  text: string;
+  text: string | ((dataUtils?: {
+    setStepData: (key: string, value: any) => void;
+    getStepData: (key: string) => any;
+    getAllStepData: () => Record<string, any>;
+    clearStepData: () => void;
+  }) => string);
   
   /** Secondary text content (displayed in a different style) */
-  secondaryText?: string;
+  secondaryText?: string | (() => string);
   
   /** Width of the popup box in pixels */
   boxWidth?: number;
@@ -296,7 +301,12 @@ export interface TextAgentStep {
   buttonType?: 'arrow' | 'yes-no';
   
   /** Callback function when proceed/continue button is clicked */
-  onProceed?: ((textInput?: string) => void | Promise<void>);
+  onProceed?: ((textInput?: string, dataUtils?: {
+    setStepData: (key: string, value: any) => void;
+    getStepData: (key: string) => any;
+    getAllStepData: () => Record<string, any>;
+    clearStepData: () => void;
+  }) => void | Promise<void>);
   
   /** Callback function for yes/no buttons (receives boolean indicating 'yes' selection) */
   onYesNo?: (isYes: boolean) => void;

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, createContext, useContext } from 'react';
+import React, { useEffect, useRef, createContext, useContext, useState } from 'react';
 import { SableSmartLinks, SableSmartLinksConfig, WalkthroughStep, TextAgentStep } from '../index';
 import { isBrowser } from '../utils/browserApi';
 
@@ -28,6 +28,12 @@ interface SableSmartLinksContextType {
     primaryColor?: string;
     parent?: HTMLElement;
   }) => { unmount: () => void; mount: (newParent: HTMLElement) => void; } | null;
+  
+  // Shared data methods for passing data between steps
+  setStepData: (key: string, value: any) => void;
+  getStepData: (key: string) => any;
+  getAllStepData: () => Record<string, any>;
+  clearStepData: () => void;
 }
 
 const SableSmartLinksContext = createContext<SableSmartLinksContextType | null>(null);
@@ -38,6 +44,7 @@ export interface SableSmartLinksProviderProps {
   autoInit?: boolean;
   walkthroughs?: Record<string, WalkthroughStep[]>;
   textAgents?: Record<string, TextAgentStep[]>;
+  initialStepData?: Record<string, any>;
 }
 
 /**
@@ -49,10 +56,120 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
   children,
   autoInit = true,
   walkthroughs = {},
-  textAgents = {}
+  textAgents = {},
+  initialStepData = {}
 }) => {
   const sableInstance = useRef<SableSmartLinks | null>(null);
   const isMounted = useRef(false);
+  const [stepData, setStepDataState] = useState<Record<string, any>>(initialStepData);
+  // Use a ref to track the latest step data for immediate access
+  const stepDataRef = useRef<Record<string, any>>(initialStepData);
+
+  // Keep the ref in sync with state
+  useEffect(() => {
+    stepDataRef.current = stepData;
+  }, [stepData]);
+
+  // Function to update step data
+  const setStepData = (key: string, value: any) => {
+    // Update both the state and the ref immediately
+    stepDataRef.current = {
+      ...stepDataRef.current,
+      [key]: value
+    };
+    
+    setStepDataState(prevData => {
+      const newData = {
+        ...prevData,
+        [key]: value
+      };
+      return newData;
+    });
+  };
+
+  // Function to get step data - always use the ref for most current value
+  const getStepData = (key: string) => {
+    // Always use the ref for immediate access to latest data
+    const value = stepDataRef.current[key];
+    return value;
+  };
+
+  // Function to get all step data
+  const getAllStepData = () => {
+    return stepData;
+  };
+
+  // Function to clear all step data
+  const clearStepData = () => {
+    setStepDataState({});
+  };
+
+  // Process text agent steps to inject data access
+  const processTextAgentSteps = (id: string, steps: TextAgentStep[]): TextAgentStep[] => {
+    return steps.map(step => {
+      // Create a new step object with the same properties
+      const processedStep = { ...step };
+      
+      // Handle text property
+      if (typeof processedStep.text === 'string') {
+        // If text is a string, convert it to a function that can access step data
+        const originalText = processedStep.text;
+        processedStep.text = () => {
+          try {
+            // Try to interpolate any {{variable}} in the text using the ref for latest data
+            return originalText.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+              const trimmedKey = key.trim();
+              const value = stepDataRef.current[trimmedKey];
+              return value !== undefined ? String(value) : match;
+            });
+          } catch (e) {
+            console.error('Error processing text template:', e);
+            return originalText;
+          }
+        };
+      } else if (typeof processedStep.text === 'function') {
+        // If text is already a function, wrap it to provide access to fresh data utilities
+        const originalTextFn = processedStep.text;
+        processedStep.text = () => {
+          // Create fresh dataUtils with current ref data each time the function is called
+          const freshDataUtils = {
+            setStepData,
+            getStepData: (key: string) => {
+              const value = stepDataRef.current[key];
+              return value;
+            },
+            getAllStepData: () => stepDataRef.current,
+            clearStepData
+          };
+          return originalTextFn(freshDataUtils);
+        };
+      }
+      
+      // Wrap onProceed to provide access to step data
+      if (processedStep.onProceed) {
+        const originalOnProceed = processedStep.onProceed;
+        processedStep.onProceed = async (textInput?: string) => {
+          // Create fresh dataUtils with current ref data each time the function is called
+          const freshDataUtils = {
+            setStepData,
+            getStepData: (key: string) => {
+              const value = stepDataRef.current[key];
+              return value;
+            },
+            getAllStepData: () => {
+              return stepDataRef.current;
+            },
+            clearStepData
+          };
+          
+          // Provide the fresh step data methods to the original onProceed
+          return originalOnProceed(textInput, freshDataUtils);
+        };
+      }
+      
+      return processedStep;
+    });
+  };
 
   useEffect(() => {
     // Only run on client-side
@@ -68,9 +185,10 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
       sableInstance.current?.registerWalkthrough(id, steps);
     });
     
-    // Register any text agents provided via props
+    // Register any text agents provided via props with processed steps
     Object.entries(textAgents).forEach(([id, steps]) => {
-      sableInstance.current?.registerTextAgent(id, steps);
+      const processedSteps = processTextAgentSteps(id, steps);
+      sableInstance.current?.registerTextAgent(id, processedSteps);
     });
     
     // Initialize if autoInit is true
@@ -120,7 +238,8 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     // Text Agent methods
     registerTextAgent: (id: string, steps: TextAgentStep[]) => {
       if (sableInstance.current) {
-        sableInstance.current.registerTextAgent(id, steps);
+        const processedSteps = processTextAgentSteps(id, steps);
+        sableInstance.current.registerTextAgent(id, processedSteps);
       }
       return contextValue;
     },
@@ -176,7 +295,13 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
         return sableInstance.current.showPopup(options);
       }
       return null;
-    }
+    },
+    
+    // Step data methods
+    setStepData,
+    getStepData,
+    getAllStepData,
+    clearStepData
   };
 
   return (

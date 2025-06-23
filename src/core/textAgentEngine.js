@@ -528,17 +528,26 @@ export class TextAgentEngine {
    * @private
    */
   _createPopupForStep(step, targetElement) {
-    // Clean up any existing popup
-    this._cleanupCurrentStep();
+    if (this.config.debug) {
+      console.log('[SableTextAgent] Creating popup for step:', step);
+    }
     
-    // Configure popup options based on step
+    // Get the text content, handling both string and function types
+    const stepText = typeof step.text === 'function' ? step.text() : step.text;
+    const secondaryText = typeof step.secondaryText === 'function' ? step.secondaryText() : step.secondaryText;
+    
+    // Create popup options
     const popupOptions = {
-      text: step.text,
+      text: stepText,
+      secondaryText: secondaryText,
       boxWidth: step.boxWidth || this.config.defaultBoxWidth,
       buttonType: step.buttonType || 'arrow',
       primaryColor: step.primaryColor || this.config.primaryColor,
-      parent: safeDocument?.body || document.body,
+      minimizable: step.minimizable !== undefined ? step.minimizable : true,
+      startMinimized: step.startMinimized || false,
       includeTextBox: step.includeTextBox || false,
+      fontSize: step.fontSize || '15px',
+      parent: safeDocument?.body || document.body
     };
     
     // Set up callbacks
@@ -1065,7 +1074,7 @@ export class TextAgentEngine {
               targetElement.insertAdjacentElement('beforebegin', this.triggerButtonElement);
               break;
             default:
-              // Default to appending inside the target
+              // Default behavior - append inside the target
               targetElement.appendChild(this.triggerButtonElement);
           }
         } else {
