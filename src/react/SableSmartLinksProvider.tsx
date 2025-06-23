@@ -16,6 +16,7 @@ interface SableSmartLinksContextType {
   nextTextAgentStep: () => SableSmartLinksContextType;
   previousTextAgentStep: () => SableSmartLinksContextType;
   endTextAgent: () => SableSmartLinksContextType;
+  restartTextAgent: (stepId?: string | null, beforeRestartCallback?: (() => void) | null) => SableSmartLinksContextType;
   
   // Popup method
   showPopup: (options: {
@@ -146,6 +147,17 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     endTextAgent: () => {
       if (sableInstance.current) {
         sableInstance.current.endTextAgent();
+      }
+      return contextValue;
+    },
+    
+    restartTextAgent: (stepId?: string | null, beforeRestartCallback?: (() => void) | null) => {
+      if (sableInstance.current) {
+        // Using type assertion to access textAgentEngine which exists in the JS implementation
+        const instance = sableInstance.current as any;
+        if (instance.textAgentEngine) {
+          instance.textAgentEngine.restart(stepId, beforeRestartCallback);
+        }
       }
       return contextValue;
     },

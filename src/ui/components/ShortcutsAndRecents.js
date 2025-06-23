@@ -86,7 +86,15 @@ export class ShortcutsAndRecents {
             });
             
             // Use the provided handler function
-            itemElement.addEventListener('click', () => onSelectHandler(item));
+            itemElement.addEventListener('click', () => {
+                // Check if this item has a restartFromStep property
+                if (item.restartFromStep !== undefined) {
+                    // Item-level restartFromStep takes precedence
+                    onSelectHandler({ ...item, _restartRequested: true });
+                } else {
+                    onSelectHandler(item);
+                }
+            });
 
             const iconElement = document.createElement('span');
             Object.assign(iconElement.style, {

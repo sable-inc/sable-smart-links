@@ -384,8 +384,36 @@ export class PopupStateManager {
                     primaryColor: this.config.primaryColor
                 }) : null;
 
+                // Process sections to handle restartFromStep
+                const processedSections = this.config.sections.map(section => {
+                    // Create a new onSelect handler that wraps the original one
+                    const originalOnSelect = section.onSelect;
+                    const wrappedOnSelect = (item) => {
+                        // Check if restart is requested (either at item or section level)
+                        if (item._restartRequested && (item.restartFromStep !== undefined || section.restartFromStep !== undefined)) {
+                            // Item-level restartFromStep takes precedence over section-level
+                            const stepId = item.restartFromStep !== undefined ? item.restartFromStep : section.restartFromStep;
+                            
+                            // Emit a custom event that TextAgentEngine can listen for
+                            const restartEvent = new CustomEvent('sable:textAgentRestart', {
+                                detail: { stepId: stepId }
+                            });
+                            window.dispatchEvent(restartEvent);
+                        }
+                        
+                        // Always call the original handler
+                        originalOnSelect(item);
+                    };
+                    
+                    // Return a new section object with the wrapped handler
+                    return {
+                        ...section,
+                        onSelect: wrappedOnSelect
+                    };
+                });
+                
                 this.components.expandedWithShortcuts = new ExpandedWithShortcuts({
-                    sections: this.config.sections,
+                    sections: processedSections,
                     chatInput: chatInput,
                     primaryColor: this.config.primaryColor,
                     onSubmit: () => this.handleSubmit()

@@ -95,6 +95,17 @@ export class TextAgentEngine {
       this._createTriggerButton();
     }
     
+    // Add event listener for section item restart events
+    if (typeof window !== 'undefined') {
+      window.addEventListener('sable:textAgentRestart', (event) => {
+        const { stepId } = event.detail;
+        if (this.config.debug) {
+          console.log(`[SableTextAgent] Received restart event for step: ${stepId}`);
+        }
+        this.restart(stepId);
+      });
+    }
+    
     return this;
   }
   

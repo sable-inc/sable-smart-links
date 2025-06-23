@@ -37,10 +37,19 @@ export interface SableSmartLinksConfig {
         title: string;
         /** Icon to display next to items (emoji or URL) */
         icon?: string;
+        /** Optional step ID to restart the text agent from when an item in this section is selected
+         * If provided, the text agent will restart from this step when any item in this section is selected
+         * If null or undefined (default), no restart will occur
+         */
+        restartFromStep?: string | null;
         /** Items to display in this section */
         items: Array<{
           /** Display text for the item */
           text: string;
+          /** Optional step ID to restart the text agent from when this specific item is selected
+           * This overrides the section-level restartFromStep if provided
+           */
+          restartFromStep?: string | null;
           /** Additional data needed for the handler */
           data?: any;
         }>;
