@@ -40,16 +40,20 @@ export interface SableSmartLinksConfig {
         /** Optional step ID to restart the text agent from when an item in this section is selected
          * If provided, the text agent will restart from this step when any item in this section is selected
          * If null or undefined (default), no restart will occur
+         * @property {boolean} skipTrigger - When true, any triggers (like triggerOnTyping) for the step will be ignored
+         *                                  and the popup will be displayed immediately
          */
-        restartFromStep?: string | null;
+        restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
         /** Items to display in this section */
         items: Array<{
           /** Display text for the item */
           text: string;
           /** Optional step ID to restart the text agent from when this specific item is selected
            * This overrides the section-level restartFromStep if provided
+           * @property {boolean} skipTrigger - When true, any triggers (like triggerOnTyping) for the step will be ignored
+           *                                  and the popup will be displayed immediately
            */
-          restartFromStep?: string | null;
+          restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
           /** Additional data needed for the handler */
           data?: any;
         }>;
@@ -357,6 +361,16 @@ export interface TextAgentStep {
     on?: 'start' | 'stop' | 'change';
     /** Delay in ms before showing popup when on='stop' (default: 1000) */
     stopDelay?: number;
+  };
+  
+  /** Trigger the step when a button is pressed */
+  triggerOnButtonPress?: {
+    /** CSS selector for the button element */
+    selector: string;
+    /** Event to listen for, defaults to 'click' */
+    event?: 'click' | 'mousedown' | 'mouseup' | 'focus' | 'blur';
+    /** Delay in ms before showing popup after the event (default: 0) */
+    delay?: number;
   };
   
   // /** Position of the popup relative to the viewport or target element */

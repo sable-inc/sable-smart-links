@@ -392,11 +392,24 @@ export class PopupStateManager {
                         // Check if restart is requested (either at item or section level)
                         if (item._restartRequested && (item.restartFromStep !== undefined || section.restartFromStep !== undefined)) {
                             // Item-level restartFromStep takes precedence over section-level
-                            const stepId = item.restartFromStep !== undefined ? item.restartFromStep : section.restartFromStep;
+                            const restartConfig = item.restartFromStep !== undefined ? item.restartFromStep : section.restartFromStep;
+                            
+                            // Handle different formats of restartFromStep
+                            let stepId = null;
+                            let skipTrigger = false;
+                            
+                            if (restartConfig === null || typeof restartConfig === 'string') {
+                                // Simple string or null format
+                                stepId = restartConfig;
+                            } else if (typeof restartConfig === 'object') {
+                                // Object format with stepId and skipTrigger
+                                stepId = restartConfig.stepId;
+                                skipTrigger = !!restartConfig.skipTrigger;
+                            }
                             
                             // Emit a custom event that TextAgentEngine can listen for
                             const restartEvent = new CustomEvent('sable:textAgentRestart', {
-                                detail: { stepId: stepId }
+                                detail: { stepId, skipTrigger }
                             });
                             window.dispatchEvent(restartEvent);
                         }

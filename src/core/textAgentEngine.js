@@ -98,11 +98,11 @@ export class TextAgentEngine {
     // Add event listener for section item restart events
     if (typeof window !== 'undefined') {
       window.addEventListener('sable:textAgentRestart', (event) => {
-        const { stepId } = event.detail;
+        const { stepId, skipTrigger } = event.detail;
         if (this.config.debug) {
-          console.log(`[SableTextAgent] Received restart event for step: ${stepId}`);
+          console.log(`[SableTextAgent] Received restart event for step: ${stepId}, skipTrigger: ${skipTrigger}`);
         }
-        this.restart(stepId);
+        this.restart({ stepId, skipTrigger });
       });
     }
     
@@ -196,33 +196,112 @@ export class TextAgentEngine {
   /**
    * Start the text agent
    * @param {string} [stepId] - Optional step ID to start from
+   * @param {boolean} [skipTrigger=false] - Whether to skip trigger checks and show the popup immediately
    */
-  start(stepId) {
+  start(stepId, skipTrigger = false) {
     if (this.isRunning) {
-      this.end();
+      console.warn('[SableTextAgent] Already running');
+      return;
+    }
+    
+    if (this.config.debug) {
+      console.log(`[SableTextAgent] Starting with skipTrigger: ${skipTrigger}`);
     }
     
     this.isRunning = true;
     
-    // Find step index if stepId is provided
+    // If a specific step ID is provided, find and set it as the current step
     if (stepId) {
       const stepIndex = this.steps.findIndex(step => step.id === stepId);
       if (stepIndex !== -1) {
         this.currentStepIndex = stepIndex;
       }
-    } else {
+    } else if (this.currentStepIndex === -1) {
+      // If no current step is set, start from the beginning
       this.currentStepIndex = 0;
     }
     
-    // Check for triggerOnTyping property
+    // Store the skipTrigger flag on the instance for use in _renderCurrentStep
+    this._skipTrigger = skipTrigger;
+    
+    // Get the current step
     const step = this.steps[this.currentStepIndex];
-    if (step && step.triggerOnTyping) {
-      this._setupTypingTrigger(step);
+    
+    // If skipTrigger is true, immediately render the step
+    if (skipTrigger) {
+      this._renderCurrentStep();
+      return;
+    }
+    
+    // Otherwise check for triggers
+    if (step) {
+      if (step.triggerOnTyping) {
+        this._setupTypingTrigger(step);
+      } else if (step.triggerOnButtonPress) {
+        this._setupButtonPressTrigger(step);
+      } else {
+        // No triggers, render immediately with a small delay
+        setTimeout(() => this._renderCurrentStep(), 100);
+      }
     } else {
-      setTimeout(() => this._renderCurrentStep(), 1200);
+      console.warn('[SableTextAgent] No step found at index:', this.currentStepIndex);
     }
     
     return this; // For chaining
+  }
+  
+  /**
+   * Set up button press trigger for a step
+   * @param {TextAgentStep} step - The step to set up trigger for
+   * @private
+   */
+  _setupButtonPressTrigger(step) {
+    if (!step.triggerOnButtonPress || !step.triggerOnButtonPress.selector) {
+      console.warn('[SableTextAgent] Invalid triggerOnButtonPress configuration');
+      this._renderCurrentStep(); // Fall back to immediate rendering
+      return;
+    }
+    
+    const { selector, event = 'click', delay = 0 } = step.triggerOnButtonPress;
+    
+    // Function to show the step after button press
+    const showStep = () => {
+      if (this.config.debug) {
+        console.log(`[SableTextAgent] Button press detected for step ${step.id}`);
+      }
+      
+      // Remove the event listener to prevent multiple triggers
+      document.querySelectorAll(selector).forEach(el => {
+        el.removeEventListener(event, handler);
+      });
+      
+      // Show the step after the specified delay
+      if (delay > 0) {
+        setTimeout(() => this._renderCurrentStep(), delay);
+      } else {
+        this._renderCurrentStep();
+      }
+    };
+    
+    // Event handler
+    const handler = () => {
+      showStep();
+    };
+    
+    // Wait for the element to be available in the DOM
+    waitForElement(selector).then(() => {
+      if (this.config.debug) {
+        console.log(`[SableTextAgent] Setting up button press trigger on ${selector} for event ${event}`);
+      }
+      
+      // Add event listener to all matching elements
+      document.querySelectorAll(selector).forEach(el => {
+        el.addEventListener(event, handler);
+      });
+    }).catch(error => {
+      console.error(`[SableTextAgent] Error setting up button press trigger: ${error}`);
+      this._renderCurrentStep(); // Fall back to immediate rendering
+    });
   }
   
   /**
@@ -1091,11 +1170,34 @@ export class TextAgentEngine {
   
   /**
    * Restart the text agent from a specific step
-   * @param {string|null} stepId - ID of the step to restart from, or null to restart from beginning
+   * @param {string|null|Object} stepIdOrConfig - ID of the step to restart from, or null to restart from beginning,
+   *                                           or an object with stepId and skipTrigger properties
    * @param {Function|null} beforeRestartCallback - Optional callback to execute before restarting
    * @public
    */
-  restart(stepId = null, beforeRestartCallback = null) {
+  restart(stepIdOrConfig = null, beforeRestartCallback = null) {
+    // Parse the stepIdOrConfig parameter
+    let stepId = null;
+    let skipTrigger = false;
+    
+    if (stepIdOrConfig === null || typeof stepIdOrConfig === 'string') {
+      stepId = stepIdOrConfig;
+    } else if (typeof stepIdOrConfig === 'object') {
+      // Handle both the event detail format and the direct config object format
+      if ('stepId' in stepIdOrConfig) {
+        stepId = stepIdOrConfig.stepId;
+        skipTrigger = !!stepIdOrConfig.skipTrigger;
+      } else if ('detail' in stepIdOrConfig) {
+        // This is an event object
+        stepId = stepIdOrConfig.detail.stepId;
+        skipTrigger = !!stepIdOrConfig.detail.skipTrigger;
+      }
+    }
+    
+    if (this.config.debug) {
+      console.log(`[SableTextAgent] Restarting with stepId: ${stepId}, skipTrigger: ${skipTrigger}`);
+    }
+    
     // Execute callback if provided
     if (typeof beforeRestartCallback === 'function') {
       beforeRestartCallback();
@@ -1128,7 +1230,7 @@ export class TextAgentEngine {
       if (this.config.debug) {
         console.log(`[SableTextAgent] Restarting agent from beginning: ${this.lastActiveAgentId}`);
       }
-      this.start();
+      this.start(null, skipTrigger);
       return;
     }
     
@@ -1141,11 +1243,11 @@ export class TextAgentEngine {
         console.log(`[SableTextAgent] Restarting agent from step ${stepId}: ${this.lastActiveAgentId}`);
       }
       // Start the agent from the specified step
-      this.start();
+      this.start(null, skipTrigger);
     } else {
       console.warn(`[SableTextAgent] Step with ID "${stepId}" not found, restarting from beginning`);
       this.currentStepIndex = 0;
-      this.start();
+      this.start(null, skipTrigger);
     }
   }
   
