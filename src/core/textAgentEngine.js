@@ -31,7 +31,7 @@ export class TextAgentEngine {
         enabled: false,
         text: 'Start Guide',
         position: 'bottom-right', // 'bottom-right', 'bottom-left', 'top-right', 'top-left'
-        targetSelector: null, // CSS selector to pin the button to
+        targetElement: null, // Element to attach the button to
         urlPaths: [], // Array of URL paths where the button should be shown
         style: {
           backgroundColor: '#4A90E2',
@@ -808,7 +808,7 @@ export class TextAgentEngine {
     });
     
     // Position the button if no target selector is provided
-    if (!this.config.triggerButton.targetSelector) {
+    if (!this.config.triggerButton.targetElement) {
       this._positionTriggerButton(button);
     }
     
@@ -840,7 +840,7 @@ export class TextAgentEngine {
     this.triggerButtonElement = button;
     
     // If there's a target selector, wait for the element and append the button
-    if (this.config.triggerButton.targetSelector) {
+    if (this.config.triggerButton.targetElement) {
       this._attachButtonToTarget();
     } else {
       // Otherwise, append to body
@@ -929,12 +929,23 @@ export class TextAgentEngine {
    * @private
    */
   async _attachButtonToTarget() {
-    if (!this.config.triggerButton.targetSelector || !this.triggerButtonElement) {
+    if (!this.config.triggerButton.targetElement || !this.triggerButtonElement) {
       return;
     }
     
     try {
-      const targetElement = await waitForElement(this.config.triggerButton.targetSelector);
+      let targetElement = null;
+      const targetConfig = this.config.triggerButton.targetElement;
+      
+      // Wait for element if configured
+      if (targetConfig.waitForElement) {
+        targetElement = await waitForElement(targetConfig.selector, {
+          timeout: targetConfig.waitTimeout || 5000
+        });
+      } else {
+        // Just try to select it immediately
+        targetElement = document.querySelector(targetConfig.selector);
+      }
       
       if (targetElement) {
         // Reset position styles when attaching to a target
@@ -946,10 +957,34 @@ export class TextAgentEngine {
           left: 'auto'
         });
         
-        targetElement.appendChild(this.triggerButtonElement);
+        // If position is specified, use it to position the button relative to the target
+        if (targetConfig.position) {
+          const position = targetConfig.position;
+          
+          switch (position) {
+            case 'top':
+              targetElement.insertAdjacentElement('beforebegin', this.triggerButtonElement);
+              break;
+            case 'right':
+              targetElement.insertAdjacentElement('afterend', this.triggerButtonElement);
+              break;
+            case 'bottom':
+              targetElement.insertAdjacentElement('afterend', this.triggerButtonElement);
+              break;
+            case 'left':
+              targetElement.insertAdjacentElement('beforebegin', this.triggerButtonElement);
+              break;
+            default:
+              // Default to appending inside the target
+              targetElement.appendChild(this.triggerButtonElement);
+          }
+        } else {
+          // Default behavior - append inside the target
+          targetElement.appendChild(this.triggerButtonElement);
+        }
         
         if (this.config.debug) {
-          console.log(`[SableTextAgent] Attached trigger button to element: ${this.config.triggerButton.targetSelector}`);
+          console.log(`[SableTextAgent] Attached trigger button to element: ${targetConfig.selector}`);
         }
       }
     } catch (error) {

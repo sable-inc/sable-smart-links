@@ -56,8 +56,17 @@ export interface SableSmartLinksConfig {
       text?: string;
       /** Position of the button when not attached to a specific element */
       position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
-      /** CSS selector for the element to attach the button to */
-      targetSelector?: string | null;
+      /** Element to attach the button to */
+      targetElement?: {
+        /** CSS selector for the target element */
+        selector: string;
+        /** Whether to wait for the element to appear in DOM */
+        waitForElement?: boolean;
+        /** Maximum time to wait for element in milliseconds */
+        waitTimeout?: number;
+        /** Position to render the button relative to target element */
+        position?: 'top' | 'right' | 'bottom' | 'left';
+      };
       /** URL paths where the button should be shown (empty array means all paths) */
       urlPaths?: string[];
       /** Custom styles for the button */
