@@ -169,6 +169,7 @@ export class SimplePopup {
 
         // Add button based on type
         if (this.config.buttonType === 'arrow') {
+            // Create the arrow button with click handler
             const arrowButton = new ArrowButton(() => {
                 const textInput = this.inputBox ? this.inputBox.value : '';
                 console.log('[SimplePopup] Input box exists:', !!this.inputBox);
@@ -176,13 +177,51 @@ export class SimplePopup {
                 
                 // Pass the string value directly
                 if (typeof this.config.onProceed === 'function') {
-                    console.log('function called arrow button')
-                    this.config.onProceed(textInput);
+                    console.log('function called arrow button');
+                    
+                    try {
+                        // Set button to loading state
+                        arrowButton.setLoading(true);
+                        
+                        // Call onProceed and handle Promise resolution
+                        const result = this.config.onProceed(textInput);
+                        
+                        // Handle both synchronous and asynchronous results
+                        if (result instanceof Promise) {
+                            result
+                                .catch(err => {
+                                    console.error('Error in onProceed:', err);
+                                    // Don't rethrow to prevent unhandled promise rejection
+                                })
+                                .finally(() => {
+                                    // Reset button state when done
+                                    arrowButton.setLoading(false);
+                                });
+                        } else {
+                            // For synchronous functions, reset after a short delay
+                            // to ensure the loading state is visible
+                            setTimeout(() => {
+                                arrowButton.setLoading(false);
+                            }, 60000);
+                        }
+                    } catch (error) {
+                        // Handle any synchronous errors
+                        console.error('Error in arrow button onProceed:', error);
+                        arrowButton.setLoading(false);
+                    }
                 }
             });
+            
+            // Store reference to the arrow button
+            this.arrowButton = arrowButton;
             buttonContainer.appendChild(arrowButton.render());
         } else {
-            const yesNoButtons = new YesNoButtons(this.config.onYesNo, this.config.primaryColor);
+            // For yes/no buttons, use the original implementation
+            const yesNoButtons = new YesNoButtons((isYes) => {
+                if (typeof this.config.onYesNo === 'function') {
+                    this.config.onYesNo(isYes);
+                }
+            }, this.config.primaryColor);
             buttonContainer.appendChild(yesNoButtons.render());
         }
 
@@ -216,62 +255,78 @@ export class SimplePopup {
                 color: '#222',
             });
             
-            // Create thinking indicator (hidden by default)
-            const thinkingIndicator = document.createElement('div');
-            thinkingIndicator.style.display = 'none';
-            thinkingIndicator.style.marginTop = '8px';
-            thinkingIndicator.style.fontSize = '14px';
-            thinkingIndicator.style.color = '#555';
-            thinkingIndicator.innerHTML = `
-                <div style="display: flex; align-items: center;">
-                    <div class="spinner" style="
-                        border: 2px solid #f3f3f3;
-                        border-top: 2px solid #3498db;
-                        border-radius: 50%;
-                        width: 12px;
-                        height: 12px;
-                        margin-right: 8px;
-                        animation: spin 1s linear infinite;
-                    "></div>
-                    <span>Thinking...</span>
-                </div>
-            `;
-            
-            // Add the spinner animation
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            `;
-            document.head.appendChild(style);
-            
             // Add enter key handler
             inputBox.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     const textInput = inputBox.value;
                     if (typeof this.config.onProceed === 'function') {
-                        // Show thinking indicator
                         inputBox.disabled = true;
-                        thinkingIndicator.style.display = 'block';
                         
                         // Call the onProceed function
-                        console.log('function called input box')
-                        Promise.resolve(this.config.onProceed(textInput))
-                            .finally(() => {
-                                // Restore the input box state when done
-                                inputBox.disabled = false;
-                                thinkingIndicator.style.display = 'none';
-                            });
+                        console.log('function called input box');
+                        
+                        // If we have an arrow button, set it to loading state too
+                        if (this.arrowButton) {
+                            this.arrowButton.setLoading(true);
+                        }
+                        
+                        try {
+                            // Disable the input box immediately
+                            inputBox.disabled = true;
+                            
+                            const result = this.config.onProceed(textInput);
+                            
+                            // Handle both synchronous and asynchronous results
+                            // Check if result is promise-like (has a then method)
+                            if (result && typeof result.then === 'function') {
+                                console.log('[SimplePopup] Input box: Detected async result, waiting for completion');
+                                // For promises, wait for completion before resetting state
+                                return Promise.resolve(result)
+                                    .catch(err => {
+                                        console.error('Error in onProceed:', err);
+                                        throw err; // Re-throw to propagate the error
+                                    })
+                                    .finally(() => {
+                                        console.log('[SimplePopup] Input box: Async operation completed, resetting state');
+                                        // Restore the input box state when done
+                                        inputBox.disabled = false;
+                                        
+                                        // Reset arrow button if it exists
+                                        if (this.arrowButton) {
+                                            this.arrowButton.setLoading(false);
+                                        }
+                                    });
+                            } else {
+                                console.log('[SimplePopup] Input box: Detected synchronous result');
+                                // For synchronous functions, reset after a short delay
+                                // to make the loading state visible
+                                setTimeout(() => {
+                                    inputBox.disabled = false;
+                                    if (this.arrowButton) {
+                                        this.arrowButton.setLoading(false);
+                                    }
+                                }, 60000);
+                                return result;
+                            }
+                        } catch (error) {
+                            // Handle any synchronous errors
+                            console.error('Error in onProceed:', error);
+                            
+                            // Reset states
+                            inputBox.disabled = false;
+                            if (this.arrowButton) {
+                                this.arrowButton.setLoading(false);
+                            }
+                            
+                            // Re-throw the error
+                            throw error;
+                        }
                     }
                 }
             });
             
             mainContainer.appendChild(inputBox);
-            mainContainer.appendChild(thinkingIndicator);
             this.inputBox = inputBox;
-            this.thinkingIndicator = thinkingIndicator;
         }
 
         return mainContainer;
@@ -431,25 +486,3 @@ export class SimplePopup {
         return this.element;
     }
 }
-
-// // Create a simple popup with arrow button
-// const popup = new SimplePopup({
-//     text: "Would you like to proceed?",
-//     boxWidth: 200,
-//     buttonType: 'arrow',
-//     onProceed: () => console.log('Proceeded'),
-//     primaryColor: '#FFFFFF'
-// });
-
-// document.body.appendChild(popup.render());
-
-// // Create a simple popup with yes/no buttons
-// const yesNoPopup = new SimplePopup({
-//     text: "Are you sure?",
-//     boxWidth: 200,
-//     buttonType: 'yes-no',
-//     onYesNo: (isYes) => console.log(isYes ? 'Yes clicked' : 'No clicked'),
-//     primaryColor: '#FFFFFF'
-// });
-
-// document.body.appendChild(yesNoPopup.render());
