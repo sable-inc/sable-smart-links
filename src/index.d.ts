@@ -101,7 +101,64 @@ export interface SableSmartLinksConfig {
       };
     };
   };
+  
+    /* --------------------------------------------------------------------- */
+    /* ----------------------  NEW  VOICE-AGENT BLOCK  --------------------- */
+    /* --------------------------------------------------------------------- */
+  
+  voice?: {
+    /** Turn the voice popup on (default: false) */
+    enabled?: boolean;
+
+    /** Low-level engine to use */
+    engine?: 'nova' | 'openai' | 'custom';
+
+    /** WebSocket endpoint, e.g. `ws://localhost:3001` */
+    serverUrl?: string;
+
+    /** System prompt sent at `promptStart` */
+    systemPrompt?: string;
+
+    /** Function calls/tools configuration */
+    tools?: VoiceToolConfig[];
+
+    /** Popup look-and-feel */
+    ui?: {
+      /** Screen corner for the widget (default: bottom-right) */
+      position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+
+      buttonText?: {
+        start?: string;   // text before session starts   (default: "Start Voice Chat")
+        stop?: string;    // text while session is active (default: "End Chat")
+      };
+
+      theme?: {
+        /** Primary colour for buttons / accents */
+        primaryColor?: string;
+        /** Background colour of the popup */
+        backgroundColor?: string;
+      };
+    };
+  };
 }
+
+
+/** Configuration for voice tools/function calls */
+export interface VoiceToolConfig {
+  /** Name of the tool */
+  name: string;
+  /** Description of what the tool does */
+  description: string;
+  /** JSON schema for the tool parameters */
+  parameters: {
+    type: "object";
+    properties: Record<string, any>;
+    required?: string[];
+  };
+  /** Handler function that gets called when the tool is used */
+  handler: (parameters: any) => Promise<any> | any;
+}
+
 
 /**
  * Type definitions for Smart Link walkthroughs
@@ -212,18 +269,18 @@ export class WalkthroughEngine {
 
 export class SableSmartLinks {
   constructor(config?: SableSmartLinksConfig);
-  
-  // Core methods
+
+  /* ------------- core ------------- */
   init(): void;
-  
-  // Walkthrough methods
+
+  /* ----- walkthrough API ---------- */
   restoreWalkthrough(): void;
   registerWalkthrough(id: string, steps: WalkthroughStep[]): void;
   startWalkthrough(walkthroughId: string): boolean;
   nextWalkthroughStep(): void;
   endWalkthrough(): void;
-  
-  // Text Agent methods
+
+  /* ----- text-agent API ----------- */
   registerTextAgent(id: string, steps: TextAgentStep[]): void;
   startTextAgent(agentId?: string): void;
   nextTextAgentStep(): void;
@@ -231,8 +288,15 @@ export class SableSmartLinks {
   toggleTextAgentExpand(): void;
   sendTextAgentMessage(message: string): void;
   endTextAgent(): void;
+
+  /* ----- voice-agent (minimal) ------ */
+  /** Start/stop voice chat */
+  toggleVoiceChat(): Promise<void>;
   
-  // Popup methods
+  /** Check if voice is active */
+  isVoiceChatActive(): boolean;
+
+  /* ----- popup helpers ------------ */
   showPopup(options: PopupOptions): { unmount: () => void; mount: (parent: HTMLElement) => void } | null;
   showComplexPopup(options: PopupOptions): { unmount: () => void; mount: (parent: HTMLElement) => void } | null;
   closeAllPopups(): void;

@@ -5,8 +5,11 @@
 
 import { WalkthroughEngine } from './core/walkthroughEngine.js';
 import { TextAgentEngine } from './core/textAgentEngine.js';
-import { isBrowser, safeDocument } from './utils/browserApi.js';
+import { NovaVoiceEngine } from './core/novaVoiceEngine.js';
+import { VoicePopup } from './ui/components/VoicePopup.js';
+import { isBrowser, safeDocument } from './utils/browserAPI.js';
 import { addEvent, debounce } from './utils/events.js';
+import { debugLog } from './config.js';
 import { parseUrlParameters } from './utils/urlParser.js';
 
 // Import Tavily features
@@ -19,6 +22,8 @@ class SableSmartLinks {
    * @param {SableSmartLinksConfig} config - Configuration options
    */
   constructor(config = {}) {
+    console.log('[SableSmartLinks] Constructor called with config:', config);
+    
     // Set default configuration
     this.config = {
       debug: false,
@@ -33,15 +38,46 @@ class SableSmartLinks {
         enableChatInput: false,
         persistState: true
       },
-      ...config,
-      // Deep merge for nested objects
-      walkthrough: {
-        ...(config.walkthrough || {})
+      voice: {
+        enabled: false,
+        engine: 'nova',
+        serverUrl: 'ws://localhost:3001',
+        systemPrompt: "You are a friend. The user and you will engage in a spoken dialog exchanging the transcripts of a natural real-time conversation. Keep your responses short, generally two or three sentences for chatty scenarios.",
+        tools: [], // Default: no tools
+        ui: {
+          position: 'bottom-right',
+          buttonText: {
+            start: 'Start Voice Chat',
+            stop: 'End Chat'
+          },
+          theme: {
+            primaryColor: '#FFFFFF',
+            backgroundColor: 'rgba(60, 60, 60, 0.9)'
+          }
+        }
       },
-      textAgent: {
-        ...(config.textAgent || {})
-      }
+      ...config
     };
+
+    // Deep merge for nested objects
+    if (config.walkthrough) {
+      this.config.walkthrough = { ...this.config.walkthrough, ...config.walkthrough };
+    }
+    if (config.textAgent) {
+      this.config.textAgent = { ...this.config.textAgent, ...config.textAgent };
+    }
+    if (config.voice) {
+      this.config.voice = { ...this.config.voice, ...config.voice };
+      if (config.voice.ui) {
+        this.config.voice.ui = { ...this.config.voice.ui, ...config.voice.ui };
+      }
+      if (config.voice.tools) {
+        this.config.voice.tools = config.voice.tools; // Replace entirely for tools
+      }
+    }
+
+    console.log('[SableSmartLinks] Final config:', this.config);
+    console.log('[SableSmartLinks] Voice enabled:', this.config.voice.enabled);
     
     // Initialize engines with their specific configs
     this.walkthroughEngine = new WalkthroughEngine({
@@ -53,6 +89,14 @@ class SableSmartLinks {
       debug: this.config.debug,
       ...this.config.textAgent
     });
+
+    // Initialize voice engine if enabled
+    if (this.config.voice.enabled) {
+      console.log('[SableSmartLinks] Voice is enabled, initializing...');
+      this.initializeVoiceEngine();
+    } else {
+      console.log('[SableSmartLinks] Voice is NOT enabled');
+    }
     
     // Bind methods
     this.showPopup = this.showPopup.bind(this);
@@ -61,6 +105,7 @@ class SableSmartLinks {
     this.nextTextAgentStep = this.nextTextAgentStep.bind(this);
     this.previousTextAgentStep = this.previousTextAgentStep.bind(this);
     this.endTextAgent = this.endTextAgent.bind(this);
+    this.toggleVoiceChat = this.toggleVoiceChat.bind(this);
     
     // Auto-start walkthrough if enabled and in browser
     const shouldAutoStart = this.config.walkthrough?.autoStart !== false;
@@ -72,8 +117,150 @@ class SableSmartLinks {
         this.init();
       }
     }
+    
+    console.log('[SableSmartLinks] Constructor finished. Voice engine:', !!this.voiceEngine);
   }
-  
+
+  /**
+   * Initialize voice engine and UI
+   * @private
+   */
+  initializeVoiceEngine() {
+    console.log('[SableSmartLinks] initializeVoiceEngine called');
+
+    try {
+      debugLog('info', 'Initializing voice engine...');
+      
+      // Create voice engine based on config
+      if (this.config.voice.engine === 'nova') {
+        console.log('[SableSmartLinks] Creating NovaVoiceEngine with config:', this.config.voice);
+        this.voiceEngine = new NovaVoiceEngine(this.config.voice);
+      } else {
+        debugLog('warn', 'Unknown voice engine:', this.config.voice.engine);
+        return;
+      }
+
+      // Set up voice engine callbacks
+      this.voiceEngine.setCallbacks({
+        onTextOutput: (text) => {
+          debugLog('info', 'Voice text output:', text);
+          if (this.voicePopup) {
+            this.voicePopup.addMessage(text, false);
+          }
+        },
+        onError: (error) => {
+          debugLog('error', 'Voice engine error:', error);
+          if (this.voicePopup) {
+            this.voicePopup.setStatus('Error: ' + error.message);
+            this.voicePopup.setActive(false);
+          }
+        },
+        onStatusChange: (status) => {
+          debugLog('info', 'Voice status:', status);
+          if (this.voicePopup) {
+            this.voicePopup.setStatus(status);
+          }
+        }
+      });
+
+      // Create voice popup
+      console.log('[SableSmartLinks] Creating VoicePopup with UI config:', this.config.voice.ui);
+      this.voicePopup = new VoicePopup({
+        ...this.config.voice.ui,
+        onToggle: () => this.toggleVoiceChat(),  // ← Arrow function preserves context
+        onMinimize: () => {
+          // Handle minimize if needed
+        }
+      });
+      console.log('[SableSmartLinks] VoicePopup created:', !!this.voicePopup);
+
+      // Mount voice popup to DOM
+      if (isBrowser) {
+        safeDocument.body.appendChild(this.voicePopup.render());
+        debugLog('info', 'Voice popup mounted to DOM');
+        console.log('[SableSmartLinks] Voice popup mounted to DOM');
+      }
+
+      debugLog('info', 'Voice engine initialized successfully');
+      console.log('[SableSmartLinks] Voice engine initialization complete');
+    } catch (error) {
+      console.error('[SableSmartLinks] Failed to initialize voice engine:', error);
+      debugLog('error', 'Failed to initialize voice engine:', error);
+    }
+  }
+
+  /**
+   * Toggle voice chat on/off
+   */
+  async toggleVoiceChat() {
+    console.log('[SableSmartLinks] toggleVoiceChat called');
+    console.log('[SableSmartLinks] this.voiceEngine exists:', !!this.voiceEngine);
+    console.log('[SableSmartLinks] this.config:', this.config);
+    
+    debugLog('info', 'Toggle voice chat called');
+    
+    if (!this.voiceEngine) {
+      console.error('[SableSmartLinks] Voice engine not initialized - attempting to initialize now');
+      
+      // Try to initialize it now if it wasn't initialized before
+      if (this.config.voice.enabled) {
+        this.initializeVoiceEngine();
+        // Wait a moment for initialization
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } else {
+        console.error('[SableSmartLinks] Voice is not enabled in config');
+        return;
+      }
+      
+      // Check again after initialization
+      if (!this.voiceEngine) {
+        console.error('[SableSmartLinks] Failed to initialize voice engine');
+        debugLog('error', 'Voice engine not initialized');
+        if (this.voicePopup) {
+          this.voicePopup.setStatus('Voice not available');
+        }
+        return;
+      }
+    }
+
+    try {
+      if (this.voiceEngine.isRunning()) {
+        // Stop voice chat
+        console.log('[SableSmartLinks] Stopping voice chat...');
+        await this.voiceEngine.stop();
+        
+        if (this.voicePopup) {
+          this.voicePopup.setActive(false);
+          this.voicePopup.setStatus('Stopped');
+        }
+      } else {
+        // Start voice chat
+        console.log('[SableSmartLinks] Starting voice chat...');
+        await this.voiceEngine.start();
+        
+        if (this.voicePopup) {
+          this.voicePopup.setActive(true);
+          this.voicePopup.setStatus('Starting...');
+        }
+      }
+    } catch (error) {
+      console.error('[SableSmartLinks] Error in toggleVoiceChat:', error);
+      
+      if (this.voicePopup) {
+        this.voicePopup.setStatus('Error: ' + error.message);
+        this.voicePopup.setActive(false);
+      }
+    }
+  }
+
+  /**
+   * Check if voice chat is currently active
+   * @returns {boolean} - Whether voice chat is active
+   */
+  isVoiceChatActive() {
+    return this.voiceEngine && this.voiceEngine.isRunning();
+  }
+
   /**
    * Initialize the library and check for walkthrough parameters
    */
@@ -308,6 +495,58 @@ class SableSmartLinks {
   closeAllPopups(exceptIds = []) {
     if (this.textAgentEngine && typeof this.textAgentEngine.closeAllPopups === 'function') {
       this.textAgentEngine.closeAllPopups(exceptIds);
+    }
+  }
+
+  /**
+   * Enable voice chat
+   * @param {VoiceConfig} voiceConfig - Voice configuration
+   */
+  enableVoiceChat(voiceConfig = {}) {
+    this.config.voice = {
+      ...this.config.voice,
+      enabled: true,
+      ...voiceConfig
+    };
+    
+    if (!this.voiceEngine) {
+      this.initializeVoiceEngine();
+    }
+  }
+
+  /**
+   * Disable voice chat
+   */
+  async disableVoiceChat() {
+    if (this.voiceEngine && this.voiceEngine.isRunning()) {
+      await this.voiceEngine.stop();
+    }
+    
+    if (this.voicePopup) {
+      this.voicePopup.destroy();
+      this.voicePopup = null;
+    }
+    
+    this.voiceEngine = null;
+    this.config.voice.enabled = false;
+  }
+
+  /**
+   * Cleanup and destroy the instance
+   */
+  destroy() {
+    // Stop and cleanup voice engine
+    if (this.voiceEngine) {
+      this.disableVoiceChat();
+    }
+    
+    // Cleanup other engines
+    if (this.textAgentEngine) {
+      this.textAgentEngine.destroy();
+    }
+    
+    if (this.walkthroughEngine) {
+      this.walkthroughEngine.end();
     }
   }
 }

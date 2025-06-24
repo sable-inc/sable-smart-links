@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, createContext, useContext, useState } from 'react';
-import { SableSmartLinks, SableSmartLinksConfig, WalkthroughStep, TextAgentStep } from '../index';
-import { isBrowser } from '../utils/browserApi';
+import { SableSmartLinks, SableSmartLinksConfig, WalkthroughStep, TextAgentStep, VoiceToolConfig } from '../index';
+import { isBrowser } from '../utils/browserAPI';
 
 interface SableSmartLinksContextType {
   // Walkthrough methods
@@ -29,6 +29,10 @@ interface SableSmartLinksContextType {
     parent?: HTMLElement;
   }) => { unmount: () => void; mount: (newParent: HTMLElement) => void; } | null;
   
+  // Voice Agent methods
+  toggleVoiceChat: () => Promise<void>;
+  isVoiceChatActive: () => boolean;
+
   // Shared data methods for passing data between steps
   setStepData: (key: string, value: any) => void;
   getStepData: (key: string) => any;
@@ -44,6 +48,24 @@ export interface SableSmartLinksProviderProps {
   autoInit?: boolean;
   walkthroughs?: Record<string, WalkthroughStep[]>;
   textAgents?: Record<string, TextAgentStep[]>;
+  voice?: {
+    enabled?: boolean;
+    engine?: 'nova';
+    serverUrl?: string;
+    systemPrompt?: string;
+    tools?: VoiceToolConfig[];
+    ui?: {
+      position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+      buttonText?: {
+        start?: string;
+        stop?: string;
+      };
+      theme?: {
+        primaryColor?: string;
+        backgroundColor?: string;
+      };
+    };
+  };
   initialStepData?: Record<string, any>;
 }
 
@@ -53,6 +75,7 @@ export interface SableSmartLinksProviderProps {
  */
 export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = ({
   config = {},
+  voice = {},
   children,
   autoInit = true,
   walkthroughs = {},
@@ -172,13 +195,21 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
   };
 
   useEffect(() => {
-    // Only run on client-side
     if (!isBrowser) return;
     
-    isMounted.current = true;
+    // Merge voice prop with config.voice (voice prop takes precedence)
+    const mergedConfig = {
+      ...config,
+      voice: {
+        ...config.voice,  // Base voice config
+        ...voice          // Override with voice prop
+      }
+    };
     
-    // Create a new instance with the provided config
-    sableInstance.current = new SableSmartLinks(config);
+    console.log('[SableSmartLinksProvider] Merged config:', mergedConfig);
+    sableInstance.current = new SableSmartLinks(mergedConfig);
+    
+    isMounted.current = true;
     
     // Register any walkthroughs provided via props
     Object.entries(walkthroughs).forEach(([id, steps]) => {
@@ -204,7 +235,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
         sableInstance.current.endTextAgent();
       }
     };
-  }, [config, autoInit, walkthroughs, textAgents]);
+  }, [config, autoInit, walkthroughs, textAgents, voice]);
   
   const contextValue = {
     // Walkthrough methods
@@ -261,8 +292,6 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
       }
       return contextValue;
     },
-
-
     endTextAgent: () => {
       if (sableInstance.current) {
         sableInstance.current.endTextAgent();
@@ -297,6 +326,20 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
       return null;
     },
     
+    // Voice methods
+    toggleVoiceChat: async () => {
+      if (sableInstance.current) {
+        await sableInstance.current.toggleVoiceChat();
+      }
+    },
+    
+    isVoiceChatActive: () => {
+      if (sableInstance.current) {
+        return sableInstance.current.isVoiceChatActive();
+      }
+      return false;
+    }
+
     // Step data methods
     setStepData,
     getStepData,
