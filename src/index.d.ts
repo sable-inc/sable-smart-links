@@ -45,14 +45,17 @@ export interface SableSmartLinksConfig {
     /** System prompt sent at `promptStart` */
     systemPrompt?: string;
 
+    /** Function calls/tools configuration */
+    tools?: VoiceToolConfig[];
+
     /** Popup look-and-feel */
     ui?: {
       /** Screen corner for the widget (default: bottom-right) */
       position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
 
       buttonText?: {
-        start?: string;   // text before session starts   (default: “Start Voice Chat”)
-        stop?: string;    // text while session is active (default: “End Chat”)
+        start?: string;   // text before session starts   (default: "Start Voice Chat")
+        stop?: string;    // text while session is active (default: "End Chat")
       };
 
       theme?: {
@@ -63,6 +66,23 @@ export interface SableSmartLinksConfig {
       };
     };
   };
+}
+
+
+/** Configuration for voice tools/function calls */
+export interface VoiceToolConfig {
+  /** Name of the tool */
+  name: string;
+  /** Description of what the tool does */
+  description: string;
+  /** JSON schema for the tool parameters */
+  parameters: {
+    type: "object";
+    properties: Record<string, any>;
+    required?: string[];
+  };
+  /** Handler function that gets called when the tool is used */
+  handler: (parameters: any) => Promise<any> | any;
 }
 
 
@@ -195,11 +215,12 @@ export class SableSmartLinks {
   sendTextAgentMessage(message: string): void;
   endTextAgent(): void;
 
-  /* ----- voice-agent helpers ------ */
-  /** Enable the voice widget at runtime (merges with existing config) */
-  enableVoiceChat(voiceConfig?: SableSmartLinksConfig['voice']): void;
-  /** Disable voice widget and close session */
-  disableVoiceChat(): Promise<void>;
+  /* ----- voice-agent (minimal) ------ */
+  /** Start/stop voice chat */
+  toggleVoiceChat(): Promise<void>;
+  
+  /** Check if voice is active */
+  isVoiceChatActive(): boolean;
 
   /* ----- popup helpers ------------ */
   showPopup(options: PopupOptions): { unmount: () => void; mount: (parent: HTMLElement) => void } | null;

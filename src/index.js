@@ -42,6 +42,8 @@ class SableSmartLinks {
         enabled: false,
         engine: 'nova',
         serverUrl: 'ws://localhost:3001',
+        systemPrompt: "You are a friend. The user and you will engage in a spoken dialog exchanging the transcripts of a natural real-time conversation. Keep your responses short, generally two or three sentences for chatty scenarios.",
+        tools: [], // Default: no tools
         ui: {
           position: 'bottom-right',
           buttonText: {
@@ -52,8 +54,7 @@ class SableSmartLinks {
             primaryColor: '#FFFFFF',
             backgroundColor: 'rgba(60, 60, 60, 0.9)'
           }
-        },
-        systemPrompt: "You are a helpful assistant. Keep your responses concise and conversational."
+        }
       },
       ...config
     };
@@ -69,6 +70,9 @@ class SableSmartLinks {
       this.config.voice = { ...this.config.voice, ...config.voice };
       if (config.voice.ui) {
         this.config.voice.ui = { ...this.config.voice.ui, ...config.voice.ui };
+      }
+      if (config.voice.tools) {
+        this.config.voice.tools = config.voice.tools; // Replace entirely for tools
       }
     }
 

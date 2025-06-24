@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, createContext, useContext } from 'react';
-import { SableSmartLinks, SableSmartLinksConfig, WalkthroughStep, TextAgentStep } from '../index';
+import { SableSmartLinks, SableSmartLinksConfig, WalkthroughStep, TextAgentStep, VoiceToolConfig } from '../index';
 import { isBrowser } from '../utils/browserAPI';
 
 interface SableSmartLinksContextType {
@@ -31,8 +31,6 @@ interface SableSmartLinksContextType {
   // Voice Agent methods
   toggleVoiceChat: () => Promise<void>;
   isVoiceChatActive: () => boolean;
-  enableVoiceChat: (voiceConfig?: VoiceConfig) => void;
-  disableVoiceChat: () => Promise<void>;
 }
 
 const SableSmartLinksContext = createContext<SableSmartLinksContextType | null>(null);
@@ -48,6 +46,7 @@ export interface SableSmartLinksProviderProps {
     engine?: 'nova';
     serverUrl?: string;
     systemPrompt?: string;
+    tools?: VoiceToolConfig[];
     ui?: {
       position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
       buttonText?: {
@@ -173,8 +172,6 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
       }
       return contextValue;
     },
-
-
     endTextAgent: () => {
       if (sableInstance.current) {
         sableInstance.current.endTextAgent();

@@ -2,43 +2,42 @@ import { ObjectExt } from '../util/ObjectsExt.js';
 
 export class AudioPlayer {
     constructor() {
-        this.onAudioPlayedListeners = [];
         this.initialized = false;
+        this.audioContext = null;
+        this.workletNode = null;
+        this.analyser = null;
+        this.playbackRate = 1.0;
     }
 
     addEventListener(event, callback) {
-        switch (event) {
-            case "onAudioPlayed":
-                this.onAudioPlayedListeners.push(callback);
-                break;
-            default:
-                console.error("Listener registered for event type: " + JSON.stringify(event) + " which is not supported");
+        if (event === "statechange") {
+            this.stateChangeCallback = callback;
+        }
+        else if (event === "dataavailable") {
+            this.dataAvailableCallback = callback;
+        }
+        else {
+            throw new Error("Unsupported event: " + event);
         }
     }
 
     async start() {
-        this.audioContext = new AudioContext({ "sampleRate": 24000 });
-        this.analyser = this.audioContext.createAnalyser();
-        this.analyser.fftSize = 512;
+        if (this.initialized) {
+            return;
+        }
 
-        // Get the worklet URL - this needs to be handled differently in a bundled environment
+        this.audioContext = new AudioContext({ "sampleRate": 24000 });
+        
+        // Load the audio worklet
         const workletUrl = this.getWorkletUrl();
         await this.audioContext.audioWorklet.addModule(workletUrl);
         
         this.workletNode = new AudioWorkletNode(this.audioContext, "audio-player-processor");
+        this.workletNode.connect(this.audioContext.destination);
+
+        this.analyser = this.audioContext.createAnalyser();
         this.workletNode.connect(this.analyser);
-        this.analyser.connect(this.audioContext.destination);
-        this.recorderNode = this.audioContext.createScriptProcessor(512, 1, 1);
-        this.recorderNode.onaudioprocess = (event) => {
-            // Pass the input along as-is
-            const inputData = event.inputBuffer.getChannelData(0);
-            const outputData = event.outputBuffer.getChannelData(0);
-            outputData.set(inputData);
-            // Notify listeners that the audio was played
-            const samples = new Float32Array(outputData.length);
-            samples.set(outputData);
-            this.onAudioPlayedListeners.map(listener => listener(samples));
-        }
+
         this.#maybeOverrideInitialBufferLength();
         this.initialized = true;
     }
@@ -58,30 +57,18 @@ export class AudioPlayer {
                 this.lastWriteTime = 0;
             }
 
-            logTimeElapsedSinceLastWrite() {
-                const now = Date.now();
-                if (this.lastWriteTime !== 0) {
-                    const elapsed = now - this.lastWriteTime;
-                    console.log(\`Elapsed time since last audio buffer write: \${elapsed} ms\`);
-                }
-                this.lastWriteTime = now;
-            }
-
             write(samples) {
-                this.logTimeElapsedSinceLastWrite();
                 if (this.writeIndex + samples.length <= this.buffer.length) {
                     // Enough space to append the new samples
                 }
                 else {
                     if (samples.length <= this.readIndex) {
                         const subarray = this.buffer.subarray(this.readIndex, this.writeIndex);
-                        console.log(\`Shifting the audio buffer of length \${subarray.length} by \${this.readIndex}\`);
                         this.buffer.set(subarray);
                     }
                     else {
                         const newLength = (samples.length + this.writeIndex - this.readIndex) * 2;
                         const newBuffer = new Float32Array(newLength);
-                        console.log(\`Expanding the audio buffer from \${this.buffer.length} to \${newLength}\`);
                         newBuffer.set(this.buffer.subarray(this.readIndex, this.writeIndex));
                         this.buffer = newBuffer;
                     }
@@ -92,7 +79,6 @@ export class AudioPlayer {
                 this.writeIndex += samples.length;
                 if (this.writeIndex - this.readIndex >= this.initialBufferLength) {
                     this.isInitialBuffering = false;
-                    console.log("Initial audio buffer filled");
                 }
             }
 
@@ -104,13 +90,57 @@ export class AudioPlayer {
                 destination.set(this.buffer.subarray(this.readIndex, this.readIndex + copyLength));
                 this.readIndex += copyLength;
                 if (copyLength > 0 && this.underflowedSamples > 0) {
-                    console.log(\`Detected audio buffer underflow of \${this.underflowedSamples} samples\`);
                     this.underflowedSamples = 0;
                 }
                 if (copyLength < destination.length) {
                     destination.fill(0, copyLength);
                     this.underflowedSamples += destination.length - copyLength;
                 }
+                if (copyLength === 0) {
+                    this.isInitialBuffering = true;
+                }
+            }
+
+            readWithSpeed(destination, playbackRate) {
+                if (playbackRate === 1.0) {
+                    this.read(destination);
+                    return;
+                }
+
+                let copyLength = 0;
+                if (!this.isInitialBuffering) {
+                    const availableSamples = this.writeIndex - this.readIndex;
+                    const samplesNeeded = Math.ceil(destination.length * playbackRate);
+                    copyLength = Math.min(samplesNeeded, availableSamples);
+                }
+
+                if (copyLength > 0) {
+                    const tempBuffer = new Float32Array(copyLength);
+                    tempBuffer.set(this.buffer.subarray(this.readIndex, this.readIndex + copyLength));
+                    this.readIndex += copyLength;
+
+                    for (let i = 0; i < destination.length; i++) {
+                        const sourceIndex = i * playbackRate;
+                        const index = Math.floor(sourceIndex);
+                        const fraction = sourceIndex - index;
+                        
+                        if (index + 1 < tempBuffer.length) {
+                            destination[i] = tempBuffer[index] * (1 - fraction) + tempBuffer[index + 1] * fraction;
+                        } else if (index < tempBuffer.length) {
+                            destination[i] = tempBuffer[index];
+                        } else {
+                            destination[i] = 0;
+                        }
+                    }
+
+                    if (this.underflowedSamples > 0) {
+                        this.underflowedSamples = 0;
+                    }
+                } else {
+                    destination.fill(0);
+                    this.underflowedSamples += destination.length;
+                }
+
                 if (copyLength === 0) {
                     this.isInitialBuffering = true;
                 }
@@ -126,6 +156,8 @@ export class AudioPlayer {
             constructor() {
                 super();
                 this.playbackBuffer = new ExpandableBuffer();
+                this.playbackRate = 1.0;
+                
                 this.port.onmessage = (event) => {
                     if (event.data.type === "audio") {
                         this.playbackBuffer.write(event.data.audioData);
@@ -133,17 +165,22 @@ export class AudioPlayer {
                     else if (event.data.type === "initial-buffer-length") {
                         const newLength = event.data.bufferLength;
                         this.playbackBuffer.initialBufferLength = newLength;
-                        console.log(\`Changed initial audio buffer length to: \${newLength}\`)
                     }
                     else if (event.data.type === "barge-in") {
                         this.playbackBuffer.clearBuffer();
+                    }
+                    else if (event.data.type === "playback-rate") {
+                        this.playbackRate = event.data.rate;
+                        console.log(\`AudioWorklet: Playback rate set to \${this.playbackRate}x\`);
                     }
                 };
             }
 
             process(inputs, outputs, parameters) {
                 const output = outputs[0][0];
-                this.playbackBuffer.read(output);
+                
+                this.playbackBuffer.readWithSpeed(output, this.playbackRate);
+                
                 return true;
             }
         }
@@ -159,6 +196,21 @@ export class AudioPlayer {
         this.workletNode.port.postMessage({
             type: "barge-in",
         })
+    }
+
+    setPlaybackRate(rate) {
+        this.playbackRate = Math.max(0.5, Math.min(2.0, rate));
+        console.log(`Setting playback rate to ${this.playbackRate}x`);
+        if (this.workletNode) {
+            this.workletNode.port.postMessage({
+                type: "playback-rate",
+                rate: this.playbackRate
+            });
+        }
+    }
+
+    getPlaybackRate() {
+        return this.playbackRate;
     }
 
     stop() {

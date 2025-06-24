@@ -12,17 +12,7 @@ class ExpandableBuffer {
         this.lastWriteTime = 0;
     }
 
-    logTimeElapsedSinceLastWrite() {
-        const now = Date.now();
-        if (this.lastWriteTime !== 0) {
-            const elapsed = now - this.lastWriteTime;
-            console.log(`Elapsed time since last audio buffer write: ${elapsed} ms`);
-        }
-        this.lastWriteTime = now;
-    }
-
     write(samples) {
-        this.logTimeElapsedSinceLastWrite();
         if (this.writeIndex + samples.length <= this.buffer.length) {
             // Enough space to append the new samples
         }
@@ -31,14 +21,12 @@ class ExpandableBuffer {
             if (samples.length <= this.readIndex) {
                 // ... but we can shift samples to the beginning of the buffer
                 const subarray = this.buffer.subarray(this.readIndex, this.writeIndex);
-                console.log(`Shifting the audio buffer of length ${subarray.length} by ${this.readIndex}`);
                 this.buffer.set(subarray);
             }
             else {
                 // ... and we need to grow the buffer capacity to make room for more audio
                 const newLength = (samples.length + this.writeIndex - this.readIndex) * 2;
                 const newBuffer = new Float32Array(newLength);
-                console.log(`Expanding the audio buffer from ${this.buffer.length} to ${newLength}`);
                 newBuffer.set(this.buffer.subarray(this.readIndex, this.writeIndex));
                 this.buffer = newBuffer;
             }
@@ -50,7 +38,6 @@ class ExpandableBuffer {
         if (this.writeIndex - this.readIndex >= this.initialBufferLength) {
             // Filled the initial buffer length, so we can start playback with some cushion
             this.isInitialBuffering = false;
-            console.log("Initial audio buffer filled");
         }
     }
 
@@ -63,7 +50,6 @@ class ExpandableBuffer {
         destination.set(this.buffer.subarray(this.readIndex, this.readIndex + copyLength));
         this.readIndex += copyLength;
         if (copyLength > 0 && this.underflowedSamples > 0) {
-            console.log(`Detected audio buffer underflow of ${this.underflowedSamples} samples`);
             this.underflowedSamples = 0;
         }
         if (copyLength < destination.length) {
@@ -73,6 +59,56 @@ class ExpandableBuffer {
         }
         if (copyLength === 0) {
             // Ran out of audio, so refill the buffer to the initial length before playing more
+            this.isInitialBuffering = true;
+        }
+    }
+
+    // Add method to read with speed adjustment
+    readWithSpeed(destination, playbackRate) {
+        if (playbackRate === 1.0) {
+            this.read(destination);
+            return;
+        }
+
+        let copyLength = 0;
+        if (!this.isInitialBuffering) {
+            const availableSamples = this.writeIndex - this.readIndex;
+            const samplesNeeded = Math.ceil(destination.length * playbackRate);
+            copyLength = Math.min(samplesNeeded, availableSamples);
+        }
+
+        if (copyLength > 0) {
+            // Create temporary buffer for speed adjustment
+            const tempBuffer = new Float32Array(copyLength);
+            tempBuffer.set(this.buffer.subarray(this.readIndex, this.readIndex + copyLength));
+            this.readIndex += copyLength;
+
+            // Apply speed adjustment using linear interpolation
+            for (let i = 0; i < destination.length; i++) {
+                const sourceIndex = i * playbackRate;
+                const index = Math.floor(sourceIndex);
+                const fraction = sourceIndex - index;
+                
+                if (index + 1 < tempBuffer.length) {
+                    // Linear interpolation between two samples
+                    destination[i] = tempBuffer[index] * (1 - fraction) + tempBuffer[index + 1] * fraction;
+                } else if (index < tempBuffer.length) {
+                    destination[i] = tempBuffer[index];
+                } else {
+                    destination[i] = 0;
+                }
+            }
+
+            if (this.underflowedSamples > 0) {
+                this.underflowedSamples = 0;
+            }
+        } else {
+            // Not enough samples - fill with silence
+            destination.fill(0);
+            this.underflowedSamples += destination.length;
+        }
+
+        if (copyLength === 0) {
             this.isInitialBuffering = true;
         }
     }
@@ -87,6 +123,8 @@ class AudioPlayerProcessor extends AudioWorkletProcessor {
     constructor() {
         super();
         this.playbackBuffer = new ExpandableBuffer();
+        this.playbackRate = 1.0; // Add playback rate property
+        
         this.port.onmessage = (event) => {
             if (event.data.type === "audio") {
                 this.playbackBuffer.write(event.data.audioData);
@@ -95,17 +133,23 @@ class AudioPlayerProcessor extends AudioWorkletProcessor {
                 // Override the current playback initial buffer length
                 const newLength = event.data.bufferLength;
                 this.playbackBuffer.initialBufferLength = newLength;
-                console.log(`Changed initial audio buffer length to: ${newLength}`)
             }
             else if (event.data.type === "barge-in") {
                 this.playbackBuffer.clearBuffer();
+            }
+            else if (event.data.type === "playback-rate") {
+                this.playbackRate = event.data.rate;
+                console.log(`AudioWorklet: Playback rate set to ${this.playbackRate}x`);
             }
         };
     }
 
     process(inputs, outputs, parameters) {
         const output = outputs[0][0]; // Assume one output with one channel
-        this.playbackBuffer.read(output);
+        
+        // Use speed-aware read method
+        this.playbackBuffer.readWithSpeed(output, this.playbackRate);
+        
         return true; // True to continue processing
     }
 }
