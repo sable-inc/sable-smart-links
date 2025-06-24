@@ -5,7 +5,7 @@
 
 import { waitForElement } from '../utils/elementSelector.js';
 import { isBrowser, safeWindow, safeDocument } from '../utils/browserApi.js';
-import { highlightElement, removeHighlight } from '../ui/highlight.js';
+// import { highlightElement, removeHighlight } from '../ui/highlight.js';
 import { SimplePopupManager } from '../ui/SimplePopupManager.js';
 import { PopupStateManager } from '../ui/PopupStateManager.js';
 import { addEvent, debounce } from '../utils/events.js';
@@ -436,8 +436,8 @@ export class TextAgentEngine {
       this.activePopupManager = null;
     }
     
-    // Remove any highlights
-    removeHighlight();
+    // // Remove any highlights
+    // removeHighlight();
   }
   
   /**
@@ -508,11 +508,11 @@ export class TextAgentEngine {
         element = document.querySelector(step.targetElement.selector);
       }
       
-      // Highlight the element if found
-      if (element) {
-        console.log('Target element found:', element);
-        highlightElement(element);
-      }
+      // // Highlight the element if found
+      // if (element) {
+      //   console.log('Target element found:', element);
+      //   highlightElement(element);
+      // }
       
       return element;
     } catch (error) {
