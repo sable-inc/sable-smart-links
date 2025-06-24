@@ -22,10 +22,84 @@ export interface SableSmartLinksConfig {
     defaultState?: 'expanded' | 'collapsed';
     /** Position of the text agent (default: 'right') */
     position?: 'top' | 'right' | 'bottom' | 'left';
-    /** Whether to enable chat input (default: false) */
-    enableChatInput?: boolean;
     /** Whether to persist state across page reloads (default: true) */
     persistState?: boolean;
+    /** Configuration for the final popup shown at the end of a text agent session */
+    finalPopupConfig?: {
+      /** Whether to enable chat input (default: true) */
+      enableChat?: boolean;
+      /** 
+       * Custom sections to display in the final popup
+       * Each section can have its own title, items, and behavior
+       */
+      sections?: Array<{
+        /** Title of the section */
+        title: string;
+        /** Icon to display next to items (emoji or URL) */
+        icon?: string;
+        /** Optional step ID to restart the text agent from when an item in this section is selected
+         * If provided, the text agent will restart from this step when any item in this section is selected
+         * If null or undefined (default), no restart will occur
+         * @property {boolean} skipTrigger - When true, any triggers (like triggerOnTyping) for the step will be ignored
+         *                                  and the popup will be displayed immediately
+         */
+        restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+        /** Items to display in this section */
+        items: Array<{
+          /** Display text for the item */
+          text: string;
+          /** Optional step ID to restart the text agent from when this specific item is selected
+           * This overrides the section-level restartFromStep if provided
+           * @property {boolean} skipTrigger - When true, any triggers (like triggerOnTyping) for the step will be ignored
+           *                                  and the popup will be displayed immediately
+           */
+          restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+          /** Additional data needed for the handler */
+          data?: any;
+        }>;
+        /** Handler function to execute when an item in this section is selected */
+        onSelect: (item: any) => void;
+      }>;
+    };
+    /** Configuration for the trigger button */
+    triggerButton?: {
+      /** Enable the trigger button (default: false) */
+      enabled?: boolean;
+      /** Text displayed on the button (default: 'Start Guide') */
+      text?: string;
+      /** Position of the button when not attached to a specific element */
+      position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+      /** Element to attach the button to */
+      targetElement?: {
+        /** CSS selector for the target element */
+        selector: string;
+        /** Whether to wait for the element to appear in DOM */
+        waitForElement?: boolean;
+        /** Maximum time to wait for element in milliseconds */
+        waitTimeout?: number;
+        /** Position to render the button relative to target element */
+        position?: 'top' | 'right' | 'bottom' | 'left';
+      };
+      /** URL paths where the button should be shown (empty array means all paths) */
+      urlPaths?: string[];
+      /** Custom styles for the button */
+      style?: {
+        /** Background color of the button */
+        backgroundColor?: string;
+        /** Text color of the button */
+        color?: string;
+        /** Border radius of the button */
+        borderRadius?: string;
+        /** Padding of the button */
+        padding?: string;
+        /** Font size of the button text */
+        fontSize?: string;
+        /** Box shadow of the button */
+        boxShadow?: string;
+        /** Any other CSS properties */
+        [key: string]: string | undefined;
+      };
+    };
   };
   
     /* --------------------------------------------------------------------- */
@@ -242,7 +316,7 @@ export interface PopupOptions {
   /** XPath or CSS selector that must exist for this popup to be shown */
   requiredSelector?: string;
   
-  id?: string; // <-- Add this line
+  id?: string; 
   /** The text to display in the popup */
   text: string;
   /** Width of the popup in pixels (default: 300) */
@@ -274,10 +348,15 @@ export interface TextAgentStep {
   fontSize?: string;
   
   /** Main text content to display in the popup */
-  text: string;
+  text: string | ((dataUtils?: {
+    setStepData: (key: string, value: any) => void;
+    getStepData: (key: string) => any;
+    getAllStepData: () => Record<string, any>;
+    clearStepData: () => void;
+  }) => string);
   
   /** Secondary text content (displayed in a different style) */
-  secondaryText?: string;
+  secondaryText?: string | (() => string);
   
   /** Width of the popup box in pixels */
   boxWidth?: number;
@@ -286,7 +365,12 @@ export interface TextAgentStep {
   buttonType?: 'arrow' | 'yes-no';
   
   /** Callback function when proceed/continue button is clicked */
-  onProceed?: ((textInput?: string) => void | Promise<void>);
+  onProceed?: ((textInput?: string, dataUtils?: {
+    setStepData: (key: string, value: any) => void;
+    getStepData: (key: string) => any;
+    getAllStepData: () => Record<string, any>;
+    clearStepData: () => void;
+  }) => void | Promise<void>);
   
   /** Callback function for yes/no buttons (receives boolean indicating 'yes' selection) */
   onYesNo?: (isYes: boolean) => void;
@@ -351,6 +435,16 @@ export interface TextAgentStep {
     on?: 'start' | 'stop' | 'change';
     /** Delay in ms before showing popup when on='stop' (default: 1000) */
     stopDelay?: number;
+  };
+  
+  /** Trigger the step when a button is pressed */
+  triggerOnButtonPress?: {
+    /** CSS selector for the button element */
+    selector: string;
+    /** Event to listen for, defaults to 'click' */
+    event?: 'click' | 'mousedown' | 'mouseup' | 'focus' | 'blur';
+    /** Delay in ms before showing popup after the event (default: 0) */
+    delay?: number;
   };
   
   // /** Position of the popup relative to the viewport or target element */

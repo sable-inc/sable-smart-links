@@ -3,9 +3,9 @@
  * Core functionality for managing and executing text agent guides using SimplePopupManager
  */
 
-import { waitForElement } from './elementSelector.js';
-import { isBrowser, safeWindow, safeDocument } from '../utils/browserAPI.js';
-import { highlightElement, removeHighlight } from '../ui/highlight.js';
+import { waitForElement } from '../utils/elementSelector.js';
+import { isBrowser, safeWindow, safeDocument } from '../utils/browserApi.js';
+// import { highlightElement, removeHighlight } from '../ui/highlight.js';
 import { SimplePopupManager } from '../ui/SimplePopupManager.js';
 import { PopupStateManager } from '../ui/PopupStateManager.js';
 import { addEvent, debounce } from '../utils/events.js';
@@ -23,6 +23,25 @@ export class TextAgentEngine {
       autoStart: true,
       primaryColor: '#FFFFFF',
       defaultBoxWidth: 300,
+      finalPopupConfig: {
+        enableChat: true,
+        sections: []
+      },
+      triggerButton: {
+        enabled: false,
+        text: 'Start Guide',
+        position: 'bottom-right', // 'bottom-right', 'bottom-left', 'top-right', 'top-left'
+        targetElement: null, // Element to attach the button to
+        urlPaths: [], // Array of URL paths where the button should be shown
+        style: {
+          backgroundColor: '#4A90E2',
+          color: '#FFFFFF',
+          borderRadius: '20px',
+          padding: '8px 16px',
+          fontSize: '14px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
+        }
+      },
       ...config
     };
     
@@ -38,6 +57,8 @@ export class TextAgentEngine {
     this._finalPopupAdded = false;
     this.activeSteps = new Set(); // Track which steps are currently active
     this.registeredAgents = new Map(); // Store registered agents
+    this.lastActiveAgentId = null; // Track the ID of the last active agent
+    this.triggerButtonElement = null; // Reference to the trigger button element
     
     // Only set up observer if we're in a browser environment
     if (typeof window !== 'undefined' && typeof document !== 'undefined') {
@@ -57,6 +78,35 @@ export class TextAgentEngine {
     // Add these lines after other state management variables
     this.activeSteps = new Set(); // Track which steps are currently active
     this.registeredAgents = new Map(); // Store registered agents
+  }
+  
+  /**
+   * Initialize the engine
+   * @returns {TextAgentEngine} - The engine instance
+   */
+  init() {
+    if (this.config.debug) {
+      console.log('[SableTextAgent] Initializing');
+    }
+    
+    // Create trigger button if enabled
+    console.log('[SableTextAgent] Trigger button enabled:', this.config.triggerButton.enabled);
+    if (this.config.triggerButton.enabled) {
+      this._createTriggerButton();
+    }
+    
+    // Add event listener for section item restart events
+    if (typeof window !== 'undefined') {
+      window.addEventListener('sable:textAgentRestart', (event) => {
+        const { stepId, skipTrigger } = event.detail;
+        if (this.config.debug) {
+          console.log(`[SableTextAgent] Received restart event for step: ${stepId}, skipTrigger: ${skipTrigger}`);
+        }
+        this.restart({ stepId, skipTrigger });
+      });
+    }
+    
+    return this;
   }
   
   /**
@@ -146,33 +196,112 @@ export class TextAgentEngine {
   /**
    * Start the text agent
    * @param {string} [stepId] - Optional step ID to start from
+   * @param {boolean} [skipTrigger=false] - Whether to skip trigger checks and show the popup immediately
    */
-  start(stepId) {
+  start(stepId, skipTrigger = false) {
     if (this.isRunning) {
-      this.end();
+      console.warn('[SableTextAgent] Already running');
+      return;
+    }
+    
+    if (this.config.debug) {
+      console.log(`[SableTextAgent] Starting with skipTrigger: ${skipTrigger}`);
     }
     
     this.isRunning = true;
     
-    // Find step index if stepId is provided
+    // If a specific step ID is provided, find and set it as the current step
     if (stepId) {
       const stepIndex = this.steps.findIndex(step => step.id === stepId);
       if (stepIndex !== -1) {
         this.currentStepIndex = stepIndex;
       }
-    } else {
+    } else if (this.currentStepIndex === -1) {
+      // If no current step is set, start from the beginning
       this.currentStepIndex = 0;
     }
     
-    // Check for triggerOnTyping property
+    // Store the skipTrigger flag on the instance for use in _renderCurrentStep
+    this._skipTrigger = skipTrigger;
+    
+    // Get the current step
     const step = this.steps[this.currentStepIndex];
-    if (step && step.triggerOnTyping) {
-      this._setupTypingTrigger(step);
+    
+    // If skipTrigger is true, immediately render the step
+    if (skipTrigger) {
+      this._renderCurrentStep();
+      return;
+    }
+    
+    // Otherwise check for triggers
+    if (step) {
+      if (step.triggerOnTyping) {
+        this._setupTypingTrigger(step);
+      } else if (step.triggerOnButtonPress) {
+        this._setupButtonPressTrigger(step);
+      } else {
+        // No triggers, render immediately with a small delay
+        setTimeout(() => this._renderCurrentStep(), 100);
+      }
     } else {
-      setTimeout(() => this._renderCurrentStep(), 1200);
+      console.warn('[SableTextAgent] No step found at index:', this.currentStepIndex);
     }
     
     return this; // For chaining
+  }
+  
+  /**
+   * Set up button press trigger for a step
+   * @param {TextAgentStep} step - The step to set up trigger for
+   * @private
+   */
+  _setupButtonPressTrigger(step) {
+    if (!step.triggerOnButtonPress || !step.triggerOnButtonPress.selector) {
+      console.warn('[SableTextAgent] Invalid triggerOnButtonPress configuration');
+      this._renderCurrentStep(); // Fall back to immediate rendering
+      return;
+    }
+    
+    const { selector, event = 'click', delay = 0 } = step.triggerOnButtonPress;
+    
+    // Function to show the step after button press
+    const showStep = () => {
+      if (this.config.debug) {
+        console.log(`[SableTextAgent] Button press detected for step ${step.id}`);
+      }
+      
+      // Remove the event listener to prevent multiple triggers
+      document.querySelectorAll(selector).forEach(el => {
+        el.removeEventListener(event, handler);
+      });
+      
+      // Show the step after the specified delay
+      if (delay > 0) {
+        setTimeout(() => this._renderCurrentStep(), delay);
+      } else {
+        this._renderCurrentStep();
+      }
+    };
+    
+    // Event handler
+    const handler = () => {
+      showStep();
+    };
+    
+    // Wait for the element to be available in the DOM
+    waitForElement(selector).then(() => {
+      if (this.config.debug) {
+        console.log(`[SableTextAgent] Setting up button press trigger on ${selector} for event ${event}`);
+      }
+      
+      // Add event listener to all matching elements
+      document.querySelectorAll(selector).forEach(el => {
+        el.addEventListener(event, handler);
+      });
+    }).catch(error => {
+      console.error(`[SableTextAgent] Error setting up button press trigger: ${error}`);
+      this._renderCurrentStep(); // Fall back to immediate rendering
+    });
   }
   
   /**
@@ -307,8 +436,8 @@ export class TextAgentEngine {
       this.activePopupManager = null;
     }
     
-    // Remove any highlights
-    removeHighlight();
+    // // Remove any highlights
+    // removeHighlight();
   }
   
   /**
@@ -379,11 +508,11 @@ export class TextAgentEngine {
         element = document.querySelector(step.targetElement.selector);
       }
       
-      // Highlight the element if found
-      if (element) {
-        console.log('Target element found:', element);
-        highlightElement(element);
-      }
+      // // Highlight the element if found
+      // if (element) {
+      //   console.log('Target element found:', element);
+      //   highlightElement(element);
+      // }
       
       return element;
     } catch (error) {
@@ -399,17 +528,26 @@ export class TextAgentEngine {
    * @private
    */
   _createPopupForStep(step, targetElement) {
-    // Clean up any existing popup
-    this._cleanupCurrentStep();
+    if (this.config.debug) {
+      console.log('[SableTextAgent] Creating popup for step:', step);
+    }
     
-    // Configure popup options based on step
+    // Get the text content, handling both string and function types
+    const stepText = typeof step.text === 'function' ? step.text() : step.text;
+    const secondaryText = typeof step.secondaryText === 'function' ? step.secondaryText() : step.secondaryText;
+    
+    // Create popup options
     const popupOptions = {
-      text: step.text,
+      text: stepText,
+      secondaryText: secondaryText,
       boxWidth: step.boxWidth || this.config.defaultBoxWidth,
       buttonType: step.buttonType || 'arrow',
       primaryColor: step.primaryColor || this.config.primaryColor,
-      parent: safeDocument?.body || document.body,
+      minimizable: step.minimizable !== undefined ? step.minimizable : true,
+      startMinimized: step.startMinimized || false,
       includeTextBox: step.includeTextBox || false,
+      fontSize: step.fontSize || '15px',
+      parent: safeDocument?.body || document.body
     };
     
     // Set up callbacks
@@ -477,7 +615,7 @@ export class TextAgentEngine {
           // Position popup so its bottom edge is above the target element
           newPosition = {
             top: elementRect.top - popupHeight - margin,
-            left: elementRect.left - popupWidth + (elementRect.width / 2)
+            left: elementRect.left + (elementRect.width / 2)
           };
           // Center horizontally
           this.activePopupManager.container.style.transform = 'translateX(-50%)';
@@ -485,7 +623,7 @@ export class TextAgentEngine {
         case 'right':
           // Position popup so its left edge is to the right of the target element
           newPosition = {
-            top: elementRect.top - popupHeight / 2 + (elementRect.height / 2),
+            top: elementRect.top + (elementRect.height / 2),
             left: elementRect.right + margin
           };
           // Center vertically
@@ -495,19 +633,19 @@ export class TextAgentEngine {
           // Position popup so its top edge is below the target element
           newPosition = {
             top: elementRect.bottom + margin,
-            left: elementRect.left - popupWidth + (elementRect.width / 2)
+            left: elementRect.left + (elementRect.width / 2)
           };
-          // // Center horizontally
-          // this.activePopupManager.container.style.transform = 'translateX(-50%)';
+          // Center horizontally
+          this.activePopupManager.container.style.transform = 'translateX(-50%)';
           break;
         case 'left':
           // Position popup so its right edge is to the left of the target element
           newPosition = {
-            top: elementRect.top - popupHeight / 2 + (elementRect.height / 2),
-            left: elementRect.left - (2 * popupWidth) - margin
+            top: elementRect.top + (elementRect.height / 2),
+            left: elementRect.left - margin
           };
-          // Center vertically
-          this.activePopupManager.container.style.transform = 'translateY(-50%)';
+          // Center vertically and position to the left
+          this.activePopupManager.container.style.transform = 'translate(-100%, -50%)';
           break;
         default:
           // Default to centered on the element
@@ -672,39 +810,48 @@ export class TextAgentEngine {
 
       switch (position) {
         case 'top':
+          // Position popup so its bottom edge is above the target element
           newPosition = {
             top: elementRect.top - popupHeight - margin,
-            left: elementRect.left - popupWidth + elementRect.width / 2
+            left: elementRect.left + (elementRect.width / 2)
           };
-          popupManager.container.style.transform = 'translateX(-50%)';
+          // Center horizontally
+          this.activePopupManager.container.style.transform = 'translateX(-50%)';
           break;
         case 'right':
+          // Position popup so its left edge is to the right of the target element
           newPosition = {
-            top: elementRect.top - popupHeight / 2 + elementRect.height / 2,
+            top: elementRect.top + (elementRect.height / 2),
             left: elementRect.right + margin
           };
-          popupManager.container.style.transform = 'translateY(-50%)';
+          // Center vertically
+          this.activePopupManager.container.style.transform = 'translateY(-50%)';
           break;
         case 'bottom':
+          // Position popup so its top edge is below the target element
           newPosition = {
             top: elementRect.bottom + margin,
-            left: elementRect.left - popupWidth + elementRect.width / 2
+            left: elementRect.left + (elementRect.width / 2)
           };
-          // popupManager.container.style.transform = 'translateX(-50%)';
+          // Center horizontally
+          this.activePopupManager.container.style.transform = 'translateX(-50%)';
           break;
         case 'left':
+          // Position popup so its right edge is to the left of the target element
           newPosition = {
-            top: elementRect.top - popupHeight / 2 + elementRect.height / 2,
-            left: elementRect.left - 2 * popupWidth - margin
+            top: elementRect.top + (elementRect.height / 2),
+            left: elementRect.left - margin
           };
-          popupManager.container.style.transform = 'translateY(-50%)';
+          // Center vertically and position to the left
+          this.activePopupManager.container.style.transform = 'translate(-100%, -50%)';
           break;
         default:
+          // Default to centered on the element
           newPosition = {
-            top: elementRect.top + elementRect.height / 2,
-            left: elementRect.left + elementRect.width / 2
+            top: elementRect.top + (elementRect.height / 2),
+            left: elementRect.left + (elementRect.width / 2)
           };
-          popupManager.container.style.transform = 'translate(-50%, -50%)';
+          this.activePopupManager.container.style.transform = 'translate(-50%, -50%)';
       }
       popupManager.updatePosition(newPosition);
     }
@@ -733,20 +880,279 @@ export class TextAgentEngine {
   }
   
   /**
+   * Create and position the trigger button
+   * @private
+   */
+  _createTriggerButton() {
+    // Check if we should show the button based on current URL path
+    console.log('[SableTextAgent] Checking trigger button visibility', this._shouldShowTriggerButton());
+    if (!this._shouldShowTriggerButton()) {
+      return;
+    }
+    
+    // Create button element
+    const button = document.createElement('button');
+    button.textContent = this.config.triggerButton.text;
+    button.className = 'sable-text-agent-trigger';
+    
+    // Apply styles
+    Object.assign(button.style, {
+      position: 'fixed',
+      zIndex: '9999',
+      cursor: 'pointer',
+      border: 'none',
+      outline: 'none',
+      transition: 'all 0.3s ease',
+      ...this.config.triggerButton.style
+    });
+    
+    // Position the button if no target selector is provided
+    if (!this.config.triggerButton.targetElement) {
+      this._positionTriggerButton(button);
+    }
+    
+    // Add click event listener
+    button.addEventListener('click', () => {
+      if (this.lastActiveAgentId) {
+        this.start(this.lastActiveAgentId);
+      } else {
+        // Start the first registered agent if no specific agent was last used
+        const firstAgentId = Array.from(this.registeredAgents.keys())[0];
+        if (firstAgentId) {
+          this.start(firstAgentId);
+        } else {
+          console.warn('[SableTextAgent] No agents registered to start');
+        }
+      }
+    });
+    
+    // Add hover effect
+    button.addEventListener('mouseenter', () => {
+      button.style.transform = 'scale(1.05)';
+    });
+    
+    button.addEventListener('mouseleave', () => {
+      button.style.transform = 'scale(1)';
+    });
+    
+    // Store reference to the button
+    this.triggerButtonElement = button;
+    
+    // If there's a target selector, wait for the element and append the button
+    if (this.config.triggerButton.targetElement) {
+      this._attachButtonToTarget();
+    } else {
+      // Otherwise, append to body
+      document.body.appendChild(button);
+    }
+    
+    // Add URL change listener to show/hide the trigger button
+    this._addUrlChangeListener();
+  }
+  
+  /**
+   * Check if the trigger button should be shown based on current URL path
+   * @private
+   * @returns {boolean} - Whether the button should be shown
+   */
+  _shouldShowTriggerButton() {
+    // If no URL paths are specified, show on all paths
+    if (!this.config.triggerButton.urlPaths || this.config.triggerButton.urlPaths.length === 0) {
+      return true;
+    }
+    
+    const currentPath = safeWindow.location.pathname;
+    console.log('[TextAgent] Current path:', currentPath);
+    
+    // Check if current path matches any of the specified paths
+    return this.config.triggerButton.urlPaths.some(path => {
+      // Support exact match
+      if (path === currentPath) {
+        return true;
+      }
+      
+      // Support wildcard match (e.g., '/products/*')
+      if (path.endsWith('*')) {
+        const basePath = path.slice(0, -1);
+        return currentPath.startsWith(basePath);
+      }
+      
+      return false;
+    });
+  }
+  
+  /**
+   * Position the trigger button based on the position config
+   * @private
+   * @param {HTMLElement} button - The button element
+   */
+  _positionTriggerButton(button) {
+    const position = this.config.triggerButton.position || 'bottom-right';
+    
+    switch (position) {
+      case 'bottom-right':
+        Object.assign(button.style, {
+          bottom: '20px',
+          right: '20px'
+        });
+        break;
+      case 'bottom-left':
+        Object.assign(button.style, {
+          bottom: '20px',
+          left: '20px'
+        });
+        break;
+      case 'top-right':
+        Object.assign(button.style, {
+          top: '20px',
+          right: '20px'
+        });
+        break;
+      case 'top-left':
+        Object.assign(button.style, {
+          top: '20px',
+          left: '20px'
+        });
+        break;
+      default:
+        // Default to bottom-right
+        Object.assign(button.style, {
+          bottom: '20px',
+          right: '20px'
+        });
+    }
+  }
+  
+  /**
+   * Attach the trigger button to a target element
+   * @private
+   */
+  async _attachButtonToTarget() {
+    if (!this.config.triggerButton.targetElement || !this.triggerButtonElement) {
+      return;
+    }
+    
+    try {
+      let targetElement = null;
+      const targetConfig = this.config.triggerButton.targetElement;
+      
+      // Wait for element if configured
+      if (targetConfig.waitForElement) {
+        targetElement = await waitForElement(targetConfig.selector, {
+          timeout: targetConfig.waitTimeout || 5000
+        });
+      } else {
+        // Just try to select it immediately
+        targetElement = document.querySelector(targetConfig.selector);
+      }
+      
+      if (targetElement) {
+        // Reset position styles when attaching to a target
+        Object.assign(this.triggerButtonElement.style, {
+          position: 'relative',
+          top: 'auto',
+          right: 'auto',
+          bottom: 'auto',
+          left: 'auto'
+        });
+        
+        // If position is specified, use it to position the button relative to the target
+        if (targetConfig.position) {
+          const position = targetConfig.position;
+          
+          switch (position) {
+            case 'top':
+              targetElement.insertAdjacentElement('beforebegin', this.triggerButtonElement);
+              break;
+            case 'right':
+              targetElement.insertAdjacentElement('afterend', this.triggerButtonElement);
+              break;
+            case 'bottom':
+              targetElement.insertAdjacentElement('afterend', this.triggerButtonElement);
+              break;
+            case 'left':
+              targetElement.insertAdjacentElement('beforebegin', this.triggerButtonElement);
+              break;
+            default:
+              // Default behavior - append inside the target
+              targetElement.appendChild(this.triggerButtonElement);
+          }
+        } else {
+          // Default behavior - append inside the target
+          targetElement.appendChild(this.triggerButtonElement);
+        }
+        
+        if (this.config.debug) {
+          console.log(`[SableTextAgent] Attached trigger button to element: ${targetConfig.selector}`);
+        }
+      }
+    } catch (error) {
+      console.error(`[SableTextAgent] Failed to attach trigger button to target: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Add listener for URL changes to show/hide the trigger button
+   * @private
+   */
+  _addUrlChangeListener() {
+    if (!this.triggerButtonElement) return;
+    
+    // Function to update button visibility
+    const updateButtonVisibility = () => { 
+      if (this._shouldShowTriggerButton()) {
+        this.triggerButtonElement.style.display = '';
+      } else {
+        this.triggerButtonElement.style.display = 'none';
+      }
+    };
+    
+    // Listen for popstate events (browser back/forward)
+    window.addEventListener('popstate', updateButtonVisibility);
+    
+    // Use a MutationObserver to detect URL changes from client-side routing
+    const observer = new MutationObserver(debounce(() => {
+      updateButtonVisibility();
+    }, 100));
+    
+    // Observe the document title as it often changes with client-side routing
+    observer.observe(document.querySelector('title'), { subtree: true, characterData: true, childList: true });
+  }
+  
+  /**
    * Add a final popup step with the chat interface
    * @private
    */
   _addFinalPopupStep() {
+    // Save the current agent ID before showing the final popup
+    if (this.steps.length > 0) {
+      // Find which agent these steps belong to
+      for (const [id, agentSteps] of this.registeredAgents.entries()) {
+        // Check if the current steps match this agent's steps
+        const matchingSteps = this.steps.filter(step => 
+          agentSteps.some(agentStep => agentStep.id === step.id)
+        );
+        
+        if (matchingSteps.length > 0) {
+          this.lastActiveAgentId = id;
+          if (this.config.debug) {
+            console.log(`[SableTextAgent] Saved last active agent ID: ${id}`);
+          }
+          break;
+        }
+      }
+    }
+    
+    // Get sections from configuration
+    const sections = this.config.finalPopupConfig?.sections || [];
+    
     // Initialize PopupStateManager for the final step
     const popupManager = new PopupStateManager({
-      platform: 'Tavily',
+      platform: 'Sable',
       primaryColor: this.config.primaryColor || '#FFFFFF',
       width: 380,
-      onChatSubmit: async (message) => {
-        // Handle chat submission - can be customized based on your needs
-        console.log('Chat message received:', message);
-        return 'Thank you for your message. How else can I help you?';
-      }
+      sections: sections,
+      enableChat: this.config.finalPopupConfig.enableChat
     });
     
     // Mount to document body
@@ -763,5 +1169,103 @@ export class TextAgentEngine {
     if (this.observer) {
       this.observer.disconnect();
     }
+    
+    // Remove trigger button if it exists
+    if (this.triggerButtonElement && this.triggerButtonElement.parentNode) {
+      this.triggerButtonElement.parentNode.removeChild(this.triggerButtonElement);
+      this.triggerButtonElement = null;
+    }
+  }
+  
+  /**
+   * Restart the text agent from a specific step
+   * @param {string|null|Object} stepIdOrConfig - ID of the step to restart from, or null to restart from beginning,
+   *                                           or an object with stepId and skipTrigger properties
+   * @param {Function|null} beforeRestartCallback - Optional callback to execute before restarting
+   * @public
+   */
+  restart(stepIdOrConfig = null, beforeRestartCallback = null) {
+    // Parse the stepIdOrConfig parameter
+    let stepId = null;
+    let skipTrigger = false;
+    
+    if (stepIdOrConfig === null || typeof stepIdOrConfig === 'string') {
+      stepId = stepIdOrConfig;
+    } else if (typeof stepIdOrConfig === 'object') {
+      // Handle both the event detail format and the direct config object format
+      if ('stepId' in stepIdOrConfig) {
+        stepId = stepIdOrConfig.stepId;
+        skipTrigger = !!stepIdOrConfig.skipTrigger;
+      } else if ('detail' in stepIdOrConfig) {
+        // This is an event object
+        stepId = stepIdOrConfig.detail.stepId;
+        skipTrigger = !!stepIdOrConfig.detail.skipTrigger;
+      }
+    }
+    
+    if (this.config.debug) {
+      console.log(`[SableTextAgent] Restarting with stepId: ${stepId}, skipTrigger: ${skipTrigger}`);
+    }
+    
+    // Execute callback if provided
+    if (typeof beforeRestartCallback === 'function') {
+      beforeRestartCallback();
+    }
+    
+    // End the current session (including removing the final popup)
+    this.end();
+    
+    // Reset state
+    this._finalPopupAdded = false;
+    
+    if (!this.lastActiveAgentId) {
+      console.warn('[SableTextAgent] No last active agent to restart');
+      return;
+    }
+    
+    // Get the steps for the last active agent
+    const steps = this.registeredAgents.get(this.lastActiveAgentId);
+    if (!steps || steps.length === 0) {
+      console.warn(`[SableTextAgent] No steps found for agent: ${this.lastActiveAgentId}`);
+      return;
+    }
+    
+    // Set the steps
+    this.steps = steps;
+    
+    if (!stepId) {
+      // No specific step ID, restart from the beginning
+      this.currentStepIndex = 0;
+      if (this.config.debug) {
+        console.log(`[SableTextAgent] Restarting agent from beginning: ${this.lastActiveAgentId}`);
+      }
+      this.start(null, skipTrigger);
+      return;
+    }
+    
+    // Find the step with the matching ID
+    const stepIndex = this.steps.findIndex(step => step.id === stepId);
+    if (stepIndex !== -1) {
+      // Set the current step index to the found step
+      this.currentStepIndex = stepIndex;
+      if (this.config.debug) {
+        console.log(`[SableTextAgent] Restarting agent from step ${stepId}: ${this.lastActiveAgentId}`);
+      }
+      // Start the agent from the specified step
+      this.start(null, skipTrigger);
+    } else {
+      console.warn(`[SableTextAgent] Step with ID "${stepId}" not found, restarting from beginning`);
+      this.currentStepIndex = 0;
+      this.start(null, skipTrigger);
+    }
+  }
+  
+  /**
+   * Restart the last active text agent from the beginning
+   * @private
+   */
+  _restartLastAgent() {
+    // Use the new restart method with no specific step ID
+    this.restart();
   }
 }

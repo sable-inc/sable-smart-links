@@ -2,7 +2,7 @@
  * URL parameter parsing utilities
  */
 
-import { isBrowser, safeWindow } from '../utils/browserAPI.js';
+import { isBrowser, safeWindow } from './browserApi.js';
 
 /**
  * Parse URL query parameters from the current window location

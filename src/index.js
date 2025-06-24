@@ -3,7 +3,6 @@
  * A library for creating guided product walkthroughs triggered by URL parameters
  */
 
-import { parseUrlParameters } from './core/urlParser.js';
 import { WalkthroughEngine } from './core/walkthroughEngine.js';
 import { TextAgentEngine } from './core/textAgentEngine.js';
 import { NovaVoiceEngine } from './core/novaVoiceEngine.js';
@@ -11,6 +10,7 @@ import { VoicePopup } from './ui/components/VoicePopup.js';
 import { isBrowser, safeDocument } from './utils/browserAPI.js';
 import { addEvent, debounce } from './utils/events.js';
 import { debugLog } from './config.js';
+import { parseUrlParameters } from './utils/urlParser.js';
 
 // Import Tavily features
 export * from './config';
@@ -266,8 +266,14 @@ class SableSmartLinks {
    */
   init() {
     if (this.config.debug) {
-      console.log('[SableSmartLinks: SANITY CHECK] Initializing library...');
+      console.log('[SableSmartLinks] Initializing library...');
     }
+    
+    // Initialize the TextAgentEngine
+    if (this.textAgentEngine) {
+      this.textAgentEngine.init();
+    }
+    
     const params = parseUrlParameters();
     const walkthroughId = params[this.config.walkthrough.paramName];
     

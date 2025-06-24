@@ -3,11 +3,11 @@
  * Core functionality for managing and executing walkthroughs
  */
 
-import { waitForElement } from './elementSelector.js';
+import { waitForElement } from '../utils/elementSelector.js';
 import { highlightElement, removeHighlight } from '../ui/highlight.js';
 import { showTooltip, hideTooltip } from '../ui/tooltip.js';
 import { createSpotlight, removeSpotlights } from '../ui/spotlight.js';
-import { isBrowser, safeWindow, safeDocument } from '../utils/browserAPI.js';
+import { isBrowser, safeWindow, safeDocument } from '../utils/browserApi.js';
 
 export class WalkthroughEngine {
   /**

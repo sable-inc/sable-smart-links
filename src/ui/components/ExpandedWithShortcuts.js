@@ -2,19 +2,16 @@ import { ShortcutsAndRecents } from './ShortcutsAndRecents.js';
 import { ChatInput } from './ChatInput.js';
 
 export class ExpandedWithShortcuts {
-    constructor({ shortcuts, productWalkthroughs, onQuerySelect, onWalkthroughSelect, chatInput, primaryColor, onSubmit }) {
+    constructor({ sections, chatInput, primaryColor, onSubmit }) {
         this.element = this.createElement({ 
-            shortcuts, 
-            productWalkthroughs,
-            onQuerySelect,
-            onWalkthroughSelect, 
+            sections,
             chatInput, 
             primaryColor,
             onSubmit 
         });
     }
 
-    createElement({ shortcuts, productWalkthroughs, onQuerySelect, onWalkthroughSelect, chatInput, primaryColor, onSubmit }) {
+    createElement({ sections, chatInput, primaryColor, onSubmit }) {
         const container = document.createElement('div');
         Object.assign(container.style, {
             display: 'flex',
@@ -29,32 +26,32 @@ export class ExpandedWithShortcuts {
         });
 
         const shortcutsAndRecents = new ShortcutsAndRecents({
-            shortcuts,
-            productWalkthroughs,
-            onQuerySelect,
-            onWalkthroughSelect
+            sections
         });
 
         container.appendChild(shortcutsAndRecents.render());
         
-        // Wrap chat input in a container that takes full width and extends to the edges
-        const chatInputWrapper = document.createElement('div');
-        Object.assign(chatInputWrapper.style, {
-            width: 'calc(100% + 32px)',
-            marginLeft: '-16px',
-            marginTop: 'auto',
-        });
-        
-        const chatInputComponent = new ChatInput({
-            value: chatInput.value,
-            onChange: chatInput.onChange,
-            onSubmit: onSubmit,
-            platform: chatInput.platform,
-            primaryColor: primaryColor
-        });
-        
-        chatInputWrapper.appendChild(chatInputComponent.render());
-        container.appendChild(chatInputWrapper);
+        // Only add chat input if it's provided (chat is enabled)
+        if (chatInput) {
+            // Wrap chat input in a container that takes full width and extends to the edges
+            const chatInputWrapper = document.createElement('div');
+            Object.assign(chatInputWrapper.style, {
+                width: 'calc(100% + 32px)',
+                marginLeft: '-16px',
+                marginTop: 'auto',
+            });
+            
+            const chatInputComponent = new ChatInput({
+                value: chatInput.value,
+                onChange: chatInput.onChange,
+                onSubmit: onSubmit,
+                platform: chatInput.platform,
+                primaryColor: primaryColor
+            });
+            
+            chatInputWrapper.appendChild(chatInputComponent.render());
+            container.appendChild(chatInputWrapper);
+        }
 
         return container;
     }

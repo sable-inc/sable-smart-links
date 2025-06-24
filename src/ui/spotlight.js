@@ -3,7 +3,7 @@
  * This module creates a spotlight effect that darkens everything except the highlighted element
  */
 
-import { isBrowser, safeDocument } from '../utils/browserAPI.js';
+import { isBrowser, safeDocument } from '../utils/browserApi.js';
 import { getElementPosition, isElementInViewport, createPositionObserver, removePositionObserver, applyPositionWithDelay } from '../utils/positioning.js';
 
 const SPOTLIGHT_CLASS = 'sable-spotlight';

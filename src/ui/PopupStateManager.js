@@ -14,26 +14,30 @@ export class PopupStateManager {
             primaryColor: config.primaryColor || '#FFFFFF',
             width: config.width || 380,
             onChatSubmit: config.onChatSubmit || (() => {}),
-            onWalkthroughSelect: config.onWalkthroughSelect || (() => {}),
+            customButtons: config.customButtons || [],
+            initialMessage: config.initialMessage || null,
+            sections: config.sections || [],
+            enableChat: config.enableChat !== undefined ? config.enableChat : true
         };
 
         // State variables
-        this.currentState = 'textInput'; // possible states: 'textInput', 'expanded', 'messages', 'minimized'
+        // If chat is disabled, start in expanded state with shortcuts
+        this.currentState = this.config.enableChat ? 'textInput' : 'expanded';
         this.previousState = null; // Store the state before minimization
         this.messages = [];
-        this.chatInput = '';
-        this.shortcuts = [
-            'What are best practices using Tavily search?',
-            'How does billing work?',
-        ];
         
-        // Product walkthroughs with associated URLs or actions
-        this.productWalkthroughs = [
-            { text: 'Billing page tour', url: '/billing?walkthrough=billing' },
-            { text: 'API playground tour', url: '/playground?walkthrough=api-playground' },
-            { text: 'Team creation tour', url: '/settings?walkthrough=team-create' }
-        ];
-
+        // If we have an initial message, add it and start in messages state
+        if (this.config.initialMessage && this.config.enableChat) {
+            this.messages.push({
+                role: 'assistant',
+                content: this.config.initialMessage,
+                timestamp: Date.now()
+            });
+            this.currentState = 'messages';
+        }
+        
+        this.chatInput = '';
+        
         // Dragging state
         this.position = { top: 360, left: 660 };
         this.isDragging = false;
@@ -203,29 +207,7 @@ export class PopupStateManager {
         }
     }
 
-    handleShortcutSelect = (shortcut) => {
-        this.chatInput = shortcut;
-        this.handleSubmit();
-    }
-    
-    handleWalkthroughSelect = (walkthrough) => {
-        // If walkthrough is an object with url property, navigate or trigger action
-        if (typeof walkthrough === 'object' && walkthrough.url) {
-            console.log('Navigating to walkthrough:', walkthrough.url);
-            
-            // Actually navigate to the URL
-            if (walkthrough.url.startsWith('/') || walkthrough.url.startsWith('http')) {
-                window.location.href = walkthrough.url;
-            }
-            
-            // Also call the configured handler with the walkthrough object
-            this.config.onWalkthroughSelect(walkthrough);
-        } else {
-            // Fallback to treating it as a regular query
-            this.chatInput = typeof walkthrough === 'object' ? walkthrough.text : walkthrough;
-            this.handleSubmit();
-        }
-    }
+    // No legacy handlers needed - sections handle their own selection logic
 
     transitionTo(newState) {
         console.log(`Transitioning from ${this.currentState} to ${newState}`);
@@ -375,6 +357,12 @@ export class PopupStateManager {
                 break;
 
             case 'textInput':
+                // If chat is disabled, switch to expanded state instead
+                if (!this.config.enableChat) {
+                    this.transitionTo('expanded');
+                    return;
+                }
+                
                 this.components.textInputOnly = new TextInputOnly({
                     onSubmit: this.handleSubmit,
                     onInputChange: this.handleInputChange,
@@ -388,28 +376,71 @@ export class PopupStateManager {
                 break;
 
             case 'expanded':
-                const chatInput = new ChatInput({
+                const chatInput = this.config.enableChat ? new ChatInput({
                     value: this.chatInput,
                     onChange: (e) => this.handleInputChange(e),
                     onSubmit: () => this.handleSubmit(),
                     platform: this.config.platform,
                     primaryColor: this.config.primaryColor
-                });
+                }) : null;
 
+                // Process sections to handle restartFromStep
+                const processedSections = this.config.sections.map(section => {
+                    // Create a new onSelect handler that wraps the original one
+                    const originalOnSelect = section.onSelect;
+                    const wrappedOnSelect = (item) => {
+                        // Check if restart is requested (either at item or section level)
+                        if (item._restartRequested && (item.restartFromStep !== undefined || section.restartFromStep !== undefined)) {
+                            // Item-level restartFromStep takes precedence over section-level
+                            const restartConfig = item.restartFromStep !== undefined ? item.restartFromStep : section.restartFromStep;
+                            
+                            // Handle different formats of restartFromStep
+                            let stepId = null;
+                            let skipTrigger = false;
+                            
+                            if (restartConfig === null || typeof restartConfig === 'string') {
+                                // Simple string or null format
+                                stepId = restartConfig;
+                            } else if (typeof restartConfig === 'object') {
+                                // Object format with stepId and skipTrigger
+                                stepId = restartConfig.stepId;
+                                skipTrigger = !!restartConfig.skipTrigger;
+                            }
+                            
+                            // Emit a custom event that TextAgentEngine can listen for
+                            const restartEvent = new CustomEvent('sable:textAgentRestart', {
+                                detail: { stepId, skipTrigger }
+                            });
+                            window.dispatchEvent(restartEvent);
+                        }
+                        
+                        // Always call the original handler
+                        originalOnSelect(item);
+                    };
+                    
+                    // Return a new section object with the wrapped handler
+                    return {
+                        ...section,
+                        onSelect: wrappedOnSelect
+                    };
+                });
+                
                 this.components.expandedWithShortcuts = new ExpandedWithShortcuts({
-                    shortcuts: this.shortcuts,
-                    productWalkthroughs: this.productWalkthroughs,
-                    onQuerySelect: this.handleShortcutSelect,
-                    onWalkthroughSelect: this.handleWalkthroughSelect,
+                    sections: processedSections,
                     chatInput: chatInput,
                     primaryColor: this.config.primaryColor,
-                    onMinimize: this.handleMinimize,
                     onSubmit: () => this.handleSubmit()
                 });
                 component = this.components.expandedWithShortcuts;
                 break;
 
             case 'messages':
+                // If chat is disabled, switch to expanded state instead
+                if (!this.config.enableChat) {
+                    this.transitionTo('expanded');
+                    return;
+                }
+                
                 console.log('Creating ExpandedWithMessages component with messages:', this.messages);
                 const chatInputForMessages = new ChatInput({
                     value: this.chatInput,
@@ -423,7 +454,7 @@ export class PopupStateManager {
                     messages: this.messages,
                     chatInput: chatInputForMessages,
                     primaryColor: this.config.primaryColor,
-                    onMinimize: this.handleMinimize
+                    customButtons: this.config.customButtons
                 });
                 component = this.components.expandedWithMessages;
                 break;
@@ -445,30 +476,3 @@ export class PopupStateManager {
         this.container.remove();
     }
 }
-
-
-
-            
-// Usage example:
-// const popup = new PopupStateManager({
-//     platform: 'Sable',
-//     primaryColor: '#FFFFFF',
-//     width: 380,
-//     onChatSubmit: async (message) => {
-//         // Handle chat submission
-//         return 'Response from assistant';
-//     }
-// });
-
-// // Mount to document body or any other element
-// popup.mount(document.body);
-
-
-
-
-
-
-
-
-
-

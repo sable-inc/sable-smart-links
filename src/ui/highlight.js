@@ -2,7 +2,7 @@
  * Element highlighting functionality
  */
 
-import { isBrowser } from '../utils/browserAPI.js';
+import { isBrowser } from '../utils/browserApi.js';
 import { getElementPosition, isElementInViewport, createPositionObserver, removePositionObserver, applyPositionWithDelay } from '../utils/positioning.js';
 
 const HIGHLIGHT_CLASS = 'sable-highlight';

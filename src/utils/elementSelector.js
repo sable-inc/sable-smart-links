@@ -2,7 +2,7 @@
  * Element selection utilities
  */
 
-import { isBrowser, safeDocument } from '../utils/browserAPI.js';
+import { isBrowser, safeDocument } from './browserApi.js';
 
 /**
  * Find an element in the DOM using various selector types

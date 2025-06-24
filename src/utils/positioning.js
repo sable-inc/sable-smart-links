@@ -3,7 +3,7 @@
  * This ensures consistent positioning calculations across different UI components
  */
 
-import { isBrowser, safeWindow, safeDocument } from './browserAPI.js';
+import { isBrowser, safeWindow, safeDocument } from './browserApi.js';
 
 // Track delayed positioning tasks
 const delayedPositioningTasks = new Map();
