@@ -6,6 +6,7 @@
 import { WalkthroughEngine } from './core/walkthroughEngine.js';
 import { TextAgentEngine } from './core/textAgentEngine.js';
 import { NovaVoiceEngine } from './core/novaVoiceEngine.js';
+import globalPopupManager from './ui/GlobalPopupManager.js';
 import { VoicePopup } from './ui/components/VoicePopup.js';
 import { isBrowser, safeDocument } from './utils/browserAPI.js';
 import { addEvent, debounce } from './utils/events.js';
@@ -406,7 +407,8 @@ class SableSmartLinks {
       return null;
     }
 
-    return this.textAgentEngine.showPopup(options);
+    // Use global popup manager to ensure only one popup is active
+    return globalPopupManager.showPopup(options);
   }
 
   /**

@@ -7,6 +7,7 @@ import { waitForElement } from '../utils/elementSelector.js';
 import { isBrowser, safeWindow, safeDocument } from '../utils/browserApi.js';
 // import { highlightElement, removeHighlight } from '../ui/highlight.js';
 import { SimplePopupManager } from '../ui/SimplePopupManager.js';
+import globalPopupManager from '../ui/GlobalPopupManager.js';
 import { PopupStateManager } from '../ui/PopupStateManager.js';
 import { addEvent, debounce } from '../utils/events.js';
 
@@ -324,35 +325,17 @@ export class TextAgentEngine {
       this._renderCurrentStep();
     };
 
-    // The exact string you want to match
-    const exactMatch = "Compare the performance of Tesla and Ford in the EV market";
-
-    // Show immediately if the value already matches
-    if (input.value === exactMatch) {
-      showStep();
-      return;
-    }
-
     if (on === 'start') {
       const handler = () => {
         if (!hasStarted && input.value.length > 0) {
           hasStarted = true;
           showStep();
         }
-        // Also show if the value matches exactly
-        if (input.value === exactMatch) {
-          showStep();
-        }
       };
       cleanup = addEvent(input, 'input', handler);
     } else if (on === 'stop') {
       const handler = debounce(() => {
-        // Show if the value matches exactly
-        if (input.value === exactMatch) {
-          showStep();
-        } else {
-          showStep();
-        }
+        showStep();
       }, stopDelay);
       cleanup = addEvent(input, 'input', handler);
     }
@@ -592,9 +575,14 @@ export class TextAgentEngine {
           };
       }
     }
-    // Create and mount the popup
-    this.activePopupManager = new SimplePopupManager(popupOptions);
-    this.activePopupManager.mount(popupOptions.parent);
+    // Create and mount the popup using global popup manager
+    const popupResult = globalPopupManager.showPopup(popupOptions);
+    if (popupResult) {
+        this.activePopupManager = popupResult;
+    } else {
+        console.error('[TextAgentEngine] Failed to create popup');
+        return;
+    }
     
     // Position the popup relative to target element if specified
     if (targetElement && step.targetElement && step.targetElement.position) {
@@ -604,6 +592,11 @@ export class TextAgentEngine {
       
       // First, get the popup dimensions to position it correctly
       // We need to ensure the popup is rendered before measuring it
+      if (!this.activePopupManager || !this.activePopupManager.container) {
+        console.warn('[TextAgentEngine] Popup manager or container not available for positioning');
+        return;
+      }
+      
       const popupRect = this.activePopupManager.container.getBoundingClientRect();
       const popupWidth = popupRect.width || 200; // Fallback width if not yet rendered
       const popupHeight = popupRect.height || 100; // Fallback height if not yet rendered
@@ -793,16 +786,27 @@ export class TextAgentEngine {
         : document.querySelector(options.targetElement.selector);
     }
 
-    // Create and mount the popup
-    const popupManager = new SimplePopupManager({ ...defaultOptions, ...options });
-    this.activePopupManager = popupManager;
-    popupManager.mount(options.parent || defaultOptions.parent);
+    // Create and mount the popup using global popup manager
+    const popupResult = globalPopupManager.showPopup({ ...defaultOptions, ...options });
+    if (popupResult) {
+        this.activePopupManager = popupResult;
+    } else {
+        console.error('[TextAgentEngine] Failed to create popup');
+        return null;
+    }
 
     // --- New: Position the popup relative to target element if specified ---
     if (targetElement && options.targetElement.position) {
       const position = options.targetElement.position;
       const elementRect = targetElement.getBoundingClientRect();
-      const popupRect = popupManager.container.getBoundingClientRect();
+      
+      // Safety check for popup manager and container
+      if (!this.activePopupManager || !this.activePopupManager.container) {
+        console.warn('[TextAgentEngine] Popup manager or container not available for positioning');
+        return popupResult;
+      }
+      
+      const popupRect = this.activePopupManager.container.getBoundingClientRect();
       const popupWidth = popupRect.width || 200;
       const popupHeight = popupRect.height || 100;
       const margin = 10;
@@ -853,29 +857,25 @@ export class TextAgentEngine {
           };
           this.activePopupManager.container.style.transform = 'translate(-50%, -50%)';
       }
-      popupManager.updatePosition(newPosition);
+      this.activePopupManager.updatePosition(newPosition);
     }
 
     // Register this popup
     this.activePopups.push({
       id: options.id || options.text || `popup-${Date.now()}`,
       unmount: () => {
-        popupManager.unmount();
-        if (this.activePopupManager === popupManager) {
-          this.activePopupManager = null;
-        }
+        this.activePopupManager.unmount();
+        this.activePopupManager = null;
       }
     });
 
     return {
       unmount: () => {
-        popupManager.unmount();
-        if (this.activePopupManager === popupManager) {
-          this.activePopupManager = null;
-        }
-        this.activePopups = this.activePopups.filter(p => p.unmount !== popupManager.unmount);
+        this.activePopupManager.unmount();
+        this.activePopupManager = null;
+        this.activePopups = this.activePopups.filter(p => p.unmount !== this.activePopupManager?.unmount);
       },
-      mount: (newParent) => popupManager.mount(newParent)
+      mount: (newParent) => this.activePopupManager.mount(newParent)
     };
   }
   

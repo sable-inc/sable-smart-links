@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, createContext, useContext, useState } from 'react';
 import { SableSmartLinks, SableSmartLinksConfig, WalkthroughStep, TextAgentStep, VoiceToolConfig } from '../index';
 import { isBrowser } from '../utils/browserAPI';
+import globalPopupManager from '../ui/GlobalPopupManager.js';
 
 interface SableSmartLinksContextType {
   // Walkthrough methods
@@ -18,7 +19,7 @@ interface SableSmartLinksContextType {
   endTextAgent: () => SableSmartLinksContextType;
   restartTextAgent: (stepId?: string | null, beforeRestartCallback?: (() => void) | null) => SableSmartLinksContextType;
   
-  // Popup method
+  // Popup methods
   showPopup: (options: {
     text: string;
     boxWidth?: number;
@@ -28,10 +29,15 @@ interface SableSmartLinksContextType {
     primaryColor?: string;
     parent?: HTMLElement;
   }) => { unmount: () => void; mount: (newParent: HTMLElement) => void; } | null;
+  closeAllPopups: () => void;
   
   // Voice Agent methods
   toggleVoiceChat: () => Promise<void>;
   isVoiceChatActive: () => boolean;
+
+  // Popup state
+  hasActivePopup: boolean;
+  isPopupMinimized: boolean;
 
   // Shared data methods for passing data between steps
   setStepData: (key: string, value: any) => void;
@@ -87,11 +93,36 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
   const [stepData, setStepDataState] = useState<Record<string, any>>(initialStepData);
   // Use a ref to track the latest step data for immediate access
   const stepDataRef = useRef<Record<string, any>>(initialStepData);
+  
+  // Popup state
+  const [hasActivePopup, setHasActivePopup] = useState(false);
+  const [isPopupMinimized, setIsPopupMinimized] = useState(false);
 
   // Keep the ref in sync with state
   useEffect(() => {
     stepDataRef.current = stepData;
   }, [stepData]);
+
+  // Listen for popup state changes from global popup manager
+  useEffect(() => {
+    const handlePopupStateChange = (state: { hasActivePopup: boolean; isMinimized: boolean }) => {
+      setHasActivePopup(state.hasActivePopup);
+      setIsPopupMinimized(state.isMinimized);
+    };
+
+    // Get initial state
+    const initialState = globalPopupManager.getState() as { hasActivePopup: boolean; isMinimized: boolean };
+    setHasActivePopup(initialState.hasActivePopup);
+    setIsPopupMinimized(initialState.isMinimized);
+
+    // Add listener for state changes
+    globalPopupManager.addListener(handlePopupStateChange);
+
+    // Cleanup listener on unmount
+    return () => {
+      globalPopupManager.removeListener(handlePopupStateChange);
+    };
+  }, []);
 
   // Function to update step data
   const setStepData = (key: string, value: any) => {
@@ -310,7 +341,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
       return contextValue;
     },
     
-    // Popup method
+    // Popup methods
     showPopup: (options: {
       text: string;
       boxWidth?: number;
@@ -326,6 +357,10 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
       return null;
     },
     
+    closeAllPopups: () => {
+      globalPopupManager.closeActivePopup();
+    },
+    
     // Voice methods
     toggleVoiceChat: async () => {
       if (sableInstance.current) {
@@ -338,13 +373,17 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
         return sableInstance.current.isVoiceChatActive();
       }
       return false;
-    }
+    },
 
     // Step data methods
     setStepData,
     getStepData,
     getAllStepData,
-    clearStepData
+    clearStepData,
+
+    // Popup state
+    hasActivePopup,
+    isPopupMinimized
   };
 
   return (

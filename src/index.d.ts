@@ -18,12 +18,20 @@ export interface SableSmartLinksConfig {
 
   /** Configuration for the text agent engine */
   textAgent?: {
+    /** Automatically start text agent if parameter is found (default: true) */
+    autoStart?: boolean;
     /** Default state of the text agent (default: 'collapsed') */
     defaultState?: 'expanded' | 'collapsed';
     /** Position of the text agent (default: 'right') */
     position?: 'top' | 'right' | 'bottom' | 'left';
     /** Whether to persist state across page reloads (default: true) */
     persistState?: boolean;
+    /** Primary color for styling (default: '#FFFFFF') */
+    primaryColor?: string;
+    /** Default box width for popups (default: 300) */
+    defaultBoxWidth?: number;
+    /** Whether to enable chat input in text agent (default: false) */
+    enableChatInput?: boolean;
     /** Configuration for the final popup shown at the end of a text agent session */
     finalPopupConfig?: {
       /** Whether to enable chat input (default: true) */
@@ -121,6 +129,9 @@ export interface SableSmartLinksConfig {
 
     /** Function calls/tools configuration */
     tools?: VoiceToolConfig[];
+
+    /** Speaking speed multiplier (default: 1.1) */
+    speakingSpeed?: number;
 
     /** Popup look-and-feel */
     ui?: {
@@ -345,6 +356,7 @@ export interface TextAgentStep {
   /** Unique identifier for the step (will be auto-generated if not provided) */
   id?: string;
 
+  /** Font size for the popup text (default: '15px') */
   fontSize?: string;
   
   /** Main text content to display in the popup */
@@ -378,10 +390,10 @@ export interface TextAgentStep {
   /** Primary color for styling the popup */
   primaryColor?: string;
   
-  /** Whether the popup should be minimizable */
+  /** Whether the popup should be minimizable (default: true) */
   minimizable?: boolean;
   
-  /** Whether the popup starts in minimized state */
+  /** Whether the popup starts in minimized state (default: false) */
   startMinimized?: boolean;
   
   /** Callback when minimized state changes */
@@ -426,8 +438,10 @@ export interface TextAgentStep {
   /** Custom callback function called when step is executed */
   callback?: (element: HTMLElement | null, engine: any) => void;
   
+  /** Whether to include a text input box in the popup (default: false) */
   includeTextBox?: boolean;
 
+  /** Trigger the step when typing occurs in an input field */
   triggerOnTyping?: {
     /** CSS selector for the input element */
     selector: string;
@@ -446,20 +460,4 @@ export interface TextAgentStep {
     /** Delay in ms before showing popup after the event (default: 0) */
     delay?: number;
   };
-  
-  // /** Position of the popup relative to the viewport or target element */
-  // position?: {
-  //   top?: string | number;
-  //   left?: string | number;
-  //   right?: string | number;
-  //   bottom?: string | number;
-  // };
-  
-  // /** Custom CSS class names */
-  // className?: {
-  //   container?: string;
-  //   text?: string;
-  //   secondaryText?: string;
-  //   buttons?: string;
-  // };
 }

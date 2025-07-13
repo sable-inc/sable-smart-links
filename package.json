@@ -48,7 +48,8 @@
     "dev": "rollup -c -w",
     "lint": "eslint src/**/*.js",
     "prepublishOnly": "npm run build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "update": "npm run build && npm pack && rm -rf ../tavily-platform-deployment/sable-smart-links-1.4.64.tgz && mv sable-smart-links-1.4.64.tgz ../tavily-platform-deployment"
   },
   "devDependencies": {
     "@babel/core": "^7.22.5",

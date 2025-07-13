@@ -1,6 +1,7 @@
 // managers/SimplePopupManager.js
 import { SimplePopup } from './components/SimplePopup.js';
 import { MinimizedState } from './components/MinimizedState.js';
+import globalPopupManager from './GlobalPopupManager.js';
 
 export class SimplePopupManager {
     constructor(config) {
@@ -40,11 +41,15 @@ export class SimplePopupManager {
         console.log('Minimize clicked, before:', this.isMinimized);
         this.isMinimized = true;
         console.log('After setting isMinimized:', this.isMinimized);
+        // Notify global popup manager of state change
+        globalPopupManager.setMinimized(true);
         this.render();
     }
 
     handleMaximize = () => {
         this.isMinimized = false;
+        // Notify global popup manager of state change
+        globalPopupManager.setMinimized(false);
         this.render();
     }
 
@@ -122,6 +127,8 @@ export class SimplePopupManager {
 
     unmount() {
         this.container.remove();
+        // Notify global popup manager that popup is closed
+        globalPopupManager.setMinimized(false);
     }
     
     /**
