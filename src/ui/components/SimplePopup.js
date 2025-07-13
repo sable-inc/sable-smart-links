@@ -1,8 +1,7 @@
 // components/SimplePopup.js
 import { ArrowButton } from './ArrowButton.js';
 import { YesNoButtons } from './YesNoButtons.js';
-import { MinimizedState } from './MinimizedState.js';
-import { MinimizeButton } from './MinimizeButton.js';
+import { CloseButton } from './CloseButton.js';
 
 export class SimplePopup {
     constructor(config) {
@@ -13,14 +12,13 @@ export class SimplePopup {
             onProceed: config.onProceed || (() => {}),
             onYesNo: config.onYesNo || (() => {}),
             primaryColor: config.primaryColor || '#FFFFFF',
-            onMinimize: config.onMinimize || (() => {}),
+            onClose: config.onClose || (() => {}),
             onPositionChange: config.onPositionChange || (() => {}),
             includeTextBox: config.includeTextBox || false,
             fontSize: config.fontSize || '15px'
         };
 
         // State
-        this.isMinimized = false;
         // Use position from config if provided, otherwise use default
         this.position = config.position || { top: window.innerHeight / 2, left: window.innerWidth / 2 };
         this.isDragging = false;
@@ -69,12 +67,12 @@ export class SimplePopup {
         const dragHandle = this.createDragHandle();
         popup.appendChild(dragHandle);
 
-        // Replace custom minimize button with MinimizeButton component
-        const minimizeButton = new MinimizeButton({
-            onMinimize: () => this.minimize(),
+        // Replace custom close button with CloseButton component
+        const closeButton = new CloseButton({
+            onClose: () => this.close(),
             primaryColor: this.config.primaryColor
         });
-        popup.appendChild(minimizeButton.render());
+        popup.appendChild(closeButton.render());
 
         // Add content container
         const content = this.createContent();
@@ -362,7 +360,7 @@ export class SimplePopup {
 
     setupDragging() {
         const handleDragStart = (e) => {
-            if (e.target.closest('.minimize-button') || e.target.closest('.action-button')) {
+            if (e.target.closest('.close-button') || e.target.closest('.action-button')) {
                 return; // Don't start dragging when clicking buttons
             }
             
@@ -415,71 +413,23 @@ export class SimplePopup {
         };
     }
 
-    minimize() {
-        console.log('Minimize clicked');
+    close() {
+        console.log('Close clicked');
         
-        // Call the onMinimize callback if provided in config
-        if (this.config.onMinimize) {
-            this.config.onMinimize();
+        // Call the onClose callback if provided in config
+        if (this.config.onClose) {
+            this.config.onClose();
         }
 
-        // Update state
-        this.isMinimized = true;
+        // Remove the popup from the DOM
+        if (this.element && this.element.parentNode) {
+            this.element.parentNode.removeChild(this.element);
+        }
 
-        // Clear existing content
-        this.element.innerHTML = '';
-
-        // Create and render minimized state
-        const minimizedState = new MinimizedState({
-            text: this.config.text,
-            onClick: () => {
-                // Handle maximize
-                this.isMinimized = false;
-                this.element.innerHTML = '';
-                
-                // Restore original content
-                const dragHandle = this.createDragHandle();
-                const minimizeButton = new MinimizeButton({
-                    onMinimize: () => this.minimize(),
-                    primaryColor: this.config.primaryColor
-                });
-                const content = this.createContent();
-                
-                this.element.appendChild(dragHandle);
-                this.element.appendChild(minimizeButton.render());
-                this.element.appendChild(content);
-                
-                // Restore original styles
-                Object.assign(this.element.style, {
-                    width: 'fit-content',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    background: `radial-gradient(
-                        circle at center,
-                        rgba(60, 60, 60, 0.5) 0%,
-                        rgba(60, 60, 60, 0.65) 100%
-                    )`,
-                    padding: '12px',
-                    cursor: 'grab',
-                });
-
-                // The references to textContainer and buttonContainer are updated in createContent
-                // so we can safely call startAnimationSequence
-                this.startAnimationSequence();
-            },
-            primaryColor: this.config.primaryColor
-        });
-
-        // Update styles for minimized state
-        Object.assign(this.element.style, {
-            width: 'auto',
-            background: 'rgba(0, 0, 0, 0.8)',
-            padding: '8px 16px',
-            cursor: 'pointer',
-        });
-
-        // Append minimized state
-        this.element.appendChild(minimizedState.render());
+        // Clean up event listeners
+        if (this.cleanupDragging) {
+            this.cleanupDragging();
+        }
     }
 
     render() {

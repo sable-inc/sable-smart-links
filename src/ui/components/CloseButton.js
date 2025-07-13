@@ -1,10 +1,10 @@
-// components/MinimizeButton.js
-export class MinimizeButton {
-    constructor({ onMinimize, primaryColor }) {
-        this.element = this.createElement({ onMinimize, primaryColor });
+// components/CloseButton.js
+export class CloseButton {
+    constructor({ onClose, primaryColor }) {
+        this.element = this.createElement({ onClose, primaryColor });
     }
 
-    createElement({ onMinimize, primaryColor }) {
+    createElement({ onClose, primaryColor }) {
         const button = document.createElement('button');
         Object.assign(button.style, {
             position: 'absolute',
@@ -24,7 +24,7 @@ export class MinimizeButton {
             outline: 'none',
         });
 
-        // Create a modern minimize icon using SVG
+        // Create a modern close icon using SVG (X)
         button.innerHTML = `
             <svg 
                 width="8" 
@@ -44,7 +44,7 @@ export class MinimizeButton {
         
         button.addEventListener('click', (e) => {
             e.stopPropagation();
-            onMinimize();
+            onClose();
         });
 
         button.addEventListener('mouseover', () => {

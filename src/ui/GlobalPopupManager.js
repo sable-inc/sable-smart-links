@@ -1,6 +1,5 @@
 // GlobalPopupManager.js
 import { SimplePopup } from './components/SimplePopup.js';
-import { MinimizedState } from './components/MinimizedState.js';
 
 /**
  * Global popup manager that ensures only one popup is active at a time
@@ -9,7 +8,6 @@ import { MinimizedState } from './components/MinimizedState.js';
 class GlobalPopupManager {
     constructor() {
         this.activePopup = null;
-        this.isMinimized = false;
         this.listeners = new Set();
     }
 
@@ -31,7 +29,6 @@ class GlobalPopupManager {
             
             // Store reference to active popup
             this.activePopup = popupManager;
-            this.isMinimized = false;
             
             // Mount the popup
             const parent = options.parent || document.body;
@@ -48,7 +45,6 @@ class GlobalPopupManager {
                     console.log('[GlobalPopupManager] Unmounting popup');
                     popupManager.unmount();
                     this.activePopup = null;
-                    this.isMinimized = false;
                     this.notifyListeners();
                 },
                 mount: (newParent) => {
@@ -89,7 +85,10 @@ class GlobalPopupManager {
         // Create popup instance
         const popup = new SimplePopup({
             ...popupConfig,
-            onMinimize: () => this.setMinimized(true),
+            onClose: () => {
+                // Close the popup and update state
+                this.closeActivePopup();
+            },
             onPositionChange: (position) => {
                 // Handle position changes if needed
             }
@@ -106,7 +105,6 @@ class GlobalPopupManager {
             },
             unmount: () => {
                 popupElement.remove();
-                this.setMinimized(false);
             },
             updatePosition: (newPosition) => {
                 if (newPosition && typeof newPosition === 'object') {
@@ -130,7 +128,6 @@ class GlobalPopupManager {
                 console.error('[GlobalPopupManager] Error closing popup:', error);
             }
             this.activePopup = null;
-            this.isMinimized = false;
             this.notifyListeners();
         }
     }
@@ -143,22 +140,7 @@ class GlobalPopupManager {
         return this.activePopup !== null;
     }
 
-    /**
-     * Check if the current popup is minimized
-     * @returns {boolean} True if popup is minimized
-     */
-    isPopupMinimized() {
-        return this.isMinimized;
-    }
 
-    /**
-     * Set the minimized state
-     * @param {boolean} minimized - Whether the popup is minimized
-     */
-    setMinimized(minimized) {
-        this.isMinimized = minimized;
-        this.notifyListeners();
-    }
 
     /**
      * Add a listener for popup state changes
@@ -183,8 +165,7 @@ class GlobalPopupManager {
         this.listeners.forEach(listener => {
             try {
                 listener({
-                    hasActivePopup: this.hasActivePopup(),
-                    isMinimized: this.isMinimized
+                    hasActivePopup: this.hasActivePopup()
                 });
             } catch (error) {
                 console.error('[GlobalPopupManager] Error in listener:', error);
@@ -198,8 +179,7 @@ class GlobalPopupManager {
      */
     getState() {
         return {
-            hasActivePopup: this.hasActivePopup(),
-            isMinimized: this.isMinimized
+            hasActivePopup: this.hasActivePopup()
         };
     }
 }

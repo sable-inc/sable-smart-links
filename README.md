@@ -150,7 +150,7 @@ The library includes a global popup manager that ensures only one popup is activ
 
 - **Single Popup Guarantee**: Only one popup can be active at any time
 - **Automatic Cleanup**: Previous popups are automatically closed when new ones are shown
-- **State Tracking**: Track whether a popup is active and if it's minimized
+- **State Tracking**: Track whether a popup is active
 - **Event Listeners**: Subscribe to popup state changes
 
 ### Usage
@@ -169,7 +169,6 @@ const popup = globalPopupManager.showPopup({
 // Check popup state
 const state = globalPopupManager.getState();
 console.log("Has active popup:", state.hasActivePopup);
-console.log("Is minimized:", state.isMinimized);
 
 // Listen for state changes
 globalPopupManager.addListener((state) => {
@@ -188,13 +187,11 @@ When using the React provider, you can access popup state through the context:
 import { useSableSmartLinks } from "sable-smart-links/react";
 
 function MyComponent() {
-  const { hasActivePopup, isPopupMinimized, closeAllPopups } =
-    useSableSmartLinks();
+  const { hasActivePopup, closeAllPopups } = useSableSmartLinks();
 
   return (
     <div>
       <p>Popup active: {hasActivePopup ? "Yes" : "No"}</p>
-      <p>Popup minimized: {isPopupMinimized ? "Yes" : "No"}</p>
       <button onClick={closeAllPopups}>Close All Popups</button>
     </div>
   );

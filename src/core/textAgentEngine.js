@@ -526,8 +526,7 @@ export class TextAgentEngine {
       boxWidth: step.boxWidth || this.config.defaultBoxWidth,
       buttonType: step.buttonType || 'arrow',
       primaryColor: step.primaryColor || this.config.primaryColor,
-      minimizable: step.minimizable !== undefined ? step.minimizable : true,
-      startMinimized: step.startMinimized || false,
+
       includeTextBox: step.includeTextBox || false,
       fontSize: step.fontSize || '15px',
       parent: safeDocument?.body || document.body

@@ -390,14 +390,7 @@ export interface TextAgentStep {
   /** Primary color for styling the popup */
   primaryColor?: string;
   
-  /** Whether the popup should be minimizable (default: true) */
-  minimizable?: boolean;
-  
-  /** Whether the popup starts in minimized state (default: false) */
-  startMinimized?: boolean;
-  
-  /** Callback when minimized state changes */
-  onMinimizeStateChange?: (isMinimized: boolean) => void;
+
   
   /** Element to highlight or focus during this step */
   targetElement?: {

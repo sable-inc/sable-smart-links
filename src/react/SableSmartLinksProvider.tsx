@@ -37,7 +37,6 @@ interface SableSmartLinksContextType {
 
   // Popup state
   hasActivePopup: boolean;
-  isPopupMinimized: boolean;
 
   // Shared data methods for passing data between steps
   setStepData: (key: string, value: any) => void;
@@ -96,33 +95,30 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
   
   // Popup state
   const [hasActivePopup, setHasActivePopup] = useState(false);
-  const [isPopupMinimized, setIsPopupMinimized] = useState(false);
 
   // Keep the ref in sync with state
   useEffect(() => {
     stepDataRef.current = stepData;
   }, [stepData]);
 
-  // Listen for popup state changes from global popup manager
-  useEffect(() => {
-    const handlePopupStateChange = (state: { hasActivePopup: boolean; isMinimized: boolean }) => {
-      setHasActivePopup(state.hasActivePopup);
-      setIsPopupMinimized(state.isMinimized);
-    };
+      // Listen for popup state changes from global popup manager
+    useEffect(() => {
+        const handlePopupStateChange = (state: { hasActivePopup: boolean }) => {
+            setHasActivePopup(state.hasActivePopup);
+        };
 
-    // Get initial state
-    const initialState = globalPopupManager.getState() as { hasActivePopup: boolean; isMinimized: boolean };
-    setHasActivePopup(initialState.hasActivePopup);
-    setIsPopupMinimized(initialState.isMinimized);
+        // Get initial state
+        const initialState = globalPopupManager.getState() as { hasActivePopup: boolean };
+        setHasActivePopup(initialState.hasActivePopup);
 
-    // Add listener for state changes
-    globalPopupManager.addListener(handlePopupStateChange);
+        // Add listener for state changes
+        globalPopupManager.addListener(handlePopupStateChange);
 
-    // Cleanup listener on unmount
-    return () => {
-      globalPopupManager.removeListener(handlePopupStateChange);
-    };
-  }, []);
+        // Cleanup listener on unmount
+        return () => {
+            globalPopupManager.removeListener(handlePopupStateChange);
+        };
+    }, []);
 
   // Function to update step data
   const setStepData = (key: string, value: any) => {
@@ -382,8 +378,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     clearStepData,
 
     // Popup state
-    hasActivePopup,
-    isPopupMinimized
+    hasActivePopup
   };
 
   return (

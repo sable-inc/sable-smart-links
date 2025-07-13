@@ -169,8 +169,8 @@ class SableSmartLinks {
       this.voicePopup = new VoicePopup({
         ...this.config.voice.ui,
         onToggle: () => this.toggleVoiceChat(),  // ← Arrow function preserves context
-        onMinimize: () => {
-          // Handle minimize if needed
+        onClose: () => {
+          // Handle close if needed
         }
       });
       console.log('[SableSmartLinks] VoicePopup created:', !!this.voicePopup);

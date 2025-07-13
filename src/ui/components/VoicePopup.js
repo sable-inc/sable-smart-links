@@ -3,7 +3,7 @@
  * Simple voice chat interface that follows SableSmartLinks patterns
  */
 
-import { MinimizeButton } from './MinimizeButton.js';
+import { CloseButton } from './CloseButton.js';
 import { debugLog } from '../../config.js';
 
 export class VoicePopup {
@@ -19,11 +19,10 @@ export class VoicePopup {
         backgroundColor: 'rgba(60, 60, 60, 0.9)'
       },
       onToggle: () => {},
-      onMinimize: () => {},
+      onClose: () => {},
       ...config
     };
 
-    this.isMinimized = false;
     this.isActive = false;
     this.messages = [];
     this.status = 'Ready';
@@ -64,12 +63,12 @@ export class VoicePopup {
     const dragHandle = this.createDragHandle();
     popup.appendChild(dragHandle);
 
-    // Add minimize button
-    const minimizeButton = new MinimizeButton({
-      onMinimize: () => this.minimize(),
+    // Add close button
+    const closeButton = new CloseButton({
+      onClose: () => this.close(),
       primaryColor: this.config.theme.primaryColor
     });
-    popup.appendChild(minimizeButton.render());
+    popup.appendChild(closeButton.render());
 
     // Add content
     const content = this.createContent();
@@ -259,16 +258,15 @@ export class VoicePopup {
     this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
   }
 
-  minimize() {
-    this.isMinimized = true;
-    this.element.style.display = 'none';
-    this.config.onMinimize();
+  close() {
+    // Remove the popup from the DOM
+    if (this.element && this.element.parentNode) {
+      this.element.parentNode.removeChild(this.element);
+    }
+    this.config.onClose();
   }
 
-  restore() {
-    this.isMinimized = false;
-    this.element.style.display = 'flex';
-  }
+
 
   render() {
     return this.element;
