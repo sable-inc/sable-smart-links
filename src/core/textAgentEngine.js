@@ -477,6 +477,7 @@ export class TextAgentEngine {
     const step = this.steps[this.currentStepIndex];
     if (this.config.debug) {
       console.log('[SableTextAgent][_renderCurrentStep] Rendering step index:', this.currentStepIndex, 'Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId, 'Step:', step);
+      console.log('[SableTextAgent][_renderCurrentStep] Step.sections:', step && step.sections);
     }
     
     // --- CONDITIONAL POPUP LOGIC ---
@@ -557,12 +558,14 @@ export class TextAgentEngine {
   _createPopupForStep(step, targetElement) {
     if (this.config.debug) {
       console.log('[SableTextAgent][_createPopupForStep] Creating popup for step index:', this.currentStepIndex, 'Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId, 'Step:', step);
+      console.log('[SableTextAgent][_createPopupForStep] Step.sections:', step && step.sections);
     }
     
     // Get the text content, handling both string and function types
     const stepText = typeof step.text === 'function' ? step.text() : step.text;
     const secondaryText = typeof step.secondaryText === 'function' ? step.secondaryText() : step.secondaryText;
-    
+    const stepSections = typeof step.sections === 'function' ? step.sections() : step.sections;
+
     // Create popup options
     const popupOptions = {
       text: stepText,
@@ -570,7 +573,7 @@ export class TextAgentEngine {
       boxWidth: step.boxWidth || this.config.defaultBoxWidth,
       buttonType: step.buttonType || 'arrow',
       primaryColor: step.primaryColor || this.config.primaryColor,
-
+      sections: stepSections,
       includeTextBox: step.includeTextBox || false,
       fontSize: step.fontSize || '15px',
       parent: safeDocument?.body || document.body
@@ -825,7 +828,8 @@ export class TextAgentEngine {
       buttonType: 'arrow',
       primaryColor: this.config.primaryColor || '#FFFFFF',
       parent: safeDocument?.body || document.body,
-      fontSize: this.config.fontSize || '15px'
+      fontSize: this.config.fontSize || '15px',
+      sections: [],
     };
 
     // Note: Global popup manager handles closing existing popups
@@ -1201,7 +1205,13 @@ export class TextAgentEngine {
     }
     
     // Get sections from configuration
-    const sections = this.config.finalPopupConfig?.sections || [];
+    const sections = Array.isArray(this.config.finalPopupConfig?.sections) ? this.config.finalPopupConfig.sections : [];
+    if (!Array.isArray(this.config.finalPopupConfig?.sections) && this.config.finalPopupConfig?.sections !== undefined) {
+      console.warn('[SableTextAgent][_addFinalPopupStep] finalPopupConfig.sections is not an array:', this.config.finalPopupConfig.sections);
+    }
+    if (this.config.debug) {
+      console.log('[SableTextAgent][_addFinalPopupStep] Using sections for final popup:', sections);
+    }
     
     // Use globalPopupManager to enforce singleton
     this._finalPopupManager = globalPopupManager.showStatefulPopup(

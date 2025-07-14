@@ -197,6 +197,27 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
           return originalTextFn(freshDataUtils);
         };
       }
+
+      if (processedStep.sections == null) { processedStep.sections = []; }
+
+      // Handle sections property
+      console.log('[processTextAgentSteps] Before processing sections:', processedStep.sections);
+      if (Array.isArray(processedStep.sections)) {
+        // If sections is an array, convert it to a function that can access step data
+        const originalSections = processedStep.sections;
+        processedStep.sections = () => originalSections;
+      } else if (typeof processedStep.sections === 'function') {
+        const originalSectionsFn = processedStep.sections;
+        processedStep.sections = () => {
+          const freshDataUtils = {
+            setStepData,
+            getStepData: (key: string) => stepDataRef.current[key],
+            getAllStepData: () => stepDataRef.current,
+            clearStepData
+          };
+          return originalSectionsFn(freshDataUtils);
+        };
+      }
       
       // Wrap onProceed to provide access to step data
       if (processedStep.onProceed) {

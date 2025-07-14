@@ -445,6 +445,33 @@ export interface TextAgentStep {
     getAllStepData: () => Record<string, any>;
     clearStepData: () => void;
   }) => string);
+
+  sections?: Array<{
+    title: string;
+    icon?: string;
+    restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+    items: Array<{
+      text: string;
+      restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+      data?: any;
+    }>;
+    onSelect: (item: any) => void;
+  }> | ((dataUtils?: {
+    setStepData: (key: string, value: any) => void;
+    getStepData: (key: string) => any;
+    getAllStepData: () => Record<string, any>;
+    clearStepData: () => void;
+  }) => Array<{
+    title: string;
+    icon?: string;
+    restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+    items: Array<{
+      text: string;
+      restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+      data?: any;
+    }>;
+    onSelect: (item: any) => void;
+  }>);
   
   /** Secondary text content (displayed in a different style) */
   secondaryText?: string | (() => string);

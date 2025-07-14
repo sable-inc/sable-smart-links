@@ -113,7 +113,8 @@ class GlobalPopupManager {
             onYesNo: config.onYesNo || (() => {}),
             primaryColor: config.primaryColor || '#FFFFFF',
             includeTextBox: config.includeTextBox || false,
-            fontSize: config.fontSize || '15px'
+            fontSize: config.fontSize || '15px',
+            sections: config.sections || []
         };
 
         // Create popup instance

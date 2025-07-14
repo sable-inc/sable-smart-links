@@ -2,6 +2,7 @@
 import { ArrowButton } from './ArrowButton.js';
 import { YesNoButtons } from './YesNoButtons.js';
 import { CloseButton } from './CloseButton.js';
+import { ShortcutsAndRecents } from './ShortcutsAndRecents.js';
 
 export class SimplePopup {
     constructor(config) {
@@ -15,7 +16,8 @@ export class SimplePopup {
             onClose: config.onClose || (() => {}),
             onPositionChange: config.onPositionChange || (() => {}),
             includeTextBox: config.includeTextBox || false,
-            fontSize: config.fontSize || '15px'
+            fontSize: config.fontSize || '15px',
+            sections: config.sections || []
         };
 
         // State
@@ -230,17 +232,21 @@ export class SimplePopup {
         // For arrow button, add it to the row. For yes-no buttons, add them below the text
         if (this.config.buttonType === 'arrow') {
             rowContainer.appendChild(buttonContainer);
-        } else if (this.config.buttonType === 'yes-no') {
-            mainContainer.appendChild(rowContainer);
+        }
+        mainContainer.appendChild(rowContainer);
+        if (this.config.buttonType === 'yes-no') {
             mainContainer.appendChild(buttonContainer);
-        } else if (this.config.buttonType === 'none') {
-            mainContainer.appendChild(rowContainer);
-            // Do not add buttonContainer anywhere
         }
 
-        // Add the row container to the main container if it's not already added
-        if (this.config.buttonType === 'arrow') {
-            mainContainer.appendChild(rowContainer);
+        if (Array.isArray(this.config.sections) && this.config.sections.length > 0) {
+            console.log('[SimplePopup][createContent] Rendering sections:', this.config.sections);
+            const shortcutsAndRecents = new ShortcutsAndRecents({
+                sections: this.config.sections
+            });
+            // Insert after the rowContainer (which contains the text)
+            mainContainer.appendChild(shortcutsAndRecents.render());
+        } else if (this.config.sections !== undefined && !Array.isArray(this.config.sections)) {
+            console.warn('[SimplePopup][createContent] this.config.sections is not an array:', this.config.sections);
         }
 
         // Add textbox if needed - always at the bottom
