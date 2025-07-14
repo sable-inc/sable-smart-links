@@ -39,7 +39,7 @@ export class PopupStateManager {
         
         // Dragging state
         this.position = { 
-            top: 360,
+            top: 240,
             left: ((window?.innerWidth ?? 1700) - (this.config.width ?? 380)) / 2, 
         };
         this.isDragging = false;

@@ -213,7 +213,7 @@ export class SimplePopup {
             // Store reference to the arrow button
             this.arrowButton = arrowButton;
             buttonContainer.appendChild(arrowButton.render());
-        } else {
+        } else if (this.config.buttonType === 'yes-no') {
             // For yes/no buttons, use the original implementation
             const yesNoButtons = new YesNoButtons((isYes) => {
                 if (typeof this.config.onYesNo === 'function') {
@@ -222,6 +222,7 @@ export class SimplePopup {
             }, this.config.primaryColor);
             buttonContainer.appendChild(yesNoButtons.render());
         }
+        // If buttonType is 'none', do not add any button to the buttonContainer or DOM
 
         // Add text and button to the row container
         rowContainer.appendChild(textContainer);
@@ -229,9 +230,12 @@ export class SimplePopup {
         // For arrow button, add it to the row. For yes-no buttons, add them below the text
         if (this.config.buttonType === 'arrow') {
             rowContainer.appendChild(buttonContainer);
-        } else {
+        } else if (this.config.buttonType === 'yes-no') {
             mainContainer.appendChild(rowContainer);
             mainContainer.appendChild(buttonContainer);
+        } else if (this.config.buttonType === 'none') {
+            mainContainer.appendChild(rowContainer);
+            // Do not add buttonContainer anywhere
         }
 
         // Add the row container to the main container if it's not already added

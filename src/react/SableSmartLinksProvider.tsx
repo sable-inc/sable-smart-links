@@ -128,7 +128,11 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
   const [stepData, setStepDataState] = useState<Record<string, any>>(initialStepData);
   // Use a ref to track the latest step data for immediate access
   const stepDataRef = useRef<Record<string, any>>(initialStepData);
-  
+  // Track registered text agents and their step hashes
+  const registeredTextAgents = useRef<Record<string, string>>({});
+  // Track registered walkthroughs and their step hashes
+  const registeredWalkthroughs = useRef<Record<string, string>>({});
+
   // Popup state
   const [hasActivePopup, setHasActivePopup] = useState(false);
 
@@ -137,58 +141,21 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     stepDataRef.current = stepData;
   }, [stepData]);
 
-      // Listen for popup state changes from global popup manager
-    useEffect(() => {
-        const handlePopupStateChange = (state: { hasActivePopup: boolean }) => {
-            setHasActivePopup(state.hasActivePopup);
-        };
-
-        // Get initial state
-        const initialState = globalPopupManager.getState() as { hasActivePopup: boolean };
-        setHasActivePopup(initialState.hasActivePopup);
-
-        // Add listener for state changes
-        globalPopupManager.addListener(handlePopupStateChange);
-
-        // Cleanup listener on unmount
-        return () => {
-            globalPopupManager.removeListener(handlePopupStateChange);
-        };
-    }, []);
-
-  // Function to update step data
-  const setStepData = (key: string, value: any) => {
-    // Update both the state and the ref immediately
-    stepDataRef.current = {
-      ...stepDataRef.current,
-      [key]: value
+  // Listen for popup state changes from global popup manager
+  useEffect(() => {
+    const handlePopupStateChange = (state: { hasActivePopup: boolean }) => {
+      setHasActivePopup(state.hasActivePopup);
     };
-    
-    setStepDataState(prevData => {
-      const newData = {
-        ...prevData,
-        [key]: value
-      };
-      return newData;
-    });
-  };
-
-  // Function to get step data - always use the ref for most current value
-  const getStepData = (key: string) => {
-    // Always use the ref for immediate access to latest data
-    const value = stepDataRef.current[key];
-    return value;
-  };
-
-  // Function to get all step data
-  const getAllStepData = () => {
-    return stepData;
-  };
-
-  // Function to clear all step data
-  const clearStepData = () => {
-    setStepDataState({});
-  };
+    // Get initial state
+    const initialState = globalPopupManager.getState() as { hasActivePopup: boolean };
+    setHasActivePopup(initialState.hasActivePopup);
+    // Add listener for state changes
+    globalPopupManager.addListener(handlePopupStateChange);
+    // Cleanup listener on unmount
+    return () => {
+      globalPopupManager.removeListener(handlePopupStateChange);
+    };
+  }, []);
 
   // Process text agent steps to inject data access
   const processTextAgentSteps = (id: string, steps: TextAgentStep[]): TextAgentStep[] => {
@@ -257,42 +224,38 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     });
   };
 
+  // Helper to hash steps for change detection
+  function hashSteps(steps: any[]): string {
+    try {
+      return JSON.stringify(steps, (key, value) => {
+        if (typeof value === 'function') return value.toString();
+        return value;
+      });
+    } catch {
+      return Math.random().toString(); // fallback
+    }
+  }
+
+  // Only instantiate SableSmartLinks once
   useEffect(() => {
     if (!isBrowser) return;
-    
-    // Merge voice prop with config.voice (voice prop takes precedence)
-    // Merge menu prop with config.menu (menu prop takes precedence)
-    const mergedConfig = {
-      ...config,
-      voice: {
-        ...config.voice,  // Base voice config
-        ...voice          // Override with voice prop
-      },
-      menu: menu || config.menu // Use menu prop if provided, otherwise use config
-    };
-    
-    console.log('[SableSmartLinksProvider] Merged config:', mergedConfig);
-    sableInstance.current = new SableSmartLinks(mergedConfig);
-    
-    isMounted.current = true;
-    
-    // Register any walkthroughs provided via props
-    Object.entries(walkthroughs).forEach(([id, steps]) => {
-      sableInstance.current?.registerWalkthrough(id, steps);
-    });
-    
-    // Register any text agents provided via props with processed steps
-    Object.entries(textAgents).forEach(([id, steps]) => {
-      const processedSteps = processTextAgentSteps(id, steps);
-      sableInstance.current?.registerTextAgent(id, processedSteps);
-    });
-    
-    // Initialize if autoInit is true
-    if (autoInit) {
-      sableInstance.current.init();
+    if (!sableInstance.current) {
+      const mergedConfig = {
+        ...config,
+        voice: {
+          ...config.voice,
+          ...voice
+        },
+        menu: menu || config.menu
+      };
+      console.log('[SableSmartLinksProvider] Merged config:', mergedConfig);
+      sableInstance.current = new SableSmartLinks(mergedConfig);
+      isMounted.current = true;
+      // Register walkthroughs on mount
+      Object.entries(walkthroughs).forEach(([id, steps]) => {
+        sableInstance.current?.registerWalkthrough(id, steps);
+      });
     }
-    
-    // Cleanup on unmount
     return () => {
       isMounted.current = false;
       if (sableInstance.current) {
@@ -300,8 +263,88 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
         sableInstance.current.endTextAgent();
       }
     };
-  }, [config, autoInit, walkthroughs, textAgents, voice]);
-  
+    // Only run on mount/unmount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Register text agents only if new/changed
+  useEffect(() => {
+    if (!isBrowser || !sableInstance.current) return;
+    Object.entries(textAgents).forEach(([id, steps]) => {
+      const processedSteps = processTextAgentSteps(id, steps);
+      const stepHash = hashSteps(processedSteps);
+      if (registeredTextAgents.current[id] !== stepHash) {
+        sableInstance.current?.registerTextAgent(id, processedSteps);
+        registeredTextAgents.current[id] = stepHash;
+      }
+    });
+  }, [textAgents, processTextAgentSteps]);
+
+  // Register walkthroughs only if new/changed
+  useEffect(() => {
+    if (!isBrowser || !sableInstance.current) return;
+    let didRegister = false;
+    Object.entries(walkthroughs).forEach(([id, steps]) => {
+      const stepHash = hashSteps(steps);
+      if (registeredWalkthroughs.current[id] !== stepHash) {
+        sableInstance.current?.registerWalkthrough(id, steps);
+        registeredWalkthroughs.current[id] = stepHash;
+        didRegister = true;
+      }
+    });
+    // After registering, check for auto-start param
+    if (didRegister) {
+      try {
+        const paramName = (config?.walkthrough?.paramName) || 'walkthrough';
+        const urlParams = new URLSearchParams(window.location.search);
+        const walkthroughId = urlParams.get(paramName);
+        if (walkthroughId && sableInstance.current) {
+          // Only start if not already running
+          const engine = (sableInstance.current as any).walkthroughEngine;
+          if (engine && (!engine.isRunning || engine.currentWalkthrough !== walkthroughId)) {
+            sableInstance.current.startWalkthrough(walkthroughId);
+          }
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+  }, [walkthroughs, config]);
+
+  // Function to update step data
+  const setStepData = (key: string, value: any) => {
+    // Update both the state and the ref immediately
+    stepDataRef.current = {
+      ...stepDataRef.current,
+      [key]: value
+    };
+    
+    setStepDataState(prevData => {
+      const newData = {
+        ...prevData,
+        [key]: value
+      };
+      return newData;
+    });
+  };
+
+  // Function to get step data - always use the ref for most current value
+  const getStepData = (key: string) => {
+    // Always use the ref for immediate access to latest data
+    const value = stepDataRef.current[key];
+    return value;
+  };
+
+  // Function to get all step data
+  const getAllStepData = () => {
+    return stepData;
+  };
+
+  // Function to clear all step data
+  const clearStepData = () => {
+    setStepDataState({});
+  };
+
   const contextValue = {
     // Walkthrough methods
     registerWalkthrough: (id: string, steps: WalkthroughStep[]) => {

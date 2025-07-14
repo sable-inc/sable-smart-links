@@ -378,13 +378,23 @@ export class TextAgentEngine {
    * Move to the next step
    */
   next() {
+    if (this.config.debug) {
+      console.log('[SableTextAgent][next] Advancing to next step. Current index:', this.currentStepIndex, 'Active agent:', this.lastActiveAgentId, 'Steps:', this.steps.map(s => s.id));
+    }
     // Clean up current step if any
     this._cleanupCurrentStep();
     
     if (this.currentStepIndex < this.steps.length - 1) {
       this.currentStepIndex++;
+      if (this.config.debug) {
+        const step = this.steps[this.currentStepIndex];
+        console.log('[SableTextAgent][next] Now at step index:', this.currentStepIndex, 'Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId);
+      }
       this._renderCurrentStep();
     } else {
+      if (this.config.debug) {
+        console.log('[SableTextAgent][next] Reached end of steps. Final popup added?', this._finalPopupAdded);
+      }
       // We've reached the end of the steps
       // Check if we need to show the final popup
       if (!this._finalPopupAdded) {
@@ -459,9 +469,15 @@ export class TextAgentEngine {
    */
   _renderCurrentStep() {
     if (this.currentStepIndex < 0 || this.currentStepIndex >= this.steps.length) {
+      if (this.config.debug) {
+        console.log('[SableTextAgent][_renderCurrentStep] Invalid step index:', this.currentStepIndex, 'Steps length:', this.steps.length, 'Active agent:', this.lastActiveAgentId);
+      }
       return;
     }
     const step = this.steps[this.currentStepIndex];
+    if (this.config.debug) {
+      console.log('[SableTextAgent][_renderCurrentStep] Rendering step index:', this.currentStepIndex, 'Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId, 'Step:', step);
+    }
     
     // --- CONDITIONAL POPUP LOGIC ---
     let shouldShow = true;
@@ -474,15 +490,14 @@ export class TextAgentEngine {
       }
     }
     if (!shouldShow) {
+      if (this.config.debug) {
+        console.log('[SableTextAgent][_renderCurrentStep] Step', step && step.id, 'shouldShow=false, skipping to next');
+      }
       // Skip this step and go to the next one
       this.next();
       return;
     }
     // --- END CONDITIONAL POPUP LOGIC ---
-    
-    if (this.config.debug) {
-      console.log(`[SableTextAgent] Rendering step ${this.currentStepIndex + 1}/${this.steps.length}`, step);
-    }
     
     // First handle any target element that needs to be highlighted or waited for
     this._handleTargetElement(step).then(targetElement => {
@@ -541,7 +556,7 @@ export class TextAgentEngine {
    */
   _createPopupForStep(step, targetElement) {
     if (this.config.debug) {
-      console.log('[SableTextAgent] Creating popup for step:', step);
+      console.log('[SableTextAgent][_createPopupForStep] Creating popup for step index:', this.currentStepIndex, 'Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId, 'Step:', step);
     }
     
     // Get the text content, handling both string and function types
@@ -564,24 +579,33 @@ export class TextAgentEngine {
     // Set up callbacks
     if (step.buttonType === 'yes-no') {
       popupOptions.onYesNo = (isYes) => {
+        if (this.config.debug) {
+          console.log('[SableTextAgent][onYesNo] Button pressed. isYes:', isYes, 'Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId);
+        }
         if (isYes && typeof step.onYesNo === 'function') {
           step.onYesNo(true);
         } else if (!isYes && typeof step.onYesNo === 'function') {
           step.onYesNo(false);
         }
-        
         // Auto-advance if configured
         if (step.autoAdvance) {
+          if (this.config.debug) {
+            console.log('[SableTextAgent][onYesNo] Auto-advancing after yes-no. Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId);
+          }
           setTimeout(() => this.next(), step.autoAdvanceDelay || 1000);
         }
       };
     } else {
       if (step.includeTextBox) {
         popupOptions.onProceed = (textInput) => {
-          console.log('[TextAgent] onProceed hooked – scheduling next in', step.autoAdvanceDelay || 1000);
+          if (this.config.debug) {
+            console.log('[SableTextAgent][onProceed] Proceed pressed (textbox). Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId, 'Scheduling next in', step.autoAdvanceDelay || 1000);
+          }
           const delay = step.autoAdvanceDelay || 1000;
           setTimeout(async () => {
-            console.log('[TextAgent] delayed-next fired');
+            if (this.config.debug) {
+              console.log('[SableTextAgent][onProceed] Delayed-next fired (textbox). Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId);
+            }
             if (typeof step.onProceed === 'function') {
               await step.onProceed(textInput);
             }
@@ -591,10 +615,14 @@ export class TextAgentEngine {
       } else {
           // Default arrow button
           popupOptions.onProceed = () => {
-            console.log('[TextAgent] onProceed hooked – scheduling next in', step.autoAdvanceDelay || 1000);
+            if (this.config.debug) {
+              console.log('[SableTextAgent][onProceed] Proceed pressed (arrow). Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId, 'Scheduling next in', step.autoAdvanceDelay || 1000);
+            }
             const delay = step.autoAdvanceDelay || 1000;
             setTimeout(async () => {
-                console.log('[TextAgent] delayed-next fired');
+                if (this.config.debug) {
+                    console.log('[SableTextAgent][onProceed] Delayed-next fired (arrow). Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId);
+                }
                 if (typeof step.onProceed === 'function') {
                     await step.onProceed(); 
                 }
