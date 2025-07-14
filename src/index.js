@@ -8,6 +8,7 @@ import { TextAgentEngine } from './core/textAgentEngine.js';
 import { NovaVoiceEngine } from './core/novaVoiceEngine.js';
 import globalPopupManager from './ui/GlobalPopupManager.js';
 import { VoicePopup } from './ui/components/VoicePopup.js';
+import { MenuTriggerManager } from './ui/MenuTriggerManager.js';
 import { isBrowser, safeDocument } from './utils/browserAPI.js';
 import { addEvent, debounce } from './utils/events.js';
 import { debugLog } from './config.js';
@@ -57,6 +58,7 @@ class SableSmartLinks {
           }
         }
       },
+      menu: null, // Default: no menu
       ...config
     };
 
@@ -97,6 +99,14 @@ class SableSmartLinks {
       this.initializeVoiceEngine();
     } else {
       console.log('[SableSmartLinks] Voice is NOT enabled');
+    }
+
+    // Initialize menu if configured
+    if (this.config.menu && this.config.menu.enabled) {
+      console.log('[SableSmartLinks] Menu is configured and enabled, initializing...');
+      this.initializeMenu();
+    } else {
+      console.log('[SableSmartLinks] Menu is NOT configured or disabled');
     }
     
     // Bind methods
@@ -166,27 +176,52 @@ class SableSmartLinks {
 
       // Create voice popup
       console.log('[SableSmartLinks] Creating VoicePopup with UI config:', this.config.voice.ui);
-      this.voicePopup = new VoicePopup({
-        ...this.config.voice.ui,
-        onToggle: () => this.toggleVoiceChat(),  // ← Arrow function preserves context
-        onClose: () => {
-          // Handle close if needed
+      // Use globalPopupManager to enforce singleton
+      this.voicePopupManager = globalPopupManager.showStatefulPopup(
+        (opts) => new VoicePopup(opts),
+        {
+          ...this.config.voice.ui,
+          onToggle: () => this.toggleVoiceChat(),
+          onClose: () => {
+            // Handle close if needed
+          }
         }
-      });
+      );
+      this.voicePopup = this.voicePopupManager && this.voicePopupManager.popup;
       console.log('[SableSmartLinks] VoicePopup created:', !!this.voicePopup);
 
       // Mount voice popup to DOM
-      if (isBrowser) {
-        safeDocument.body.appendChild(this.voicePopup.render());
-        debugLog('info', 'Voice popup mounted to DOM');
-        console.log('[SableSmartLinks] Voice popup mounted to DOM');
-      }
+      // Mounting is handled by globalPopupManager
 
       debugLog('info', 'Voice engine initialized successfully');
       console.log('[SableSmartLinks] Voice engine initialization complete');
     } catch (error) {
       console.error('[SableSmartLinks] Failed to initialize voice engine:', error);
       debugLog('error', 'Failed to initialize voice engine:', error);
+    }
+  }
+
+  /**
+   * Initialize menu manager
+   * @private
+   */
+  initializeMenu() {
+    console.log('[SableSmartLinks] initializeMenu called');
+
+    try {
+      debugLog('info', 'Initializing menu...');
+      
+      // Create menu manager
+      this.menuManager = new MenuTriggerManager(this.config.menu);
+      
+      // Initialize the manager (this will set up DOM listeners and popup state tracking)
+      this.menuManager.init();
+
+      debugLog('info', 'Menu initialized successfully');
+      console.log('[SableSmartLinks] Menu initialization complete');
+    } catch (error) {
+      console.error('[SableSmartLinks] Failed to initialize menu:', error);
+      debugLog('error', 'Failed to initialize menu:', error);
     }
   }
 
@@ -354,7 +389,8 @@ class SableSmartLinks {
 
       const show = () => {
         if (cleanup) cleanup();
-        this.textAgentEngine.showPopup(options);
+        // Use global popup manager directly to ensure proper state management
+        globalPopupManager.showPopup(options);
       };
 
       if (on === 'start') {
@@ -537,19 +573,42 @@ class SableSmartLinks {
    * Cleanup and destroy the instance
    */
   destroy() {
-    // Stop and cleanup voice engine
+    console.log('[SableSmartLinks] Destroy called');
+    
+    // Clean up voice engine
     if (this.voiceEngine) {
       this.disableVoiceChat();
     }
     
-    // Cleanup other engines
+    // Clean up voice popup
+    if (this.voicePopup) {
+      this.voicePopup.destroy();
+      this.voicePopup = null;
+    }
+    
+    // Clean up menu manager
+    if (this.menuManager) {
+      this.menuManager.destroy();
+      this.menuManager = null;
+    }
+    
+    // Clean up engines
     if (this.textAgentEngine) {
       this.textAgentEngine.destroy();
+      this.textAgentEngine = null;
     }
     
     if (this.walkthroughEngine) {
       this.walkthroughEngine.end();
+      this.walkthroughEngine = null;
     }
+    
+    // Close all popups
+    console.log('[SableSmartLinks] Calling globalPopupManager.closeActivePopup() in destroy - this will affect hasActivePopup state');
+    globalPopupManager.closeActivePopup();
+    console.log('[destroy] hasActivePopup changed');
+    
+    console.log('[SableSmartLinks] Destroy complete');
   }
 }
 

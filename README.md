@@ -142,6 +142,106 @@ Each step in a walkthrough can have the following options:
 }
 ```
 
+## Menu Trigger System
+
+The library includes a menu trigger system that creates and manages a button that acts as a menu trigger. The button will automatically hide when any popup is active and show a menu popup when clicked. The button can be positioned in corners or attached to specific DOM elements.
+
+### Features
+
+- **Automatic Visibility Management**: Trigger buttons are hidden when popups are active
+- **Flexible Positioning**: Position buttons in corners or attach to specific DOM elements
+- **URL Path Filtering**: Show/hide buttons based on current URL paths
+- **Center-Screen Menu Popups**: Menu popups appear in the center of the screen
+- **Configurable Menu Content**: Define sections and items with custom handlers
+- **Chat Integration**: Optional chat functionality in menu popups
+- **Custom Styling**: Fully customizable button appearance
+
+### Usage
+
+```javascript
+import SableSmartLinks from "sable-smart-links";
+
+const sable = new SableSmartLinks({
+  menu: {
+    enabled: true,
+    text: "Open Menu",
+    position: "bottom-right",
+    targetElement: {
+      selector: ".menu-container",
+      position: "top",
+    },
+    urlPaths: [], // Show on all paths
+    style: {
+      backgroundColor: "#4A90E2",
+      color: "#FFFFFF",
+      borderRadius: "20px",
+      padding: "8px 16px",
+      fontSize: "14px",
+      boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
+    },
+    popupConfig: {
+      enableChat: true,
+      sections: [
+        {
+          title: "Quick Actions",
+          icon: "⚡",
+          items: [
+            { text: "Action 1", data: { action: "action1" } },
+            { text: "Action 2", data: { action: "action2" } },
+          ],
+          onSelect: (item) => {
+            console.log("Selected:", item);
+          },
+        },
+      ],
+    },
+  },
+});
+```
+
+### React Integration
+
+```javascript
+import { SableSmartLinksProvider } from "sable-smart-links/react";
+
+function App() {
+  return (
+    <SableSmartLinksProvider
+      menu={{
+        enabled: true,
+        text: "Open Menu",
+        position: "bottom-right",
+        targetElement: {
+          selector: ".menu-container",
+          position: "top",
+        },
+        urlPaths: [],
+        style: {
+          backgroundColor: "#4A90E2",
+          color: "#FFFFFF",
+          borderRadius: "20px",
+          padding: "8px 16px",
+          fontSize: "14px",
+          boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
+        },
+        popupConfig: {
+          enableChat: true,
+          sections: [
+            {
+              title: "Actions",
+              items: [{ text: "Do Something", data: { action: "something" } }],
+              onSelect: (item) => console.log(item),
+            },
+          ],
+        },
+      }}
+    >
+      <YourApp />
+    </SableSmartLinksProvider>
+  );
+}
+```
+
 ## Global Popup Manager
 
 The library includes a global popup manager that ensures only one popup is active at a time across your entire application. This prevents issues with multiple popups being created simultaneously, which can happen during viewport resizing or rapid user interactions.

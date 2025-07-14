@@ -16,12 +16,13 @@ export class PopupStateManager {
             customButtons: config.customButtons || [],
             initialMessage: config.initialMessage || null,
             sections: config.sections || [],
-            enableChat: config.enableChat !== undefined ? config.enableChat : true
+            enableChat: config.enableChat !== undefined ? config.enableChat : true,
+            onClose: config.onClose || (() => {})
         };
 
         // State variables
-        // If chat is disabled, start in expanded state with shortcuts
-        this.currentState = this.config.enableChat ? 'textInput' : 'expanded';
+        // Start in expanded state by default:
+        this.currentState = 'expanded';
         this.messages = [];
         
         // If we have an initial message, add it and start in messages state
@@ -37,7 +38,10 @@ export class PopupStateManager {
         this.chatInput = '';
         
         // Dragging state
-        this.position = { top: 360, left: 660 };
+        this.position = { 
+            top: 360,
+            left: ((window?.innerWidth ?? 1700) - (this.config.width ?? 380)) / 2, 
+        };
         this.isDragging = false;
         this.dragStart = { x: 0, y: 0 };
         
@@ -192,6 +196,11 @@ export class PopupStateManager {
     }
 
     handleClose = () => {
+        // Call the onClose callback if provided
+        if (typeof this.config.onClose === 'function') {
+            this.config.onClose();
+        }
+        
         // Remove the popup from the DOM
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
@@ -203,6 +212,12 @@ export class PopupStateManager {
         }
     }
 
+    /**
+     * Unmount the popup (for use by globalPopupManager)
+     */
+    unmount() {
+        this.handleClose();
+    }
 
 
     // No legacy handlers needed - sections handle their own selection logic

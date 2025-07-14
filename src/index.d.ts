@@ -12,6 +12,8 @@ export interface SableSmartLinksConfig {
     paramName?: string;
     /** Automatically start walkthrough if parameter is found (default: true) */
     autoStart?: boolean;
+    /** Only auto-start the walkthrough once per walkthrough id (default: false). If true, stores a key in localStorage after the first auto-start and will not auto-start again for that id. */
+    autoStartOnce?: boolean;
     /** Delay between steps in milliseconds (default: 500) */
     stepDelay?: number;
   };
@@ -107,6 +109,83 @@ export interface SableSmartLinksConfig {
         /** Any other CSS properties */
         [key: string]: string | undefined;
       };
+    };
+  };
+
+  /** Configuration for menu */
+  menu?: {
+    /** Enable the menu trigger button (default: false) */
+    enabled?: boolean;
+    /** Text displayed on the button (default: 'Open Menu') */
+    text?: string;
+    /** Position of the button when not attached to a specific element */
+    position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+    /** Element to attach the button to */
+    targetElement?: {
+      /** CSS selector for the target element */
+      selector: string;
+      /** Whether to wait for the element to appear in DOM */
+      waitForElement?: boolean;
+      /** Maximum time to wait for element in milliseconds */
+      waitTimeout?: number;
+      /** Position to render the button relative to target element */
+      position?: 'top' | 'right' | 'bottom' | 'left';
+    };
+    /** URL paths where the button should be shown (empty array means all paths) */
+    urlPaths?: string[];
+    /** Custom styles for the button */
+    style?: {
+      /** Background color of the button */
+      backgroundColor?: string;
+      /** Text color of the button */
+      color?: string;
+      /** Border radius of the button */
+      borderRadius?: string;
+      /** Padding of the button */
+      padding?: string;
+      /** Font size of the button text */
+      fontSize?: string;
+      /** Box shadow of the button */
+      boxShadow?: string;
+      /** Any other CSS properties */
+      [key: string]: string | undefined;
+    };
+    /** Configuration for the menu popup that appears when trigger elements are clicked */
+    popupConfig: {
+      /** Whether to enable chat input (default: true) */
+      enableChat?: boolean;
+      /** 
+       * Custom sections to display in the menu popup
+       * Each section can have its own title, items, and behavior
+       */
+      sections?: Array<{
+        /** Title of the section */
+        title: string;
+        /** Icon to display next to items (emoji or URL) */
+        icon?: string;
+        /** Optional step ID to restart the text agent from when an item in this section is selected
+         * If provided, the text agent will restart from this step when any item in this section is selected
+         * If null or undefined (default), no restart will occur
+         * @property {boolean} skipTrigger - When true, any triggers (like triggerOnTyping) for the step will be ignored
+         *                                  and the popup will be displayed immediately
+         */
+        restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+        /** Items to display in this section */
+        items: Array<{
+          /** Display text for the item */
+          text: string;
+          /** Optional step ID to restart the text agent from when this specific item is selected
+           * This overrides the section-level restartFromStep if provided
+           * @property {boolean} skipTrigger - When true, any triggers (like triggerOnTyping) for the step will be ignored
+           *                                  and the popup will be displayed immediately
+           */
+          restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+          /** Additional data needed for the handler */
+          data?: any;
+        }>;
+        /** Handler function to execute when an item in this section is selected */
+        onSelect: (item: any) => void;
+      }>;
     };
   };
   

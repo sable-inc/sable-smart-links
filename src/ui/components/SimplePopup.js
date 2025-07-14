@@ -415,7 +415,7 @@ export class SimplePopup {
 
     close() {
         console.log('Close clicked');
-        
+        console.trace('[SimplePopup.close] Stack trace for close');
         // Call the onClose callback if provided in config
         if (this.config.onClose) {
             this.config.onClose();

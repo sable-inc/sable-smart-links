@@ -71,6 +71,41 @@ export interface SableSmartLinksProviderProps {
       };
     };
   };
+  menu?: {
+    enabled?: boolean;
+    text?: string;
+    position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+    targetElement?: {
+      selector: string;
+      waitForElement?: boolean;
+      waitTimeout?: number;
+      position?: 'top' | 'right' | 'bottom' | 'left';
+    };
+    urlPaths?: string[];
+    style?: {
+      backgroundColor?: string;
+      color?: string;
+      borderRadius?: string;
+      padding?: string;
+      fontSize?: string;
+      boxShadow?: string;
+      [key: string]: string | undefined;
+    };
+    popupConfig: {
+      enableChat?: boolean;
+      sections?: Array<{
+        title: string;
+        icon?: string;
+        restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+        items: Array<{
+          text: string;
+          restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+          data?: any;
+        }>;
+        onSelect: (item: any) => void;
+      }>;
+    };
+  };
   initialStepData?: Record<string, any>;
 }
 
@@ -81,6 +116,7 @@ export interface SableSmartLinksProviderProps {
 export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = ({
   config = {},
   voice = {},
+  menu,
   children,
   autoInit = true,
   walkthroughs = {},
@@ -225,12 +261,14 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     if (!isBrowser) return;
     
     // Merge voice prop with config.voice (voice prop takes precedence)
+    // Merge menu prop with config.menu (menu prop takes precedence)
     const mergedConfig = {
       ...config,
       voice: {
         ...config.voice,  // Base voice config
         ...voice          // Override with voice prop
-      }
+      },
+      menu: menu || config.menu // Use menu prop if provided, otherwise use config
     };
     
     console.log('[SableSmartLinksProvider] Merged config:', mergedConfig);
@@ -354,7 +392,9 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     },
     
     closeAllPopups: () => {
+      console.log('[SableSmartLinksProvider] Calling globalPopupManager.closeActivePopup() in closeAllPopups - this will affect hasActivePopup state');
       globalPopupManager.closeActivePopup();
+      console.log('[closeAllPopups] hasActivePopup changed');
     },
     
     // Voice methods

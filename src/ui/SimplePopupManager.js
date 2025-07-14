@@ -2,6 +2,8 @@
 import { SimplePopup } from './components/SimplePopup.js';
 import globalPopupManager from './GlobalPopupManager.js';
 
+// NOTE: This class should only be used by GlobalPopupManager to enforce singleton popups.
+// Do not instantiate or mount SimplePopupManager directly elsewhere in the codebase.
 export class SimplePopupManager {
     constructor(config) {
         this.config = {
@@ -42,7 +44,9 @@ export class SimplePopupManager {
             this.container.parentNode.removeChild(this.container);
         }
         // Notify global popup manager that popup is closed
+        console.log('[SimplePopupManager] Calling globalPopupManager.closeActivePopup() in handleClose - this will affect hasActivePopup state');
         globalPopupManager.closeActivePopup();
+        console.log('[handleClose] hasActivePopup changed');
     }
 
     render() {
@@ -84,7 +88,9 @@ export class SimplePopupManager {
     unmount() {
         this.container.remove();
         // Notify global popup manager that popup is closed
+        console.log('[SimplePopupManager] Calling globalPopupManager.closeActivePopup() in unmount - this will affect hasActivePopup state');
         globalPopupManager.closeActivePopup();
+        console.log('[unmount] hasActivePopup changed');
     }
     
     /**

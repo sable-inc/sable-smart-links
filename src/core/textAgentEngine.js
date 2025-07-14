@@ -4,7 +4,7 @@
  */
 
 import { waitForElement } from '../utils/elementSelector.js';
-import { isBrowser, safeWindow, safeDocument } from '../utils/browserApi.js';
+import { isBrowser, safeWindow, safeDocument } from '../utils/browserAPI.js';
 // import { highlightElement, removeHighlight } from '../ui/highlight.js';
 import { SimplePopupManager } from '../ui/SimplePopupManager.js';
 import globalPopupManager from '../ui/GlobalPopupManager.js';
@@ -43,6 +43,7 @@ export class TextAgentEngine {
           boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
         }
       },
+      autoStartOnce: true,
       ...config
     };
     
@@ -181,7 +182,27 @@ export class TextAgentEngine {
           !previouslyActive.has(step.id)
         );
         
-        if (isNewActivation && this.config.autoStart) {
+        let shouldAutoStart = false;
+        if (this.config.autoStartOnce && this.config.autoStart) {
+          const localStorageKey = `SableTextAgentEngine_autoStartedOnce_${id}`;
+          try {
+            if (!window.localStorage.getItem(localStorageKey)) {
+              shouldAutoStart = true;
+            }
+          } catch (e) {
+            // Fallback: if localStorage is not available, just autoStart once per session per agent
+            if (!this._autoStartedOnceFallback) {
+              this._autoStartedOnceFallback = {};
+            }
+            if (!this._autoStartedOnceFallback[id]) {
+              shouldAutoStart = true;
+              // Do NOT set fallback here, only set when actually triggered
+            }
+          }
+        } else if (this.config.autoStart) {
+          shouldAutoStart = true;
+        }
+        if (isNewActivation && shouldAutoStart) {
           console.log(`[SableTextAgent] Auto-starting agent "${id}"`);
           this.start();
         }
@@ -319,9 +340,19 @@ export class TextAgentEngine {
 
     let hasStarted = false;
     let cleanup = null;
-
+    const agentId = this.lastActiveAgentId || Array.from(this.registeredAgents.keys())[0];
     const showStep = () => {
       if (cleanup) cleanup();
+      // Set localStorage key when actually triggered
+      if (this.config.autoStart && this.config.autoStartOnce && agentId) {
+        const localStorageKey = `SableTextAgentEngine_autoStartedOnce_${agentId}`;
+        try {
+          window.localStorage.setItem(localStorageKey, 'true');
+        } catch (e) {
+          if (!this._autoStartedOnceFallback) this._autoStartedOnceFallback = {};
+          this._autoStartedOnceFallback[agentId] = true;
+        }
+      }
       this._renderCurrentStep();
     };
 
@@ -413,12 +444,11 @@ export class TextAgentEngine {
    * @private
    */
   _cleanupCurrentStep() {
-    // Remove any active popup
-    if (this.activePopupManager) {
+    // Only unmount if this is the active popup in the global manager
+    if (this.activePopupManager && globalPopupManager.activePopup === this.activePopupManager) {
       this.activePopupManager.unmount();
       this.activePopupManager = null;
     }
-    
     // // Remove any highlights
     // removeHighlight();
   }
@@ -431,7 +461,6 @@ export class TextAgentEngine {
     if (this.currentStepIndex < 0 || this.currentStepIndex >= this.steps.length) {
       return;
     }
-    
     const step = this.steps[this.currentStepIndex];
     
     // --- CONDITIONAL POPUP LOGIC ---
@@ -759,6 +788,9 @@ export class TextAgentEngine {
       return null;
     }
 
+    // Always close any active popup before showing a new one (safe after previous fix)
+    globalPopupManager.closeActivePopup();
+
     const defaultOptions = {
       text: '',
       boxWidth: this.config.defaultBoxWidth || 300,
@@ -768,8 +800,8 @@ export class TextAgentEngine {
       fontSize: this.config.fontSize || '15px'
     };
 
-    // Clean up any existing popup
-    this._cleanupCurrentStep();
+    // Note: Global popup manager handles closing existing popups
+    // No need to call this._cleanupCurrentStep() here
 
     // --- New: Find target element if specified ---
     let targetElement = null;
@@ -788,7 +820,9 @@ export class TextAgentEngine {
     // Create and mount the popup using global popup manager
     const popupResult = globalPopupManager.showPopup({ ...defaultOptions, ...options });
     if (popupResult) {
+        console.log('[TextAgentEngine] Setting activePopupManager in showPopup - this will affect hasActivePopup state');
         this.activePopupManager = popupResult;
+        console.log('[showPopup] hasActivePopup changed');
     } else {
         console.error('[TextAgentEngine] Failed to create popup');
         return null;
@@ -859,23 +893,8 @@ export class TextAgentEngine {
       this.activePopupManager.updatePosition(newPosition);
     }
 
-    // Register this popup
-    this.activePopups.push({
-      id: options.id || options.text || `popup-${Date.now()}`,
-      unmount: () => {
-        this.activePopupManager.unmount();
-        this.activePopupManager = null;
-      }
-    });
-
-    return {
-      unmount: () => {
-        this.activePopupManager.unmount();
-        this.activePopupManager = null;
-        this.activePopups = this.activePopups.filter(p => p.unmount !== this.activePopupManager?.unmount);
-      },
-      mount: (newParent) => this.activePopupManager.mount(newParent)
-    };
+    // Return the popup result directly - let the global popup manager handle state
+    return popupResult;
   }
   
   /**
@@ -912,6 +931,17 @@ export class TextAgentEngine {
     
     // Add click event listener
     button.addEventListener('click', () => {
+      // Set localStorage key when actually triggered
+      const agentId = this.lastActiveAgentId || Array.from(this.registeredAgents.keys())[0];
+      if (this.config.autoStart && this.config.autoStartOnce && agentId) {
+        const localStorageKey = `SableTextAgentEngine_autoStartedOnce_${agentId}`;
+        try {
+          window.localStorage.setItem(localStorageKey, 'true');
+        } catch (e) {
+          if (!this._autoStartedOnceFallback) this._autoStartedOnceFallback = {};
+          this._autoStartedOnceFallback[agentId] = true;
+        }
+      }
       if (this.lastActiveAgentId) {
         this.start(this.lastActiveAgentId);
       } else {
@@ -1145,20 +1175,20 @@ export class TextAgentEngine {
     // Get sections from configuration
     const sections = this.config.finalPopupConfig?.sections || [];
     
-    // Initialize PopupStateManager for the final step
-    const popupManager = new PopupStateManager({
-      platform: 'Sable',
-      primaryColor: this.config.primaryColor || '#FFFFFF',
-      width: 380,
-      sections: sections,
-      enableChat: this.config.finalPopupConfig.enableChat
-    });
-    
-    // Mount to document body
-    popupManager.mount(document.body);
-    
-    // Store reference for cleanup
-    this._finalPopupManager = popupManager;
+    // Use globalPopupManager to enforce singleton
+    this._finalPopupManager = globalPopupManager.showStatefulPopup(
+      (opts) => new PopupStateManager(opts),
+      {
+        platform: 'Sable',
+        primaryColor: this.config.primaryColor || '#FFFFFF',
+        width: 380,
+        sections: sections,
+        enableChat: this.config.finalPopupConfig.enableChat,
+        onClose: () => {
+          this._finalPopupManager = null;
+        }
+      }
+    );
   }
 
   /**
