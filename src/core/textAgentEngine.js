@@ -242,6 +242,23 @@ export class TextAgentEngine {
       // If no current step is set, start from the beginning
       this.currentStepIndex = 0;
     }
+
+    // --- Set lastActiveAgentId based on current steps ---
+    for (const [id, agentSteps] of this.registeredAgents.entries()) {
+      // Compare by step IDs for robustness
+      const agentStepIds = agentSteps.map(s => s.id);
+      const currentStepIds = this.steps.map(s => s.id);
+      if (
+        agentStepIds.length === currentStepIds.length &&
+        agentStepIds.every((id, idx) => id === currentStepIds[idx])
+      ) {
+        this.lastActiveAgentId = id;
+        if (this.config.debug) {
+          console.log(`[SableTextAgent][start] Set lastActiveAgentId to: ${id}`);
+        }
+        break;
+      }
+    }
     
     // Store the skipTrigger flag on the instance for use in _renderCurrentStep
     this._skipTrigger = skipTrigger;
@@ -564,7 +581,39 @@ export class TextAgentEngine {
     // Get the text content, handling both string and function types
     const stepText = typeof step.text === 'function' ? step.text() : step.text;
     const secondaryText = typeof step.secondaryText === 'function' ? step.secondaryText() : step.secondaryText;
-    const stepSections = typeof step.sections === 'function' ? step.sections() : step.sections;
+    let stepSections = typeof step.sections === 'function' ? step.sections() : step.sections;
+
+    // --- WRAP onSelect for restartFromStep logic (fix) ---
+    if (Array.isArray(stepSections)) {
+      stepSections = stepSections.map(section => {
+        if (!section || typeof section.onSelect !== 'function') return section;
+        const originalOnSelect = section.onSelect;
+        const wrappedOnSelect = (item) => {
+          // Check if restart is requested (either at item or section level)
+          if (item && item._restartRequested && (item.restartFromStep !== undefined || section.restartFromStep !== undefined)) {
+            // Item-level restartFromStep takes precedence over section-level
+            const restartConfig = item.restartFromStep !== undefined ? item.restartFromStep : section.restartFromStep;
+            let stepId = null;
+            let skipTrigger = false;
+            if (restartConfig === null || typeof restartConfig === 'string') {
+              stepId = restartConfig;
+            } else if (typeof restartConfig === 'object') {
+              stepId = restartConfig.stepId;
+              skipTrigger = !!restartConfig.skipTrigger;
+            }
+            // Emit a custom event that TextAgentEngine can listen for
+            const restartEvent = new CustomEvent('sable:textAgentRestart', {
+              detail: { stepId, skipTrigger }
+            });
+            window.dispatchEvent(restartEvent);
+          }
+          // Always call the original handler
+          originalOnSelect(item);
+        };
+        return { ...section, onSelect: wrappedOnSelect };
+      });
+    }
+    // --- END WRAP ---
 
     // Create popup options
     const popupOptions = {
