@@ -115,7 +115,9 @@ export class ShortcutsAndRecents {
             itemsContainer.appendChild(itemElement);
         });
 
-        section.appendChild(heading);
+        if (title != null) {
+            section.appendChild(heading);
+        }
         section.appendChild(itemsContainer);
         return section;
     }
