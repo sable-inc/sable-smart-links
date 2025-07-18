@@ -20,8 +20,8 @@ export class MenuTrigger {
           opacity: '0.7',
           transition: 'opacity 0.2s ease',
           background: 'rgba(0, 0, 0, 0.8)',
-          padding: '4px 12px',
-          borderRadius: '16px',
+          padding: '14px 20px',
+          borderRadius: '30px',
           border: '1px solid rgba(255, 255, 255, 0.2)',
           boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
           backdropFilter: 'blur(8px)',
@@ -62,6 +62,7 @@ export class MenuTrigger {
           fontWeight: '500',
           fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       });
+      
       text.textContent = this.config.text;
 
       container.appendChild(icon);
