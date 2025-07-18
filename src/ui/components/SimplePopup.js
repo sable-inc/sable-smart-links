@@ -4,6 +4,28 @@ import { YesNoButtons } from './YesNoButtons.js';
 import { CloseButton } from './CloseButton.js';
 import { ShortcutsAndRecents } from './ShortcutsAndRecents.js';
 
+// Simple markdown parser for basic formatting
+function parseMarkdown(text) {
+    if (!text) return '';
+    
+    // Process bold text (** or __)
+    text = text.replace(/\*\*(.*?)\*\*|__(.*?)__/g, '<strong>$1$2</strong>');
+    
+    // Process italic text (* or _)
+    text = text.replace(/\*(.*?)\*|_(.*?)_/g, '<em>$1$2</em>');
+    
+    // Process code snippets (`code`)
+    text = text.replace(/`(.*?)`/g, '<code style="background-color:rgba(0,0,0,0.2);padding:2px 4px;border-radius:3px;">$1</code>');
+    
+    // Process links [text](url)
+    text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;">$1</a>');
+    
+    // Process line breaks
+    text = text.replace(/\n/g, '<br>');
+    
+    return text;
+}
+
 export class SimplePopup {
     constructor(config) {
         this.config = {
@@ -346,17 +368,35 @@ export class SimplePopup {
             this.element.style.opacity = '1';
         }, 0);
 
-        // Animate text - use the direct reference instead of querySelector
-        const charDelay = 800 / this.config.text.length;
+        // Parse the markdown text first
+        const parsedText = parseMarkdown(this.config.text);
         
-        for (let i = 0; i <= this.config.text.length; i++) {
+        // For animation, we need to work with the raw text
+        const rawText = this.config.text;
+        const charDelay = 800 / rawText.length;
+        
+        // Animate text character by character
+        for (let i = 0; i <= rawText.length; i++) {
             setTimeout(() => {
-                this.textContainer.textContent = this.config.text.slice(0, i);
-                if (i < this.config.text.length) {
+                // For the animation, use the raw text sliced to current position
+                const currentText = rawText.slice(0, i);
+                
+                // Parse the current slice of text with markdown
+                const currentParsedText = parseMarkdown(currentText);
+                
+                // Set the HTML content
+                this.textContainer.innerHTML = currentParsedText;
+                
+                // Add the blinking cursor if not at the end
+                if (i < rawText.length) {
                     const cursor = document.createElement('span');
                     cursor.style.borderRight = '2px solid rgba(255, 255, 255, 0.7)';
                     cursor.style.animation = 'blink 1s step-end infinite';
                     this.textContainer.appendChild(cursor);
+                }
+                // When we reach the end, set the full parsed text to ensure all formatting is applied
+                else {
+                    this.textContainer.innerHTML = parsedText;
                 }
             }, 300 + (i * charDelay));
         }
