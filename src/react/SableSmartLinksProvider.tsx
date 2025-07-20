@@ -2,6 +2,7 @@ import React, { useEffect, useRef, createContext, useContext, useState } from 'r
 import { SableSmartLinks, SableSmartLinksConfig, WalkthroughStep, TextAgentStep, VoiceToolConfig } from '../index';
 import { isBrowser } from '../utils/browserAPI';
 import globalPopupManager from '../ui/GlobalPopupManager.js';
+import { restartAgent } from '../interactor';
 
 interface SableSmartLinksContextType {
   // Walkthrough methods
@@ -286,6 +287,25 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     };
     // Only run on mount/unmount
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Check for Sable agent restart on page load
+  useEffect(() => {
+    const sableRestartData = sessionStorage.getItem('sable_restart_agent');
+    if (sableRestartData) {
+      try {
+        const { agent, step, skip } = JSON.parse(sableRestartData);
+        sessionStorage.removeItem('sable_restart_agent');
+        
+        // Wait a bit for the page to fully render
+        setTimeout(() => {
+          restartAgent(agent, step, skip);
+        }, 500);
+      } catch (error) {
+        console.error('Error parsing sable restart data:', error);
+        sessionStorage.removeItem('sable_restart_agent');
+      }
+    }
   }, []);
 
   // Register text agents only if new/changed

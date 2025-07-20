@@ -279,6 +279,34 @@ export class ElementInteractor {
       document.head.removeChild(styleInfo.styleTag);
     }
   }
+
+  /**
+   * Restarts an agent by removing its auto-started flag from localStorage and actively starting the agent
+   * @param agentId - The ID of the agent to restart
+   * @param stepId - Optional step ID to start the agent from
+   * @param skipTrigger - Optional flag to skip trigger checks and show the popup immediately
+   */
+  static restartAgent(agentId: string, stepId?: string, skipTrigger: boolean = false): void {
+    // Remove the localStorage key to reset the auto-started state
+    const key = `SableTextAgentEngine_autoStartedOnce_${agentId}`;
+    localStorage.removeItem(key);
+    
+    // Dispatch the sable:textAgentRestart event to trigger the restart
+    const restartEvent = new CustomEvent('sable:textAgentRestart', {
+      detail: { 
+        stepId: stepId || null, 
+        skipTrigger: skipTrigger,
+        agentId: agentId // Include agentId in case it's needed
+      }
+    });
+    
+    // Dispatch the event on the window object
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(restartEvent);
+    } else {
+      console.warn('[ElementInteractor] Window object not available. Only localStorage key was removed.');
+    }
+  }
 }
 
 // Export individual functions for convenience
@@ -294,5 +322,6 @@ export const getComputedStyle = ElementInteractor.getComputedStyle.bind(ElementI
 export const isElementVisible = ElementInteractor.isElementVisible.bind(ElementInteractor);
 export const highlightElement = ElementInteractor.highlightElement.bind(ElementInteractor);
 export const restoreElementStyle = ElementInteractor.restoreElementStyle.bind(ElementInteractor);
+export const restartAgent = ElementInteractor.restartAgent.bind(ElementInteractor);
 
 export default ElementInteractor; 

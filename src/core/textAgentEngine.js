@@ -100,10 +100,16 @@ export class TextAgentEngine {
     // Add event listener for section item restart events
     if (typeof window !== 'undefined') {
       window.addEventListener('sable:textAgentRestart', (event) => {
-        const { stepId, skipTrigger } = event.detail;
+        const { stepId, skipTrigger, agentId } = event.detail;
         if (this.config.debug) {
-          console.log(`[SableTextAgent] Received restart event for step: ${stepId}, skipTrigger: ${skipTrigger}`);
+          console.log(`[SableTextAgent] Received restart event for step: ${stepId}, skipTrigger: ${skipTrigger}, agentId: ${agentId}`);
         }
+        
+        // Set the lastActiveAgentId if provided
+        if (agentId) {
+          this.lastActiveAgentId = agentId;
+        }
+        
         this.restart({ stepId, skipTrigger });
       });
     }

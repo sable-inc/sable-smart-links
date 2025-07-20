@@ -116,6 +116,7 @@ class SableSmartLinks {
     this.nextTextAgentStep = this.nextTextAgentStep.bind(this);
     this.previousTextAgentStep = this.previousTextAgentStep.bind(this);
     this.endTextAgent = this.endTextAgent.bind(this);
+    this.restartTextAgent = this.restartTextAgent.bind(this);
     this.toggleVoiceChat = this.toggleVoiceChat.bind(this);
     
     // Auto-start walkthrough if enabled and in browser
@@ -522,6 +523,46 @@ class SableSmartLinks {
     }
     
     this.textAgentEngine.end();
+    return this;
+  }
+
+  /**
+   * Restart a text agent with the given ID
+   * @param {string} agentId - The ID of the text agent to restart
+   * @param {string} [stepId] - Optional step ID to start the agent from
+   * @param {boolean} [skipTrigger=false] - Optional flag to skip trigger checks and show the popup immediately
+   * @returns {SableSmartLinks} - This instance for chaining
+   */
+  restartTextAgent(agentId, stepId, skipTrigger = false) {
+    if (!this.textAgentEngine) {
+      console.error('[SableSmartLinks] TextAgentEngine not initialized');
+      return this;
+    }
+    
+    // Remove the localStorage key to reset the auto-started state
+    const key = `SableTextAgentEngine_autoStartedOnce_${agentId}`;
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {
+      console.warn('[SableSmartLinks] Failed to remove localStorage key:', e);
+    }
+    
+    // Dispatch the sable:textAgentRestart event to trigger the restart
+    const restartEvent = new CustomEvent('sable:textAgentRestart', {
+      detail: { 
+        stepId: stepId || null, 
+        skipTrigger: skipTrigger,
+        agentId: agentId
+      }
+    });
+    
+    // Dispatch the event on the window object
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(restartEvent);
+    } else {
+      console.warn('[SableSmartLinks] Window object not available. Only localStorage key was removed.');
+    }
+    
     return this;
   }
 
