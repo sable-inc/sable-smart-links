@@ -61,25 +61,7 @@ export class TextAgentEngine {
     this.registeredAgents = new Map(); // Store registered agents
     this.lastActiveAgentId = null; // Track the ID of the last active agent
     this.triggerButtonElement = null; // Reference to the trigger button element
-    
-    // Only set up observer if we're in a browser environment
-    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-      this.observer = new MutationObserver(() => this.checkVisibleElements());
-      this.observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: true
-      });
-    }
-    
-    // Bind methods
-    this.next = this.next.bind(this);
-    this.previous = this.previous.bind(this);
-    this.end = this.end.bind(this);
-
-    // Add these lines after other state management variables
-    this.activeSteps = new Set(); // Track which steps are currently active
-    this.registeredAgents = new Map(); // Store registered agents
+    this.agentConfigs = new Map(); // Store per-agent config
   }
   
   /**
@@ -119,8 +101,10 @@ export class TextAgentEngine {
    * Register text agent steps
    * @param {string} id - Unique identifier for the text agent
    * @param {Array<TextAgentStep>} steps - Array of text agent steps
+   * @param {boolean} [autoStart] - Per-agent autoStart
+   * @param {boolean} [autoStartOnce] - Per-agent autoStartOnce
    */
-  register(id, steps) {
+  register(id, steps, autoStart, autoStartOnce) {
     console.log(`[SableTextAgent] Registering agent "${id}" with ${steps.length} steps`);
     
     // Store the original registration
@@ -128,6 +112,12 @@ export class TextAgentEngine {
       ...step,
       id: step.id || `${id}-${Math.random().toString(36).substr(2, 9)}`
     })));
+
+    // Store per-agent config
+    this.agentConfigs.set(id, {
+      autoStart: autoStart !== undefined ? autoStart : this.config.autoStart,
+      autoStartOnce: autoStartOnce !== undefined ? autoStartOnce : this.config.autoStartOnce
+    });
 
     // Initial check for visible elements
     this.checkVisibleElements();
@@ -187,23 +177,24 @@ export class TextAgentEngine {
         );
         
         let shouldAutoStart = false;
-        if (this.config.autoStartOnce && this.config.autoStart) {
+        const agentConfig = this.agentConfigs.get(id) || {};
+        const agentAutoStart = agentConfig.autoStart !== undefined ? agentConfig.autoStart : this.config.autoStart;
+        const agentAutoStartOnce = agentConfig.autoStartOnce !== undefined ? agentConfig.autoStartOnce : this.config.autoStartOnce;
+        if (agentAutoStartOnce && agentAutoStart) {
           const localStorageKey = `SableTextAgentEngine_autoStartedOnce_${id}`;
           try {
             if (!window.localStorage.getItem(localStorageKey)) {
               shouldAutoStart = true;
             }
           } catch (e) {
-            // Fallback: if localStorage is not available, just autoStart once per session per agent
             if (!this._autoStartedOnceFallback) {
               this._autoStartedOnceFallback = {};
             }
             if (!this._autoStartedOnceFallback[id]) {
               shouldAutoStart = true;
-              // Do NOT set fallback here, only set when actually triggered
             }
           }
-        } else if (this.config.autoStart) {
+        } else if (agentAutoStart) {
           shouldAutoStart = true;
         }
         if (isNewActivation && shouldAutoStart) {

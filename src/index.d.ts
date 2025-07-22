@@ -230,6 +230,9 @@ export interface SableSmartLinksConfig {
       };
     };
   };
+
+  /** Per-agent text agent configuration */
+  textAgents?: Record<string, TextAgentAgentConfig>;
 }
 
 
@@ -371,7 +374,7 @@ export class SableSmartLinks {
   endWalkthrough(): void;
 
   /* ----- text-agent API ----------- */
-  registerTextAgent(id: string, steps: TextAgentStep[]): void;
+  registerTextAgent(id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean): void;
   startTextAgent(agentId?: string): void;
   nextTextAgentStep(): void;
   previousTextAgentStep(): void;
@@ -559,4 +562,10 @@ export interface TextAgentStep {
     /** Delay in ms before showing popup after the event (default: 0) */
     delay?: number;
   };
+}
+
+export interface TextAgentAgentConfig {
+  steps: TextAgentStep[];
+  autoStart?: boolean;
+  autoStartOnce?: boolean;
 }

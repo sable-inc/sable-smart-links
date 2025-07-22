@@ -455,18 +455,15 @@ class SableSmartLinks {
    * @param {boolean} [autoStart=false] - Whether to start the text agent immediately
    * @returns {SableSmartLinks} - This instance for chaining
    */
-  registerTextAgent(id, steps, autoStart = false) {
+  registerTextAgent(id, steps, autoStart = false, autoStartOnce = true) {
     if (!this.textAgentEngine) {
       console.error('[SableSmartLinks] TextAgentEngine not initialized');
       return this;
     }
-    
-    this.textAgentEngine.register(id, steps);
-    
+    this.textAgentEngine.register(id, steps, autoStart, autoStartOnce);
     if (autoStart) {
       this.startTextAgent(id);
     }
-    
     return this;
   }
 
