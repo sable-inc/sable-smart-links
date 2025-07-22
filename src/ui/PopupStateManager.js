@@ -399,8 +399,8 @@ export class PopupStateManager {
                             }
                             
                             // Emit a custom event that TextAgentEngine can listen for
-                            const restartEvent = new CustomEvent('sable:textAgentRestart', {
-                                detail: { stepId, skipTrigger }
+                            const restartEvent = new CustomEvent('sable:textAgentStart', {
+                                detail: { stepId, skipTrigger, agentId: this.lastActiveAgentId }
                             });
                             window.dispatchEvent(restartEvent);
                         }

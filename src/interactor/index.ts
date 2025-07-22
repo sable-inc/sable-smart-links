@@ -281,28 +281,44 @@ export class ElementInteractor {
   }
 
   /**
-   * Restarts an agent by removing its auto-started flag from localStorage and actively starting the agent
-   * @param agentId - The ID of the agent to restart
-   * @param stepId - Optional step ID to start the agent from
-   * @param skipTrigger - Optional flag to skip trigger checks and show the popup immediately
+   * Starts an agent by dispatching the 'sable:textAgentStart' event or setting sessionStorage.
+   * @param agentId - The ID of the agent to start
+   * @param options - Options for starting the agent
+   *   @property {string} [stepId] - Optional step ID to start the agent from (default: 'welcome' if using sessionStorage)
+   *   @property {boolean} [skipTrigger] - If true, skips trigger checks and shows the popup immediately (default: false)
+   *   @property {boolean} [useSessionStorage] - If true, sets sessionStorage key instead of dispatching event (default: false)
+   *
    */
-  static restartAgent(agentId: string, stepId?: string, skipTrigger: boolean = false): void {
-    // Remove the localStorage key to reset the auto-started state
-    const key = `SableTextAgentEngine_autoStartedOnce_${agentId}`;
-    localStorage.removeItem(key);
-    
-    // Dispatch the sable:textAgentRestart event to trigger the restart
-    const restartEvent = new CustomEvent('sable:textAgentRestart', {
+  static startAgent(agentId: string, options: { 
+      stepId?: string;
+      skipTrigger?: boolean;
+      useSessionStorage?: boolean;
+    } = {
+      stepId: undefined,
+      skipTrigger: false,
+      useSessionStorage: false,
+    }
+  ): void {
+    // Dispatch the sable:textAgentStart event to trigger the start
+    if (options.useSessionStorage) {
+      sessionStorage.setItem('sable_start_agent', JSON.stringify({
+        agentId: agentId,
+        stepId: options.stepId ?? 'welcome',
+        skipTrigger: options.skipTrigger ?? false,
+      }));
+      return;
+    }
+    const startEvent = new CustomEvent('sable:textAgentStart', {
       detail: { 
-        stepId: stepId || null, 
-        skipTrigger: skipTrigger,
+        stepId: options.stepId ?? undefined, 
+        skipTrigger: options.skipTrigger ?? false,
         agentId: agentId // Include agentId in case it's needed
       }
     });
     
     // Dispatch the event on the window object
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(restartEvent);
+      window.dispatchEvent(startEvent);
     } else {
       console.warn('[ElementInteractor] Window object not available. Only localStorage key was removed.');
     }
@@ -322,6 +338,6 @@ export const getComputedStyle = ElementInteractor.getComputedStyle.bind(ElementI
 export const isElementVisible = ElementInteractor.isElementVisible.bind(ElementInteractor);
 export const highlightElement = ElementInteractor.highlightElement.bind(ElementInteractor);
 export const restoreElementStyle = ElementInteractor.restoreElementStyle.bind(ElementInteractor);
-export const restartAgent = ElementInteractor.restartAgent.bind(ElementInteractor);
+export const startAgent = ElementInteractor.startAgent.bind(ElementInteractor);
 
 export default ElementInteractor; 

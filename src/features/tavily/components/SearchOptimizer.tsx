@@ -136,9 +136,9 @@ export const SearchOptimizer: React.FC<SearchOptimizerProps> = ({ apiKey }) => {
     const handleOptimize = async () => {
         if (!currentQuery) return;
         try {
-            console.log('Debug: Starting suggestSearchParameters call');
+            if (process.env.NODE_ENV === 'development') console.debug('Debug: Starting suggestSearchParameters call');
             await suggestSearchParameters({ query: currentQuery, apiKey });
-            console.log('Debug: Finished suggestSearchParameters call');
+            if (process.env.NODE_ENV === 'development') console.debug('Debug: Finished suggestSearchParameters call');
             setIsVisible(false);
             
             setCopilotPosition({
@@ -159,7 +159,7 @@ export const SearchOptimizer: React.FC<SearchOptimizerProps> = ({ apiKey }) => {
         e.preventDefault();
         e.stopPropagation();
         const newValue = e.target.value;
-        console.log('Input value changing to:', newValue); // Debug log
+        if (process.env.NODE_ENV === 'development') console.debug('Input value changing to:', newValue); // Debug log
         setCopilotQuery(newValue);
     };
 

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, createContext, useContext, useState } from 'r
 import { SableSmartLinks, SableSmartLinksConfig, WalkthroughStep, TextAgentStep, VoiceToolConfig } from '../index';
 import { isBrowser } from '../utils/browserAPI';
 import globalPopupManager from '../ui/GlobalPopupManager.js';
-import { restartAgent } from '../interactor';
+import { startAgent } from '../interactor';
 
 interface SableSmartLinksContextType {
   // Walkthrough methods
@@ -291,19 +291,19 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
 
   // Check for Sable agent restart on page load
   useEffect(() => {
-    const sableRestartData = sessionStorage.getItem('sable_restart_agent');
-    if (sableRestartData) {
+    const sableStartData = sessionStorage.getItem('sable_start_agent');
+    if (sableStartData) {
       try {
-        const { agent, step, skip } = JSON.parse(sableRestartData);
-        sessionStorage.removeItem('sable_restart_agent');
+        const { agentId, stepId, skipTrigger } = JSON.parse(sableStartData);
+        sessionStorage.removeItem('sable_start_agent');
         
         // Wait a bit for the page to fully render
         setTimeout(() => {
-          restartAgent(agent, step, skip);
+            startAgent(agentId, { stepId, skipTrigger });
         }, 500);
       } catch (error) {
-        console.error('Error parsing sable restart data:', error);
-        sessionStorage.removeItem('sable_restart_agent');
+        console.error('Error parsing sable start agent data:', error);
+        sessionStorage.removeItem('sable_start_agent');
       }
     }
   }, []);

@@ -99,17 +99,15 @@ export class TextAgentEngine {
     
     // Add event listener for section item restart events
     if (typeof window !== 'undefined') {
-      window.addEventListener('sable:textAgentRestart', (event) => {
+      window.addEventListener('sable:textAgentStart', (event) => {
         const { stepId, skipTrigger, agentId } = event.detail;
         if (this.config.debug) {
-          console.log(`[SableTextAgent] Received restart event for step: ${stepId}, skipTrigger: ${skipTrigger}, agentId: ${agentId}`);
+          console.log(`[SableTextAgent] Received start event for step: ${stepId}, skipTrigger: ${skipTrigger}, agentId: ${agentId}`);
         }
-        
         // Set the lastActiveAgentId if provided
         if (agentId) {
           this.lastActiveAgentId = agentId;
         }
-        
         this.restart({ stepId, skipTrigger });
       });
     }
@@ -608,10 +606,10 @@ export class TextAgentEngine {
               skipTrigger = !!restartConfig.skipTrigger;
             }
             // Emit a custom event that TextAgentEngine can listen for
-            const restartEvent = new CustomEvent('sable:textAgentRestart', {
-              detail: { stepId, skipTrigger }
+            const startEvent = new CustomEvent('sable:textAgentStart', {
+              detail: { stepId, skipTrigger, agentId: this.lastActiveAgentId }
             });
-            window.dispatchEvent(restartEvent);
+            window.dispatchEvent(startEvent);
           }
           // Always call the original handler
           originalOnSelect(item);

@@ -527,18 +527,24 @@ class SableSmartLinks {
   }
 
   /**
-   * Restart a text agent with the given ID
+   * Restart a text agent with the given ID and options (mirrors startAgent)
    * @param {string} agentId - The ID of the text agent to restart
-   * @param {string} [stepId] - Optional step ID to start the agent from
-   * @param {boolean} [skipTrigger=false] - Optional flag to skip trigger checks and show the popup immediately
+   * @param {Object} options - Options for restarting the agent
+   * @param {string} [options.stepId] - Optional step ID to start the agent from
+   * @param {boolean} [options.skipTrigger=false] - Optional flag to skip trigger checks and show the popup immediately
+   * @param {boolean} [options.useSessionStorage=false] - If true, use sessionStorage to trigger agent start
    * @returns {SableSmartLinks} - This instance for chaining
    */
-  restartTextAgent(agentId, stepId, skipTrigger = false) {
+  restartTextAgent(agentId, options = {
+    stepId: undefined,
+    skipTrigger: false,
+    useSessionStorage: false,
+  }) {
     if (!this.textAgentEngine) {
       console.error('[SableSmartLinks] TextAgentEngine not initialized');
       return this;
     }
-    
+
     // Remove the localStorage key to reset the auto-started state
     const key = `SableTextAgentEngine_autoStartedOnce_${agentId}`;
     try {
@@ -546,23 +552,31 @@ class SableSmartLinks {
     } catch (e) {
       console.warn('[SableSmartLinks] Failed to remove localStorage key:', e);
     }
-    
-    // Dispatch the sable:textAgentRestart event to trigger the restart
-    const restartEvent = new CustomEvent('sable:textAgentRestart', {
-      detail: { 
-        stepId: stepId || null, 
-        skipTrigger: skipTrigger,
+
+    // Dispatch the sable:textAgentStart event to trigger the restart (mirrors startAgent)
+    if (options.useSessionStorage) {
+      sessionStorage.setItem('sable_start_agent', JSON.stringify({
+        agentId: agentId,
+        stepId: options.stepId ?? 'welcome',
+        skipTrigger: options.skipTrigger ?? false,
+      }));
+      return this;
+    }
+    const startEvent = new CustomEvent('sable:textAgentStart', {
+      detail: {
+        stepId: options.stepId || null,
+        skipTrigger: options.skipTrigger || false,
         agentId: agentId
       }
     });
-    
+
     // Dispatch the event on the window object
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(restartEvent);
+      window.dispatchEvent(startEvent);
     } else {
       console.warn('[SableSmartLinks] Window object not available. Only localStorage key was removed.');
     }
-    
+
     return this;
   }
 

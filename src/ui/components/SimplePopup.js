@@ -39,7 +39,8 @@ export class SimplePopup {
             onPositionChange: config.onPositionChange || (() => {}),
             includeTextBox: config.includeTextBox || false,
             fontSize: config.fontSize || '15px',
-            sections: config.sections || []
+            sections: config.sections || [],
+            debug: config.debug || false // Add debug flag to config
         };
 
         // State
@@ -194,20 +195,18 @@ export class SimplePopup {
             // Create the arrow button with click handler
             const arrowButton = new ArrowButton(() => {
                 const textInput = this.inputBox ? this.inputBox.value : '';
-                console.log('[SimplePopup] Input box exists:', !!this.inputBox);
-                console.log('[SimplePopup] Raw input box value:', textInput);
-                
+                if (this.config.debug) {
+                  console.debug('[SimplePopup] Input box exists:', !!this.inputBox);
+                  console.debug('[SimplePopup] Raw input box value:', textInput);
+                }
                 // Pass the string value directly
                 if (typeof this.config.onProceed === 'function') {
-                    console.log('function called arrow button');
-                    
+                    if (this.config.debug) console.debug('function called arrow button');
                     try {
                         // Set button to loading state
                         arrowButton.setLoading(true);
-                        
                         // Call onProceed and handle Promise resolution
                         const result = this.config.onProceed(textInput);
-                        
                         // Handle both synchronous and asynchronous results
                         if (result instanceof Promise) {
                             result
@@ -261,14 +260,14 @@ export class SimplePopup {
         }
 
         if (Array.isArray(this.config.sections) && this.config.sections.length > 0) {
-            console.log('[SimplePopup][createContent] Rendering sections:', this.config.sections);
+            if (this.config.debug) console.debug('[SimplePopup][createContent] Rendering sections:', this.config.sections);
             const shortcutsAndRecents = new ShortcutsAndRecents({
                 sections: this.config.sections
             });
             // Insert after the rowContainer (which contains the text)
             mainContainer.appendChild(shortcutsAndRecents.render());
         } else if (this.config.sections !== undefined && !Array.isArray(this.config.sections)) {
-            console.warn('[SimplePopup][createContent] this.config.sections is not an array:', this.config.sections);
+            if (this.config.debug) console.warn('[SimplePopup][createContent] this.config.sections is not an array:', this.config.sections);
         }
 
         // Add textbox if needed - always at the bottom
@@ -293,7 +292,7 @@ export class SimplePopup {
                         inputBox.disabled = true;
                         
                         // Call the onProceed function
-                        console.log('function called input box');
+                        if (this.config.debug) console.debug('function called input box');
                         
                         // If we have an arrow button, set it to loading state too
                         if (this.arrowButton) {
@@ -309,7 +308,7 @@ export class SimplePopup {
                             // Handle both synchronous and asynchronous results
                             // Check if result is promise-like (has a then method)
                             if (result && typeof result.then === 'function') {
-                                console.log('[SimplePopup] Input box: Detected async result, waiting for completion');
+                                if (this.config.debug) console.log('[SimplePopup] Input box: Detected async result, waiting for completion');
                                 // For promises, wait for completion before resetting state
                                 return Promise.resolve(result)
                                     .catch(err => {
@@ -317,7 +316,7 @@ export class SimplePopup {
                                         throw err; // Re-throw to propagate the error
                                     })
                                     .finally(() => {
-                                        console.log('[SimplePopup] Input box: Async operation completed, resetting state');
+                                        if (this.config.debug) console.log('[SimplePopup] Input box: Async operation completed, resetting state');
                                         // Restore the input box state when done
                                         inputBox.disabled = false;
                                         
@@ -327,7 +326,7 @@ export class SimplePopup {
                                         }
                                     });
                             } else {
-                                console.log('[SimplePopup] Input box: Detected synchronous result');
+                                if (this.config.debug) console.log('[SimplePopup] Input box: Detected synchronous result');
                                 // For synchronous functions, reset after a short delay
                                 // to make the loading state visible
                                 setTimeout(() => {
@@ -464,8 +463,8 @@ export class SimplePopup {
     }
 
     close() {
-        console.log('Close clicked');
-        console.trace('[SimplePopup.close] Stack trace for close');
+        if (this.config.debug) console.log('Close clicked');
+        if (this.config.debug) console.trace('[SimplePopup.close] Stack trace for close');
         // Call the onClose callback if provided in config
         if (this.config.onClose) {
             this.config.onClose();

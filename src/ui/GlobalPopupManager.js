@@ -17,7 +17,9 @@ class GlobalPopupManager {
      * @returns {Object|null} Popup manager instance or null if failed
      */
     showPopup(options) {
-        console.log('[GlobalPopupManager] showPopup called with options:', options);
+        if (options && options.debug) {
+            console.debug('[GlobalPopupManager] showPopup called with options:', options);
+        }
         
         // Close any existing popup first
         this.closeActivePopup();
@@ -25,16 +27,16 @@ class GlobalPopupManager {
         try {
             // Create new popup manager directly to avoid circular dependency
             const popupManager = this.createPopupManager(options);
-            console.log('[GlobalPopupManager] Popup manager created:', popupManager);
+            if (options && options.debug) console.debug('[GlobalPopupManager] Popup manager created:', popupManager);
             
             // Store reference to active popup
-            console.log('[GlobalPopupManager] Setting activePopup - hasActivePopup will change from', this.hasActivePopup(), 'to true');
+            if (options && options.debug) console.debug('[GlobalPopupManager] Setting activePopup - hasActivePopup will change from', this.hasActivePopup(), 'to true');
             this.activePopup = popupManager;
-            console.log('[showPopup] hasActivePopup changed');
+            if (options && options.debug) console.debug('[showPopup] hasActivePopup changed');
             
             // Mount the popup
             const parent = options.parent || document.body;
-            console.log('[GlobalPopupManager] Mounting popup to parent:', parent);
+            if (options && options.debug) console.debug('[GlobalPopupManager] Mounting popup to parent:', parent);
             popupManager.mount(parent);
             
             // Notify listeners
@@ -61,7 +63,7 @@ class GlobalPopupManager {
                 }
             };
             
-            console.log('[GlobalPopupManager] Returning popup result:', result);
+            if (options && options.debug) console.debug('[GlobalPopupManager] Returning popup result:', result);
             return result;
         } catch (error) {
             console.error('[GlobalPopupManager] Error creating popup:', error);
