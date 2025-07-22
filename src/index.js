@@ -116,7 +116,7 @@ class SableSmartLinks {
     this.nextTextAgentStep = this.nextTextAgentStep.bind(this);
     this.previousTextAgentStep = this.previousTextAgentStep.bind(this);
     this.endTextAgent = this.endTextAgent.bind(this);
-    this.restartTextAgent = this.restartTextAgent.bind(this);
+    this.startTextAgent = this.startTextAgent.bind(this);
     this.toggleVoiceChat = this.toggleVoiceChat.bind(this);
     
     // Auto-start walkthrough if enabled and in browser
@@ -453,14 +453,16 @@ class SableSmartLinks {
    * @param {string} id - Unique identifier for the text agent
    * @param {Array<TextAgentStep>} steps - Array of text agent steps
    * @param {boolean} [autoStart=false] - Whether to start the text agent immediately
+   * @param {boolean} [autoStartOnce=true] - Whether to only auto-start once
+   * @param {Function} [beforeStart] - Optional async function to run before starting
    * @returns {SableSmartLinks} - This instance for chaining
    */
-  registerTextAgent(id, steps, autoStart = false, autoStartOnce = true) {
+  registerTextAgent(id, steps, autoStart = false, autoStartOnce = true, beforeStart) {
     if (!this.textAgentEngine) {
       console.error('[SableSmartLinks] TextAgentEngine not initialized');
       return this;
     }
-    this.textAgentEngine.register(id, steps, autoStart, autoStartOnce);
+    this.textAgentEngine.register(id, steps, autoStart, autoStartOnce, beforeStart);
     if (autoStart) {
       this.startTextAgent(id);
     }
@@ -470,15 +472,14 @@ class SableSmartLinks {
   /**
    * Start a text agent with the given ID
    * @param {string} [agentId] - Optional ID of the text agent to start
-   * @returns {boolean} - Success status
+   * @returns {Promise<boolean>} - Success status
    */
-  startTextAgent(agentId) {
+  async startTextAgent(agentId) {
     if (!this.textAgentEngine) {
       console.error('[SableSmartLinks] TextAgentEngine not initialized');
       return false;
     }
-    
-    return this.textAgentEngine.start(agentId);
+    return await this.textAgentEngine.start(agentId);
   }
 
   /**
@@ -532,7 +533,7 @@ class SableSmartLinks {
    * @param {boolean} [options.useSessionStorage=false] - If true, use sessionStorage to trigger agent start
    * @returns {SableSmartLinks} - This instance for chaining
    */
-  restartTextAgent(agentId, options = {
+  startTextAgent(agentId, options = {
     stepId: undefined,
     skipTrigger: false,
     useSessionStorage: false,

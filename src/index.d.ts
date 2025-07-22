@@ -374,7 +374,7 @@ export class SableSmartLinks {
   endWalkthrough(): void;
 
   /* ----- text-agent API ----------- */
-  registerTextAgent(id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean): void;
+  registerTextAgent(id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>): void;
   startTextAgent(agentId?: string): void;
   nextTextAgentStep(): void;
   previousTextAgentStep(): void;
@@ -568,4 +568,5 @@ export interface TextAgentAgentConfig {
   steps: TextAgentStep[];
   autoStart?: boolean;
   autoStartOnce?: boolean;
+  beforeStart?: () => void | Promise<void>;
 }

@@ -13,7 +13,7 @@ interface SableSmartLinksContextType {
   endWalkthrough: () => void;
   
   // Text Agent methods
-  registerTextAgent: (id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean) => SableSmartLinksContextType;
+  registerTextAgent: (id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>) => SableSmartLinksContextType;
   startTextAgent: (agentId?: string) => boolean | void;
   nextTextAgentStep: () => SableSmartLinksContextType;
   previousTextAgentStep: () => SableSmartLinksContextType;
@@ -52,6 +52,7 @@ export interface TextAgentAgentConfig {
   steps: TextAgentStep[];
   autoStart?: boolean;
   autoStartOnce?: boolean;
+  beforeStart?: () => void | Promise<void>;
 }
 
 export interface SableSmartLinksProviderProps {
@@ -306,7 +307,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
         // Wait a bit for the page to fully render
         setTimeout(() => {
             startAgent(agentId, { stepId, skipTrigger });
-        }, 500);
+        }, 1500);
       } catch (error) {
         console.error('Error parsing sable start agent data:', error);
         sessionStorage.removeItem('sable_start_agent');
@@ -318,12 +319,14 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
   useEffect(() => {
     if (!isBrowser || !sableInstance.current) return;
     Object.entries(textAgents).forEach(([id, agentConfig]) => {
-      const { steps, autoStart, autoStartOnce } = agentConfig;
+      const { steps, autoStart, autoStartOnce, beforeStart } = agentConfig;
       const processedSteps = processTextAgentSteps(id, steps);
       // Hash both steps and config
-      const stepHash = hashSteps([processedSteps, autoStart, autoStartOnce]);
+      const stepHash = hashSteps([processedSteps, autoStart, autoStartOnce, beforeStart?.toString?.()]);
       if (registeredTextAgents.current[id] !== stepHash) {
-        sableInstance.current?.registerTextAgent(id, processedSteps, autoStart, autoStartOnce);
+        if (sableInstance.current) {
+          sableInstance.current.registerTextAgent(id, processedSteps, autoStart, autoStartOnce, beforeStart);
+        }
         registeredTextAgents.current[id] = stepHash;
       }
     });
@@ -424,10 +427,10 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     },
     
     // Text Agent methods
-    registerTextAgent: (id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean) => {
+    registerTextAgent: (id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>) => {
       if (sableInstance.current) {
         const processedSteps = processTextAgentSteps(id, steps);
-        sableInstance.current.registerTextAgent(id, processedSteps, autoStart, autoStartOnce);
+        sableInstance.current.registerTextAgent(id, processedSteps, autoStart, autoStartOnce, beforeStart);
       }
       return contextValue;
     },
