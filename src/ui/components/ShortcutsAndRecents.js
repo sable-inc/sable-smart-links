@@ -100,11 +100,11 @@ export class ShortcutsAndRecents {
             Object.assign(iconElement.style, {
                 fontSize: '12px',
                 opacity: '0.25',
-                color: 'rgba(255, 255, 255, 0.3)',
+                color: 'rgba(255, 255, 255, 0.5)',
             });
             
-            // Use the provided icon
-            iconElement.textContent = icon;
+            // Use the item's icon if present, otherwise the section icon
+            iconElement.textContent = (item && item.icon) ? item.icon : icon;
 
             const textElement = document.createElement('span');
             // Handle both string items and object items with text property
