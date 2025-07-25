@@ -375,12 +375,27 @@ export class SableSmartLinks {
 
   /* ----- text-agent API ----------- */
   registerTextAgent(id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>): void;
-  startTextAgent(agentId?: string): void;
+  /**
+   * Start a text agent with the given ID
+   * @param agentId Optional ID of the text agent to start
+   * @param stepId Optional step ID to start the agent from
+   * @param skipTrigger Optional flag to skip trigger checks and show the popup immediately
+   * @returns Promise<boolean> - Success status
+   */
+  startTextAgent(agentId?: string, stepId?: string | null, skipTrigger?: boolean): Promise<boolean>;
   nextTextAgentStep(): void;
   previousTextAgentStep(): void;
   toggleTextAgentExpand(): void;
   sendTextAgentMessage(message: string): void;
   endTextAgent(): void;
+  /**
+   * Restart the text agent from a specific step or with options.
+   * @param options Options for restarting the text agent
+   * @param options.stepId Optional step ID to restart from
+   * @param options.skipTrigger Whether to skip trigger checks
+   * @param options.beforeRestartCallback Optional callback before restart
+   */
+  restartTextAgent(options?: { stepId?: string | null; skipTrigger?: boolean; beforeRestartCallback?: (() => void) | null }): void;
 
   /* ----- voice-agent (minimal) ------ */
   /** Start/stop voice chat */

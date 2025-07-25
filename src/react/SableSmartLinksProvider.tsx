@@ -14,11 +14,11 @@ interface SableSmartLinksContextType {
   
   // Text Agent methods
   registerTextAgent: (id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>) => SableSmartLinksContextType;
-  startTextAgent: (agentId?: string) => boolean | void;
+  startTextAgent: (agentId?: string, stepId?: string | null, skipTrigger?: boolean) => Promise<boolean>;
   nextTextAgentStep: () => SableSmartLinksContextType;
   previousTextAgentStep: () => SableSmartLinksContextType;
   endTextAgent: () => SableSmartLinksContextType;
-  restartTextAgent: (stepId?: string | null, beforeRestartCallback?: (() => void) | null) => SableSmartLinksContextType;
+  restartTextAgent: (agentId?: string, options?: { stepId?: string | null; skipTrigger?: boolean; beforeRestartCallback?: (() => void) | null }) => SableSmartLinksContextType;
   
   // Popup methods
   showPopup: (options: {
@@ -434,11 +434,19 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
       }
       return contextValue;
     },
-    startTextAgent: (agentId?: string) => {
-      if (sableInstance.current) {
-        return sableInstance.current.startTextAgent(agentId);
+    startTextAgent: (agentId?: string, stepId?: string | null, skipTrigger?: boolean): Promise<boolean> => {
+      if (sableInstance.current && typeof sableInstance.current.startTextAgent === 'function') {
+        const fn = sableInstance.current.startTextAgent;
+        // Check function arity to determine how many arguments to pass
+        if (fn.length >= 3) {
+          // New signature: (agentId, stepId, skipTrigger)
+          return Promise.resolve(fn.call(sableInstance.current, agentId, stepId, skipTrigger)).then((r: any) => !!r);
+        } else {
+          // Old signature: (agentId)
+          return Promise.resolve(fn.call(sableInstance.current, agentId)).then((r: any) => !!r);
+        }
       }
-      return false;
+      return Promise.resolve(false);
     },
     nextTextAgentStep: () => {
       if (sableInstance.current) {
@@ -459,12 +467,14 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
       return contextValue;
     },
     
-    restartTextAgent: (stepId?: string | null, beforeRestartCallback?: (() => void) | null) => {
+    restartTextAgent: (agentId?: string, options?: { stepId?: string | null; skipTrigger?: boolean; beforeRestartCallback?: (() => void) | null }) => {
       if (sableInstance.current) {
-        // Using type assertion to access textAgentEngine which exists in the JS implementation
         const instance = sableInstance.current as any;
         if (instance.textAgentEngine) {
-          instance.textAgentEngine.restart(stepId, beforeRestartCallback);
+          if (agentId) {
+            instance.textAgentEngine.lastActiveAgentId = agentId;
+          }
+          instance.textAgentEngine.restart(options || {});
         }
       }
       return contextValue;

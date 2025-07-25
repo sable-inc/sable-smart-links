@@ -48,7 +48,7 @@ export class TextAgentEngine {
     };
     
     if (this.config.debug) {
-      console.log('[SableTextAgent] Initializing with config:', this.config);
+      console.log(`[SableTextAgent][agentId: ${this.lastActiveAgentId || 'unknown'}] Initializing with config:`, this.config);
     }
     
     // State management
@@ -62,6 +62,10 @@ export class TextAgentEngine {
     this.lastActiveAgentId = null; // Track the ID of the last active agent
     this.triggerButtonElement = null; // Reference to the trigger button element
     this.agentConfigs = new Map(); // Store per-agent config
+    this._isEnding = false; // Add flag to prevent re-entrant end()
+    this._globalTriggerObserver = null; // Global observer for all agent triggers
+    this._autoStartedOnceFallback = {}; // Fallback for localStorage issues
+    this._agentRunningState = new Map(); // Track running state per agent
   }
   
   /**
@@ -70,7 +74,7 @@ export class TextAgentEngine {
    */
   init() {
     if (this.config.debug) {
-      console.log('[SableTextAgent] Initializing');
+      console.log(`[SableTextAgent][init] Initializing`);
     }
     
     // Create trigger button if enabled
@@ -84,16 +88,49 @@ export class TextAgentEngine {
       window.addEventListener('sable:textAgentStart', (event) => {
         const { stepId, skipTrigger, agentId } = event.detail;
         if (this.config.debug) {
-          console.log(`[SableTextAgent] Received start event for step: ${stepId}, skipTrigger: ${skipTrigger}, agentId: ${agentId}`);
+          console.log(`[SableTextAgent][agentId: ${agentId || 'MISSING'}] Received start event for step: ${stepId}, skipTrigger: ${skipTrigger}, agentId: ${agentId}`);
         }
-        // Set the lastActiveAgentId if provided
-        if (agentId) {
-          this.lastActiveAgentId = agentId;
+        if (!agentId) {
+          console.warn('[SableTextAgent] agentId is required for restart. Ignoring event.');
+          return;
         }
-        this.restart({ stepId, skipTrigger });
+        // Only start if trigger element is present (if needed)
+        let steps = this.registeredAgents.get(agentId);
+        if (steps && steps.length > 0) {
+          const firstStep = steps[0];
+          let triggerSelector = null;
+          if (firstStep.triggerOnTyping && firstStep.triggerOnTyping.selector) {
+            triggerSelector = firstStep.triggerOnTyping.selector;
+          } else if (firstStep.triggerOnButtonPress && firstStep.triggerOnButtonPress.selector) {
+            triggerSelector = firstStep.triggerOnButtonPress.selector;
+          }
+          if (triggerSelector) {
+            let element = null;
+            if (triggerSelector.startsWith('//')) {
+              element = document.evaluate(
+                triggerSelector,
+                document,
+                null,
+                XPathResult.FIRST_ORDERED_NODE_TYPE,
+                null
+              ).singleNodeValue;
+            } else {
+              element = document.querySelector(triggerSelector);
+            }
+            if (!element) {
+              if (this.config.debug) {
+                console.log(`[SableTextAgent][agentId: ${agentId}] Trigger element for selector '${triggerSelector}' not found in DOM. Not starting agent.`);
+              }
+              return;
+            }
+          }
+        }
+        this.restart({ stepId, skipTrigger, agentId });
       });
     }
     
+    // Start the global trigger observer
+    this._startGlobalTriggerObserver();
     return this;
   }
   
@@ -106,7 +143,7 @@ export class TextAgentEngine {
    * @param {Function} [beforeStart] - Optional async function to run before starting
    */
   register(id, steps, autoStart, autoStartOnce, beforeStart) {
-    console.log(`[SableTextAgent] Registering agent "${id}" with ${steps.length} steps `);
+    console.log(`[SableTextAgent][agentId: ${id || this.lastActiveAgentId || 'unknown'}] Registering agent "${id}" with ${steps.length} steps `);
     
     // Store the original registration
     this.registeredAgents.set(id, steps.map(step => ({
@@ -121,67 +158,45 @@ export class TextAgentEngine {
       beforeStart: beforeStart
     });
 
-    // Initial check for visible elements
-    this.checkVisibleElements();
+    // Start or update the global trigger observer
+    this._startGlobalTriggerObserver();
   }
   
   /**
-   * Check which elements are currently visible and update active steps
+   * Start or update the global MutationObserver for all agent triggers
    * @private
    */
-  checkVisibleElements() {
-    // Skip if not in browser environment
-    if (typeof window === 'undefined' || typeof document === 'undefined') {
+  _startGlobalTriggerObserver() {
+    if (this._globalTriggerObserver) {
+      // Already running, no need to restart
       return;
     }
-    
-    const previouslyActive = new Set(this.activeSteps);
-    this.activeSteps.clear();
-
-    // Check each registered agent's steps
-    for (const [id, steps] of this.registeredAgents.entries()) {
-      const visibleSteps = steps.filter(step => {
-        if (!step.requiredSelector) return true;
-
-        let element;
-        if (step.requiredSelector.startsWith('//')) {
-          element = document.evaluate(
-            step.requiredSelector,
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    const observerCallback = () => {
+      let anyAgentStartedOrEnded = false;
+      for (const [id, steps] of this.registeredAgents.entries()) {
+        if (!steps.length) continue;
+        const firstStep = steps[0];
+        const trigger = firstStep.triggerOnTyping || firstStep.triggerOnButtonPress;
+        const triggerSelector = trigger && trigger.selector;
+        if (!triggerSelector) continue;
+        let triggerPresent = false;
+        if (triggerSelector.startsWith('//')) {
+          // XPath
+          triggerPresent = !!document.evaluate(
+            triggerSelector,
             document,
             null,
             XPathResult.FIRST_ORDERED_NODE_TYPE,
             null
           ).singleNodeValue;
         } else {
-          element = document.querySelector(step.requiredSelector);
+          triggerPresent = !!document.querySelector(triggerSelector);
         }
-
-        const isVisible = !!element;
-        if (isVisible) {
-          this.activeSteps.add(step.id);
-        }
-        return isVisible;
-      });
-
-      // Update current steps if they've changed
-      const hasChanges = 
-        visibleSteps.length > 0 && 
-        (!this.steps.length || 
-         !this.steps.every(s => visibleSteps.some(vs => vs.id === s.id)));
-
-      if (hasChanges) {
-        console.log(`[SableTextAgent] Updating active steps for "${id}"`, visibleSteps);
-        this.steps = visibleSteps;
-        
-        // Only auto-start if this is a new activation
-        const isNewActivation = visibleSteps.some(step => 
-          !previouslyActive.has(step.id)
-        );
-        
-        let shouldAutoStart = false;
         const agentConfig = this.agentConfigs.get(id) || {};
         const agentAutoStart = agentConfig.autoStart !== undefined ? agentConfig.autoStart : this.config.autoStart;
         const agentAutoStartOnce = agentConfig.autoStartOnce !== undefined ? agentConfig.autoStartOnce : this.config.autoStartOnce;
+        let shouldAutoStart = false;
         if (agentAutoStartOnce && agentAutoStart) {
           const localStorageKey = `SableTextAgentEngine_autoStartedOnce_${id}`;
           try {
@@ -189,9 +204,7 @@ export class TextAgentEngine {
               shouldAutoStart = true;
             }
           } catch (e) {
-            if (!this._autoStartedOnceFallback) {
-              this._autoStartedOnceFallback = {};
-            }
+            if (!this._autoStartedOnceFallback) this._autoStartedOnceFallback = {};
             if (!this._autoStartedOnceFallback[id]) {
               shouldAutoStart = true;
             }
@@ -199,118 +212,112 @@ export class TextAgentEngine {
         } else if (agentAutoStart) {
           shouldAutoStart = true;
         }
-        if (isNewActivation && shouldAutoStart) {
-          console.log(`[SableTextAgent] Auto-starting agent "${id}"`);
-          this.start();
+        const isRunning = this._agentRunningState.get(id) === true;
+        // If trigger is present and agent should auto start
+        if (triggerPresent && shouldAutoStart) {
+          if (!isRunning) {
+            this.steps = steps;
+            this.currentStepIndex = 0;
+            this.lastActiveAgentId = id;
+            this._agentRunningState.set(id, true);
+            this.start(id);
+            anyAgentStartedOrEnded = true;
+          }
+        } else if ((!triggerPresent || !shouldAutoStart) && isRunning && this.lastActiveAgentId === id) {
+          if (!this._isEnding) {
+            this._agentRunningState.set(id, false);
+            setTimeout(() => this.end(), 0);
+            anyAgentStartedOrEnded = true;
+          }
         }
-      } else if (this.steps.length && visibleSteps.length === 0) {
-        // All elements disappeared, clear steps
-        console.log(`[SableTextAgent] All elements gone for "${id}", clearing steps`);
-        this.steps = [];
-        this.end(); // End the current session if elements disappear
       }
+      if (anyAgentStartedOrEnded) {
+        setTimeout(observerCallback, 10);
+      }
+    };
+    this._globalTriggerObserver = new MutationObserver(observerCallback);
+    this._globalTriggerObserver.observe(document.body, { childList: true, subtree: true });
+    // Run once on setup
+    observerCallback();
+  }
+
+  /**
+   * Stop and clean up the global MutationObserver
+   * @private
+   */
+  _stopGlobalTriggerObserver() {
+    if (this._globalTriggerObserver) {
+      this._globalTriggerObserver.disconnect();
+      this._globalTriggerObserver = null;
     }
   }
-  
+
   /**
    * Start the text agent
+   * @param {string} [agentId] - ID of the agent to start
    * @param {string} [stepId] - Optional step ID to start from
    * @param {boolean} [skipTrigger=false] - Whether to skip trigger checks and show the popup immediately
    * @returns {Promise<boolean>} - Resolves true if started, false if not
    */
-  async start(stepId, skipTrigger = false) {
+  async start(agentId, stepId, skipTrigger = false) {
+    if (!agentId) {
+      console.warn('[SableTextAgent] agentId is required for start.');
+      return false;
+    }
     if (this.isRunning) {
       console.warn('[SableTextAgent] Already running');
       return false;
     }
+    if (!this.registeredAgents.has(agentId)) {
+      console.warn(`[SableTextAgent] agentId ${agentId} not registered.`);
+      return false;
+    }
     if (this.config.debug) {
-      console.log(`[SableTextAgent] Starting with skipTrigger: ${skipTrigger}`);
+      console.log(`[SableTextAgent][agentId: ${agentId}] Starting with skipTrigger: ${skipTrigger}`);
     }
-    // Find the agentId for this.steps
-    let agentId = this.lastActiveAgentId;
-    if (!agentId) {
-      // Try to infer from steps
-      for (const [id, agentSteps] of this.registeredAgents.entries()) {
-        if (agentSteps === this.steps) {
-          agentId = id;
-          break;
-        }
-      }
-    }
+    this._agentRunningState.set(agentId, true);
+    this.steps = this.registeredAgents.get(agentId);
     // Await beforeStart if present
     let beforeStartFn = null;
-    if (agentId && this.agentConfigs.has(agentId)) {
+    if (this.agentConfigs.has(agentId)) {
       beforeStartFn = this.agentConfigs.get(agentId).beforeStart;
-    }
-    if (this.config.debug) {
-      console.log(`[SableTextAgent][start] Checking beforeStart for agentId: ${agentId}, typeof beforeStart: ${typeof beforeStartFn}`, beforeStartFn);
     }
     if (typeof beforeStartFn === 'function') {
       if (this.config.debug) {
-        console.log(`[SableTextAgent][start] Awaiting beforeStart for agentId: ${agentId}`);
+        console.log(`[SableTextAgent][agentId: ${agentId}][start] Awaiting beforeStart for agentId: ${agentId}`);
       }
       await beforeStartFn();
       if (this.config.debug) {
-        console.log(`[SableTextAgent][start] Finished beforeStart for agentId: ${agentId}`);
+        console.log(`[SableTextAgent][agentId: ${agentId}][start] Finished beforeStart for agentId: ${agentId}`);
       }
     }
     this.isRunning = true;
-    
-    // If a specific step ID is provided, find and set it as the current step
     if (stepId) {
       const stepIndex = this.steps.findIndex(step => step.id === stepId);
       if (stepIndex !== -1) {
         this.currentStepIndex = stepIndex;
       }
-    } else if (this.currentStepIndex === -1) {
-      // If no current step is set, start from the beginning
+    } else {
       this.currentStepIndex = 0;
     }
-
-    // --- Set lastActiveAgentId based on current steps ---
-    for (const [id, agentSteps] of this.registeredAgents.entries()) {
-      // Compare by step IDs for robustness
-      const agentStepIds = agentSteps.map(s => s.id);
-      const currentStepIds = this.steps.map(s => s.id);
-      if (
-        agentStepIds.length === currentStepIds.length &&
-        agentStepIds.every((id, idx) => id === currentStepIds[idx])
-      ) {
-        this.lastActiveAgentId = id;
-        if (this.config.debug) {
-          console.log(`[SableTextAgent][start] Set lastActiveAgentId to: ${id}`);
-        }
-        break;
-      }
-    }
-    
-    // Store the skipTrigger flag on the instance for use in _renderCurrentStep
     this._skipTrigger = skipTrigger;
-    
-    // Get the current step
     const step = this.steps[this.currentStepIndex];
-    
-    // If skipTrigger is true, immediately render the step
     if (skipTrigger) {
-      this._renderCurrentStep();
+      this._renderCurrentStep(agentId);
       return;
     }
-    
-    // Otherwise check for triggers
     if (step) {
       if (step.triggerOnTyping) {
-        this._setupTypingTrigger(step);
+        this._setupTypingTrigger(step, agentId);
       } else if (step.triggerOnButtonPress) {
-        this._setupButtonPressTrigger(step);
+        this._setupButtonPressTrigger(step, agentId);
       } else {
-        // No triggers, render immediately with a small delay
-        setTimeout(() => this._renderCurrentStep(), 100);
+        setTimeout(() => this._renderCurrentStep(agentId), 100);
       }
     } else {
       console.warn('[SableTextAgent] No step found at index:', this.currentStepIndex);
     }
-    
-    return this; // For chaining
+    return this;
   }
   
   /**
@@ -318,10 +325,10 @@ export class TextAgentEngine {
    * @param {TextAgentStep} step - The step to set up trigger for
    * @private
    */
-  _setupButtonPressTrigger(step) {
+  _setupButtonPressTrigger(step, agentId) {
     if (!step.triggerOnButtonPress || !step.triggerOnButtonPress.selector) {
       console.warn('[SableTextAgent] Invalid triggerOnButtonPress configuration');
-      this._renderCurrentStep(); // Fall back to immediate rendering
+      this._renderCurrentStep(agentId); // Fall back to immediate rendering
       return;
     }
     
@@ -330,7 +337,7 @@ export class TextAgentEngine {
     // Function to show the step after button press
     const showStep = () => {
       if (this.config.debug) {
-        console.log(`[SableTextAgent] Button press detected for step ${step.id}`);
+        console.log(`[SableTextAgent][agentId: ${agentId || 'unknown'}] Button press detected for step ${step.id}`);
       }
       
       // Remove the event listener to prevent multiple triggers
@@ -340,9 +347,9 @@ export class TextAgentEngine {
       
       // Show the step after the specified delay
       if (delay > 0) {
-        setTimeout(() => this._renderCurrentStep(), delay);
+        setTimeout(() => this._renderCurrentStep(agentId), delay);
       } else {
-        this._renderCurrentStep();
+        this._renderCurrentStep(agentId);
       }
     };
     
@@ -354,7 +361,7 @@ export class TextAgentEngine {
     // Wait for the element to be available in the DOM
     waitForElement(selector).then(() => {
       if (this.config.debug) {
-        console.log(`[SableTextAgent] Setting up button press trigger on ${selector} for event ${event}`);
+        console.log(`[SableTextAgent][agentId: ${agentId || 'unknown'}] Setting up button press trigger on ${selector} for event ${event}`);
       }
       
       // Add event listener to all matching elements
@@ -362,8 +369,8 @@ export class TextAgentEngine {
         el.addEventListener(event, handler);
       });
     }).catch(error => {
-      console.error(`[SableTextAgent] Error setting up button press trigger: ${error}`);
-      this._renderCurrentStep(); // Fall back to immediate rendering
+      console.error(`[SableTextAgent][agentId: ${agentId || 'unknown'}] Error setting up button press trigger: ${error}`);
+      this._renderCurrentStep(agentId); // Fall back to immediate rendering
     });
   }
   
@@ -371,17 +378,16 @@ export class TextAgentEngine {
    * Set up typing trigger for a step
    * @private
    */
-  _setupTypingTrigger(step) {
+  _setupTypingTrigger(step, agentId) {
     const { selector, on = 'start', stopDelay = 1000 } = step.triggerOnTyping;
     const input = document.querySelector(selector);
     if (!input) {
-      setTimeout(() => this._setupTypingTrigger(step), 500);
+      setTimeout(() => this._setupTypingTrigger(step, agentId), 500);
       return;
     }
 
     let hasStarted = false;
     let cleanup = null;
-    const agentId = this.lastActiveAgentId || Array.from(this.registeredAgents.keys())[0];
     const showStep = () => {
       if (cleanup) cleanup();
       // Set localStorage key when actually triggered
@@ -394,7 +400,7 @@ export class TextAgentEngine {
           this._autoStartedOnceFallback[agentId] = true;
         }
       }
-      this._renderCurrentStep();
+      this._renderCurrentStep(agentId);
     };
 
     if (on === 'start') {
@@ -420,7 +426,7 @@ export class TextAgentEngine {
    */
   next() {
     if (this.config.debug) {
-      console.log('[SableTextAgent][next] Advancing to next step. Current index:', this.currentStepIndex, 'Active agent:', this.lastActiveAgentId, 'Steps:', this.steps.map(s => s.id));
+      console.log(`[SableTextAgent][agentId: ${this.lastActiveAgentId || 'unknown'}] Advancing to next step. Current index:`, this.currentStepIndex, 'Active agent:', this.lastActiveAgentId, 'Steps:', this.steps.map(s => s.id));
     }
     // Clean up current step if any
     this._cleanupCurrentStep();
@@ -429,12 +435,12 @@ export class TextAgentEngine {
       this.currentStepIndex++;
       if (this.config.debug) {
         const step = this.steps[this.currentStepIndex];
-        console.log('[SableTextAgent][next] Now at step index:', this.currentStepIndex, 'Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId);
+        console.log(`[SableTextAgent][agentId: ${this.lastActiveAgentId || 'unknown'}] Now at step index:`, this.currentStepIndex, 'Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId);
       }
       this._renderCurrentStep();
     } else {
       if (this.config.debug) {
-        console.log('[SableTextAgent][next] Reached end of steps. Final popup added?', this._finalPopupAdded);
+        console.log(`[SableTextAgent][agentId: ${this.lastActiveAgentId || 'unknown'}] Reached end of steps. Final popup added?`, this._finalPopupAdded);
       }
       // We've reached the end of the steps
       // Check if we need to show the final popup
@@ -470,23 +476,31 @@ export class TextAgentEngine {
    * End the current text agent session
    */
   async end() {
+    if (this._isEnding) return this; // Prevent re-entrant calls
+    this._isEnding = true;
     // Clean up current step
     this._cleanupCurrentStep();
-    
+
     // Clean up final popup if it exists
     if (this._finalPopupManager) {
       this._finalPopupManager.unmount();
       this._finalPopupManager = null;
     }
-    
+
+    // Remove all per-agent observer cleanup (handled by global observer now)
     this.isRunning = false;
     this.currentStepIndex = -1;
     this._finalPopupAdded = false;
-    
-    if (this.config.debug) {
-      console.log('[SableTextAgent] Session ended');
+    this.steps = [];
+    // Mark the agent as not running
+    if (this.lastActiveAgentId) {
+      this._agentRunningState.set(this.lastActiveAgentId, false);
     }
-    
+
+    if (this.config.debug) {
+      console.log(`[SableTextAgent][agentId: ${this.lastActiveAgentId || 'unknown'}] Session ended`);
+    }
+    this._isEnding = false;
     return this; // For chaining
   }
   
@@ -508,17 +522,17 @@ export class TextAgentEngine {
    * Render the current step
    * @private
    */
-  _renderCurrentStep() {
+  _renderCurrentStep(agentId) {
     if (this.currentStepIndex < 0 || this.currentStepIndex >= this.steps.length) {
       if (this.config.debug) {
-        console.log('[SableTextAgent][_renderCurrentStep] Invalid step index:', this.currentStepIndex, 'Steps length:', this.steps.length, 'Active agent:', this.lastActiveAgentId);
+        console.log(`[SableTextAgent][agentId: ${agentId || 'unknown'}] Invalid step index:`, this.currentStepIndex, 'Steps length:', this.steps.length, 'Active agent:', this.lastActiveAgentId);
       }
       return;
     }
     const step = this.steps[this.currentStepIndex];
     if (this.config.debug) {
-      console.log('[SableTextAgent][_renderCurrentStep] Rendering step index:', this.currentStepIndex, 'Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId, 'Step:', step);
-      console.log('[SableTextAgent][_renderCurrentStep] Step.sections:', step && step.sections);
+      console.log(`[SableTextAgent][agentId: ${agentId || 'unknown'}] Rendering step index:`, this.currentStepIndex, 'Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId, 'Step:', step);
+      console.log(`[SableTextAgent][agentId: ${agentId || 'unknown'}] Step.sections:`, step && step.sections);
     }
     
     // --- CONDITIONAL POPUP LOGIC ---
@@ -533,7 +547,7 @@ export class TextAgentEngine {
     }
     if (!shouldShow) {
       if (this.config.debug) {
-        console.log('[SableTextAgent][_renderCurrentStep] Step', step && step.id, 'shouldShow=false, skipping to next');
+        console.log(`[SableTextAgent][agentId: ${agentId || 'unknown'}] Step`, step && step.id, 'shouldShow=false, skipping to next');
       }
       // Skip this step and go to the next one
       this.next();
@@ -544,11 +558,11 @@ export class TextAgentEngine {
     // First handle any target element that needs to be highlighted or waited for
     this._handleTargetElement(step).then(targetElement => {
       // Create popup based on step configuration
-      this._createPopupForStep(step, targetElement);
+      this._createPopupForStep(step, targetElement, agentId);
       
       // Handle any auto-actions after a brief delay
       setTimeout(() => {
-        this._performStepActions(step, targetElement);
+        this._performStepActions(step, targetElement, agentId);
       }, this.config.stepDelay);
     });
   }
@@ -585,7 +599,7 @@ export class TextAgentEngine {
       
       return element;
     } catch (error) {
-      console.error('[SableTextAgent] Error handling target element:', error);
+      console.error(`[SableTextAgent][agentId: ${this.lastActiveAgentId || 'unknown'}] Error handling target element:`, error);
       return null;
     }
   }
@@ -596,10 +610,10 @@ export class TextAgentEngine {
    * @param {HTMLElement|null} targetElement - The target element if any
    * @private
    */
-  _createPopupForStep(step, targetElement) {
+  _createPopupForStep(step, targetElement, agentId) {
     if (this.config.debug) {
-      console.log('[SableTextAgent][_createPopupForStep] Creating popup for step index:', this.currentStepIndex, 'Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId, 'Step:', step);
-      console.log('[SableTextAgent][_createPopupForStep] Step.sections:', step && step.sections);
+      console.log(`[SableTextAgent][agentId: ${agentId || 'unknown'}] Creating popup for step index:`, this.currentStepIndex, 'Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId, 'Step:', step);
+      console.log(`[SableTextAgent][agentId: ${agentId || 'unknown'}] Step.sections:`, step && step.sections);
     }
     
     // Get the text content, handling both string and function types
@@ -627,7 +641,7 @@ export class TextAgentEngine {
             }
             // Emit a custom event that TextAgentEngine can listen for
             const startEvent = new CustomEvent('sable:textAgentStart', {
-              detail: { stepId, skipTrigger, agentId: this.lastActiveAgentId }
+              detail: { stepId, skipTrigger, agentId: agentId }
             });
             window.dispatchEvent(startEvent);
           }
@@ -656,7 +670,7 @@ export class TextAgentEngine {
     if (step.buttonType === 'yes-no') {
       popupOptions.onYesNo = (isYes) => {
         if (this.config.debug) {
-          console.log('[SableTextAgent][onYesNo] Button pressed. isYes:', isYes, 'Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId);
+          console.log(`[SableTextAgent][agentId: ${agentId || 'unknown'}] Button pressed. isYes:`, isYes, 'Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId);
         }
         if (isYes && typeof step.onYesNo === 'function') {
           step.onYesNo(true);
@@ -666,7 +680,7 @@ export class TextAgentEngine {
         // Auto-advance if configured
         if (step.autoAdvance) {
           if (this.config.debug) {
-            console.log('[SableTextAgent][onYesNo] Auto-advancing after yes-no. Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId);
+            console.log(`[SableTextAgent][agentId: ${agentId || 'unknown'}] Auto-advancing after yes-no. Step ID:`, step && step.id, 'Active agent:', this.lastActiveAgentId);
           }
           setTimeout(() => this.next(), step.autoAdvanceDelay || 1000);
         }
@@ -675,12 +689,12 @@ export class TextAgentEngine {
       if (step.includeTextBox) {
         popupOptions.onProceed = (textInput) => {
           if (this.config.debug) {
-            console.log('[SableTextAgent][onProceed] Proceed pressed (textbox). Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId, 'Scheduling next in', step.autoAdvanceDelay || 1000);
+            console.log(`[SableTextAgent][agentId: ${agentId || 'unknown'}] Proceed pressed (textbox). Step ID:`, step && step.id, 'Active agent:', this.lastActiveAgentId, 'Scheduling next in', step.autoAdvanceDelay || 1000);
           }
           const delay = step.autoAdvanceDelay || 1000;
           setTimeout(async () => {
             if (this.config.debug) {
-              console.log('[SableTextAgent][onProceed] Delayed-next fired (textbox). Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId);
+              console.log(`[SableTextAgent][agentId: ${agentId || 'unknown'}] Delayed-next fired (textbox). Step ID:`, step && step.id, 'Active agent:', this.lastActiveAgentId);
             }
             if (typeof step.onProceed === 'function') {
               await step.onProceed(textInput);
@@ -692,12 +706,12 @@ export class TextAgentEngine {
           // Default arrow button
           popupOptions.onProceed = () => {
             if (this.config.debug) {
-              console.log('[SableTextAgent][onProceed] Proceed pressed (arrow). Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId, 'Scheduling next in', step.autoAdvanceDelay || 1000);
+              console.log(`[SableTextAgent][agentId: ${agentId || 'unknown'}] Proceed pressed (arrow). Step ID:`, step && step.id, 'Active agent:', this.lastActiveAgentId, 'Scheduling next in', step.autoAdvanceDelay || 1000);
             }
             const delay = step.autoAdvanceDelay || 1000;
             setTimeout(async () => {
                 if (this.config.debug) {
-                    console.log('[SableTextAgent][onProceed] Delayed-next fired (arrow). Step ID:', step && step.id, 'Active agent:', this.lastActiveAgentId);
+                    console.log(`[SableTextAgent][agentId: ${agentId || 'unknown'}] Delayed-next fired (arrow). Step ID:`, step && step.id, 'Active agent:', this.lastActiveAgentId);
                 }
                 if (typeof step.onProceed === 'function') {
                     await step.onProceed(); 
@@ -712,7 +726,7 @@ export class TextAgentEngine {
     if (popupResult) {
         this.activePopupManager = popupResult;
     } else {
-        console.error('[TextAgentEngine] Failed to create popup');
+        console.error(`[TextAgentEngine][agentId: ${agentId || 'unknown'}] Failed to create popup`);
         return;
     }
     
@@ -725,7 +739,7 @@ export class TextAgentEngine {
       // First, get the popup dimensions to position it correctly
       // We need to ensure the popup is rendered before measuring it
       if (!this.activePopupManager || !this.activePopupManager.container) {
-        console.warn('[TextAgentEngine] Popup manager or container not available for positioning');
+        console.warn(`[TextAgentEngine][agentId: ${agentId || 'unknown'}] Popup manager or container not available for positioning`);
         return;
       }
       
@@ -797,7 +811,7 @@ export class TextAgentEngine {
    * @param {HTMLElement|null} element - The target element if any
    * @private
    */
-  _performStepActions(step, element) {
+  _performStepActions(step, element, agentId) {
     if (!step.action || !element) return;
     
     const action = step.action;
@@ -925,11 +939,11 @@ export class TextAgentEngine {
     // Create and mount the popup using global popup manager
     const popupResult = globalPopupManager.showPopup({ ...defaultOptions, ...options });
     if (popupResult) {
-        console.log('[TextAgentEngine] Setting activePopupManager in showPopup - this will affect hasActivePopup state');
+        console.log(`[TextAgentEngine][agentId: ${this.lastActiveAgentId || 'unknown'}] Setting activePopupManager in showPopup - this will affect hasActivePopup state`);
         this.activePopupManager = popupResult;
         console.log('[showPopup] hasActivePopup changed');
     } else {
-        console.error('[TextAgentEngine] Failed to create popup');
+        console.error(`[TextAgentEngine][agentId: ${this.lastActiveAgentId || 'unknown'}] Failed to create popup`);
         return null;
     }
 
@@ -940,7 +954,7 @@ export class TextAgentEngine {
       
       // Safety check for popup manager and container
       if (!this.activePopupManager || !this.activePopupManager.container) {
-        console.warn('[TextAgentEngine] Popup manager or container not available for positioning');
+        console.warn(`[TextAgentEngine][agentId: ${this.lastActiveAgentId || 'unknown'}] Popup manager or container not available for positioning`);
         return popupResult;
       }
       
@@ -1008,16 +1022,14 @@ export class TextAgentEngine {
    */
   _createTriggerButton() {
     // Check if we should show the button based on current URL path
-    console.log('[SableTextAgent] Checking trigger button visibility', this._shouldShowTriggerButton());
+    console.log(`[SableTextAgent][TriggerButton] Checking trigger button visibility`, this._shouldShowTriggerButton());
     if (!this._shouldShowTriggerButton()) {
       return;
     }
-    
     // Create button element
     const button = document.createElement('button');
     button.textContent = this.config.triggerButton.text;
     button.className = 'sable-text-agent-trigger';
-    
     // Apply styles
     Object.assign(button.style, {
       position: 'fixed',
@@ -1028,16 +1040,18 @@ export class TextAgentEngine {
       transition: 'all 0.3s ease',
       ...this.config.triggerButton.style
     });
-    
     // Position the button if no target selector is provided
     if (!this.config.triggerButton.targetElement) {
       this._positionTriggerButton(button);
     }
-    
     // Add click event listener
     button.addEventListener('click', () => {
-      // Set localStorage key when actually triggered
-      const agentId = this.lastActiveAgentId || Array.from(this.registeredAgents.keys())[0];
+      // Require explicit agentId for trigger button
+      const agentId = this.config.triggerButton.agentId;
+      if (!agentId) {
+        console.warn('[SableTextAgent][TriggerButton] agentId is required for trigger button.');
+        return;
+      }
       if (this.config.autoStart && this.config.autoStartOnce && agentId) {
         const localStorageKey = `SableTextAgentEngine_autoStartedOnce_${agentId}`;
         try {
@@ -1047,39 +1061,23 @@ export class TextAgentEngine {
           this._autoStartedOnceFallback[agentId] = true;
         }
       }
-      if (this.lastActiveAgentId) {
-        this.start(this.lastActiveAgentId);
-      } else {
-        // Start the first registered agent if no specific agent was last used
-        const firstAgentId = Array.from(this.registeredAgents.keys())[0];
-        if (firstAgentId) {
-          this.start(firstAgentId);
-        } else {
-          console.warn('[SableTextAgent] No agents registered to start');
-        }
-      }
+      this.start(agentId);
     });
-    
     // Add hover effect
     button.addEventListener('mouseenter', () => {
       button.style.transform = 'scale(1.05)';
     });
-    
     button.addEventListener('mouseleave', () => {
       button.style.transform = 'scale(1)';
     });
-    
     // Store reference to the button
     this.triggerButtonElement = button;
-    
     // If there's a target selector, wait for the element and append the button
     if (this.config.triggerButton.targetElement) {
       this._attachButtonToTarget();
     } else {
-      // Otherwise, append to body
       document.body.appendChild(button);
     }
-    
     // Add URL change listener to show/hide the trigger button
     this._addUrlChangeListener();
   }
@@ -1217,11 +1215,11 @@ export class TextAgentEngine {
         }
         
         if (this.config.debug) {
-          console.log(`[SableTextAgent] Attached trigger button to element: ${targetConfig.selector}`);
+          console.log(`[SableTextAgent][agentId: ${this.lastActiveAgentId || 'unknown'}] Attached trigger button to element: ${targetConfig.selector}`);
         }
       }
     } catch (error) {
-      console.error(`[SableTextAgent] Failed to attach trigger button to target: ${error.message}`);
+      console.error(`[SableTextAgent][agentId: ${this.lastActiveAgentId || 'unknown'}] Failed to attach trigger button to target: ${error.message}`);
     }
   }
   
@@ -1270,7 +1268,7 @@ export class TextAgentEngine {
         if (matchingSteps.length > 0) {
           this.lastActiveAgentId = id;
           if (this.config.debug) {
-            console.log(`[SableTextAgent] Saved last active agent ID: ${id}`);
+            console.log(`[SableTextAgent][agentId: ${id || this.lastActiveAgentId || 'unknown'}] Saved last active agent ID: ${id}`);
           }
           break;
         }
@@ -1280,10 +1278,10 @@ export class TextAgentEngine {
     // Get sections from configuration
     const sections = Array.isArray(this.config.finalPopupConfig?.sections) ? this.config.finalPopupConfig.sections : [];
     if (!Array.isArray(this.config.finalPopupConfig?.sections) && this.config.finalPopupConfig?.sections !== undefined) {
-      console.warn('[SableTextAgent][_addFinalPopupStep] finalPopupConfig.sections is not an array:', this.config.finalPopupConfig.sections);
+      console.warn('[SableTextAgent][agentId: unknown][_addFinalPopupStep] finalPopupConfig.sections is not an array:', this.config.finalPopupConfig.sections);
     }
     if (this.config.debug) {
-      console.log('[SableTextAgent][_addFinalPopupStep] Using sections for final popup:', sections);
+      console.log(`[SableTextAgent][agentId: ${this.lastActiveAgentId || 'unknown'}] Using sections for final popup:`, sections);
     }
     
     // Use globalPopupManager to enforce singleton
@@ -1306,10 +1304,7 @@ export class TextAgentEngine {
    * Clean up when destroying the engine
    */
   destroy() {
-    if (this.observer) {
-      this.observer.disconnect();
-    }
-    
+    this._stopGlobalTriggerObserver();
     // Remove trigger button if it exists
     if (this.triggerButtonElement && this.triggerButtonElement.parentNode) {
       this.triggerButtonElement.parentNode.removeChild(this.triggerButtonElement);
@@ -1319,101 +1314,69 @@ export class TextAgentEngine {
   
   /**
    * Restart the text agent from a specific step
-   * @param {string|null|Object} stepIdOrConfig - ID of the step to restart from, or null to restart from beginning,
-   *                                           or an object with stepId and skipTrigger properties
-   * @param {Function|null} beforeRestartCallback - Optional callback to execute before restarting
+   * @param {Object} [options] - Options for restarting
+   * @param {string|null} [options.stepId] - ID of the step to restart from, or null to restart from beginning
+   * @param {boolean} [options.skipTrigger] - Whether to skip trigger checks and show the popup immediately
+   * @param {Function|null} [options.beforeRestartCallback] - Optional callback to execute before restarting
    * @public
    */
-  async restart(stepIdOrConfig = null, beforeRestartCallback = null) {
-    // Parse the stepIdOrConfig parameter
-    let stepId = null;
-    let skipTrigger = false;
-    if (stepIdOrConfig === null || typeof stepIdOrConfig === 'string') {
-      stepId = stepIdOrConfig;
-    } else if (typeof stepIdOrConfig === 'object') {
-      // Handle both the event detail format and the direct config object format
-      if ('stepId' in stepIdOrConfig) {
-        stepId = stepIdOrConfig.stepId;
-        skipTrigger = !!stepIdOrConfig.skipTrigger;
-      } else if ('detail' in stepIdOrConfig) {
-        // This is an event object
-        stepId = stepIdOrConfig.detail.stepId;
-        skipTrigger = !!stepIdOrConfig.detail.skipTrigger;
-      }
+  async restart(options = {}) {
+    const {
+      stepId = null,
+      skipTrigger = false,
+      beforeRestartCallback = null,
+      agentId = null
+    } = options || {};
+    if (!agentId) {
+      console.warn('[SableTextAgent] agentId is required for restart.');
+      return;
     }
     if (this.config.debug) {
-      console.log(`[SableTextAgent] Restarting with stepId: ${stepId}, skipTrigger: ${skipTrigger}`);
+      console.log(`[SableTextAgent][agentId: ${agentId}] Restarting with stepId: ${stepId}, skipTrigger: ${skipTrigger}`);
     }
-    // Execute callback if provided
     if (typeof beforeRestartCallback === 'function') {
       await beforeRestartCallback();
     }
-    // Await beforeStart if present
-    let agentId = this.lastActiveAgentId;
-    if (!agentId) {
-      // Try to infer from steps
-      for (const [id, agentSteps] of this.registeredAgents.entries()) {
-        if (agentSteps === this.steps) {
-          agentId = id;
-          break;
-        }
-      }
-    }
     let beforeStartFn = null;
-    if (agentId && this.agentConfigs.has(agentId)) {
+    if (this.agentConfigs.has(agentId)) {
       beforeStartFn = this.agentConfigs.get(agentId).beforeStart;
-    }
-    if (this.config.debug) {
-      console.log(`[SableTextAgent][restart] Checking beforeStart for agentId: ${agentId}, typeof beforeStart: ${typeof beforeStartFn}`, beforeStartFn);
     }
     if (typeof beforeStartFn === 'function') {
       if (this.config.debug) {
-        console.log(`[SableTextAgent][restart] Awaiting beforeStart for agentId: ${agentId}`);
+        console.log(`[SableTextAgent][agentId: ${agentId}] Awaiting beforeStart for agentId: ${agentId}`);
       }
       await beforeStartFn();
       if (this.config.debug) {
-        console.log(`[SableTextAgent][restart] Finished beforeStart for agentId: ${agentId}`);
+        console.log(`[SableTextAgent][agentId: ${agentId}] Finished beforeStart for agentId: ${agentId}`);
       }
     }
-    // End the current session (including removing the final popup)
     await this.end();
-    // Reset state
     this._finalPopupAdded = false;
-    if (!this.lastActiveAgentId) {
-      console.warn('[SableTextAgent] No last active agent to restart');
-      return;
-    }
-    // Get the steps for the last active agent
-    const steps = this.registeredAgents.get(this.lastActiveAgentId);
+    const steps = this.registeredAgents.get(agentId);
     if (!steps || steps.length === 0) {
-      console.warn(`[SableTextAgent] No steps found for agent: ${this.lastActiveAgentId}`);
+      console.warn(`[SableTextAgent][agentId: ${agentId}] No steps found for agent: ${agentId}`);
       return;
     }
-    // Set the steps
     this.steps = steps;
     if (!stepId) {
-      // No specific step ID, restart from the beginning
       this.currentStepIndex = 0;
       if (this.config.debug) {
-        console.log(`[SableTextAgent] Restarting agent from beginning: ${this.lastActiveAgentId}`);
+        console.log(`[SableTextAgent][agentId: ${agentId}] Restarting agent from beginning: ${agentId}`);
       }
-      await this.start(null, skipTrigger);
+      await this.start(agentId, null, skipTrigger);
       return;
     }
-    // Find the step with the matching ID
     const stepIndex = this.steps.findIndex(step => step.id === stepId);
     if (stepIndex !== -1) {
-      // Set the current step index to the found step
       this.currentStepIndex = stepIndex;
       if (this.config.debug) {
-        console.log(`[SableTextAgent] Restarting agent from step ${stepId}: ${this.lastActiveAgentId}`);
+        console.log(`[SableTextAgent][agentId: ${agentId}] Restarting agent from step ${stepId}: ${agentId}`);
       }
-      // Start the agent from the specified step
-      await this.start(null, skipTrigger);
+      await this.start(agentId, null, skipTrigger);
     } else {
-      console.warn(`[SableTextAgent] Step with ID "${stepId}" not found, restarting from beginning`);
+      console.warn(`[SableTextAgent][agentId: ${agentId}] Step with ID "${stepId}" not found, restarting from beginning`);
       this.currentStepIndex = 0;
-      await this.start(null, skipTrigger);
+      await this.start(agentId, null, skipTrigger);
     }
   }
   
@@ -1423,6 +1386,6 @@ export class TextAgentEngine {
    */
   _restartLastAgent() {
     // Use the new restart method with no specific step ID
-    this.restart();
+    this.restart({});
   }
 }

@@ -472,14 +472,16 @@ class SableSmartLinks {
   /**
    * Start a text agent with the given ID
    * @param {string} [agentId] - Optional ID of the text agent to start
+   * @param {string} [stepId] - Optional step ID to start the agent from
+   * @param {boolean} [skipTrigger=false] - Optional flag to skip trigger checks and show the popup immediately
    * @returns {Promise<boolean>} - Success status
    */
-  async startTextAgent(agentId) {
+  async startTextAgent(agentId, stepId = null, skipTrigger = false) {
     if (!this.textAgentEngine) {
       console.error('[SableSmartLinks] TextAgentEngine not initialized');
       return false;
     }
-    return await this.textAgentEngine.start(agentId);
+    return await this.textAgentEngine.start(agentId, stepId, skipTrigger);
   }
 
   /**
