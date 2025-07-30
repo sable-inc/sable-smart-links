@@ -95,7 +95,8 @@ export class TextAgentEngine {
         autoStartOnce: config.autoStartOnce !== undefined ? config.autoStartOnce : true,
         beforeStart: config.beforeStart,
         requiredSelector: config.requiredSelector,
-        finalPopupConfig: config.finalPopupConfig ?? null
+        finalPopupConfig: config.finalPopupConfig ?? null,
+        endWithoutSelector: config.endWithoutSelector !== undefined ? config.endWithoutSelector : false
       },
       state: {
         isRunning: false,
@@ -183,10 +184,12 @@ export class TextAgentEngine {
       
       if (state.isRunning) {
         // Agent is running - check if it should be ended
-        if (!requiredSelectorPresent && !state.hasRenderedOnce) {
-          // Agent is running but no steps have rendered and required selector is gone
+        if (!requiredSelectorPresent && (!state.hasRenderedOnce || config.endWithoutSelector)) {
+          // Agent is running but required selector is gone and either:
+          // - no steps have rendered yet, OR
+          // - endWithoutSelector is true (end immediately when selector disappears)
           if (this.config.debug) {
-            console.log(`[SableTextAgent] Ending agent "${agentId}" - required selector no longer present and no steps rendered`);
+            console.log(`[SableTextAgent] Ending agent "${agentId}" - required selector no longer present${config.endWithoutSelector ? ' (endWithoutSelector enabled)' : ' and no steps rendered'}`);
           }
           this._endAgent(agentId);
         }

@@ -467,9 +467,11 @@ class SableSmartLinks {
    * @param {boolean} [autoStart=false] - Whether to start the text agent immediately
    * @param {boolean} [autoStartOnce=true] - Whether to only auto-start once
    * @param {Function} [beforeStart] - Optional async function to run before starting
+   * @param {string} [requiredSelector] - Optional CSS selector that must be present for the agent to run
+   * @param {boolean} [endWithoutSelector=false] - Whether to end the agent immediately when the required selector disappears
    * @returns {SableSmartLinks} - This instance for chaining
    */
-  registerTextAgent(id, steps, autoStart = false, autoStartOnce = true, beforeStart, requiredSelector) {
+  registerTextAgent(id, steps, autoStart = false, autoStartOnce = true, beforeStart, requiredSelector, endWithoutSelector = false) {
     if (!this.textAgentEngine) {
       console.error('[SableSmartLinks] TextAgentEngine not initialized');
       return this;
@@ -478,7 +480,8 @@ class SableSmartLinks {
       autoStart,
       autoStartOnce,
       beforeStart,
-      requiredSelector
+      requiredSelector,
+      endWithoutSelector
     });
     return this;
   }
