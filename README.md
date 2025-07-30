@@ -18,6 +18,7 @@ Sable Smart Links is a JavaScript library that enables you to create interactive
 - **Global Popup Management**: Ensures only one popup is active at a time, preventing conflicts
 - **Responsive Design**: Works across different screen sizes and devices
 - **Easy Integration**: Simple to add to any web application
+- **📊 Analytics Integration**: Track user interactions, completion rates, and performance metrics with MongoDB
 
 ## Installation
 
@@ -409,6 +410,50 @@ Each step can have various options:
   }
 }
 ```
+
+## Analytics
+
+Sable Smart Links includes a comprehensive analytics system that tracks user interactions with text agents and walkthroughs. The analytics data is stored in MongoDB and provides insights into:
+
+- **Usage Metrics**: How many times agents/walkthroughs are started and completed
+- **Completion Rates**: Percentage of users who complete vs abandon interactions
+- **Timing Data**: Average time spent on each step and total completion time
+- **User Behavior**: Session tracking and interaction patterns
+
+### Built-in Analytics
+
+Analytics is enabled by default and automatically tracks all interactions. No additional configuration is required for end users.
+
+```javascript
+import { SableSmartLinks } from "sable-smart-links";
+
+const sable = new SableSmartLinks();
+sable.init();
+// Analytics are automatically enabled and tracking
+```
+
+### Analytics Dashboard
+
+The analytics system provides a dashboard similar to the one shown in the image, displaying:
+
+- Total events tracked
+- Text agents and walkthroughs started/completed
+- Average completion times
+- Top-performing guides
+
+### For Module Maintainers
+
+To set up the analytics infrastructure, configure your MongoDB Atlas connection:
+
+```bash
+# Copy the example file and add your MongoDB Atlas connection string
+cp env.example .env
+# Edit .env with your actual MongoDB Atlas connection string
+```
+
+The analytics system will automatically connect to MongoDB Atlas (Analytics cluster) and store events directly in the database. If MongoDB is not configured, events are stored in localStorage as a fallback.
+
+For detailed analytics documentation, see [ANALYTICS.md](./ANALYTICS.md).
 
 ## API Reference
 

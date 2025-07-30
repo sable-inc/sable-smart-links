@@ -9,6 +9,7 @@ import { SimplePopupManager } from '../ui/SimplePopupManager.js';
 import globalPopupManager from '../ui/GlobalPopupManager.js';
 import { PopupStateManager } from '../ui/PopupStateManager.js';
 import { addEvent, debounce } from '../utils/events.js';
+import { getAnalyticsInstance, ANALYTICS_EVENTS } from '../utils/analytics.js';
 
 // Singleton instance
 let _instance = null;
@@ -38,6 +39,11 @@ export class TextAgentEngine {
     this.agents = new Map(); // agentId -> { steps, config, state }
     this.activeAgentId = null; // Currently active agent
     this.observer = null; // MutationObserver for triggers
+    
+    // Analytics tracking
+    this.analytics = getAnalyticsInstance();
+    this.agentStartTimes = new Map(); // agentId -> startTime
+    this.stepStartTimes = new Map(); // agentId -> stepStartTime
     
     // Store singleton instance
     _instance = this;
@@ -278,6 +284,21 @@ export class TextAgentEngine {
     
     this.activeAgentId = agentId;
     
+    // Track analytics - agent started
+    if (this.analytics) {
+      const startTime = Date.now();
+      this.agentStartTimes.set(agentId, startTime);
+      
+      this.analytics.trackTextAgentEvent(ANALYTICS_EVENTS.TEXT_AGENT_STARTED, {
+        agentId,
+        stepId: stepId || agent.steps[0]?.id,
+        stepIndex: state.currentStepIndex,
+        totalSteps: agent.steps.length,
+        isAutoStart,
+        timestamp: startTime
+      });
+    }
+    
     // Render first step
     if (skipTrigger) {
       this._renderCurrentStep(agentId, isAutoStart);
@@ -411,6 +432,12 @@ export class TextAgentEngine {
     
     if (this.config.debug) {
       console.log(`[SableTextAgent] Rendering step ${step.id} for agent "${agentId}"${isAutoStart ? ' (auto-start)' : ''}`);
+    }
+    
+    // Track analytics - step started
+    if (this.analytics) {
+      const stepStartTime = Date.now();
+      this.stepStartTimes.set(agentId, stepStartTime);
     }
     
     // Check conditional rendering
@@ -711,6 +738,25 @@ export class TextAgentEngine {
     const agent = this.agents.get(agentId);
     const { steps, state } = agent;
     
+    // Track analytics - step completed
+    if (this.analytics) {
+      const stepEndTime = Date.now();
+      const stepStartTime = this.stepStartTimes.get(agentId);
+      const stepDuration = stepStartTime ? stepEndTime - stepStartTime : 0;
+      
+      this.analytics.trackTextAgentEvent(ANALYTICS_EVENTS.TEXT_AGENT_STEP_COMPLETED, {
+        agentId,
+        stepId: steps[state.currentStepIndex]?.id,
+        stepIndex: state.currentStepIndex,
+        totalSteps: steps.length,
+        stepDuration,
+        stepType: steps[state.currentStepIndex]?.buttonType || 'text',
+        buttonClicked: 'next',
+        isCompleted: false,
+        timestamp: stepEndTime
+      });
+    }
+    
     // Clean up current step
     this._cleanupCurrentStep(agentId);
     
@@ -817,6 +863,35 @@ export class TextAgentEngine {
   _endAgent(agentId) {
     const agent = this.agents.get(agentId);
     if (!agent) return;
+    
+    // Track analytics - agent completed or abandoned
+    if (this.analytics) {
+      const endTime = Date.now();
+      const startTime = this.agentStartTimes.get(agentId);
+      const totalDuration = startTime ? endTime - startTime : 0;
+      const stepStartTime = this.stepStartTimes.get(agentId);
+      const lastStepDuration = stepStartTime ? endTime - stepStartTime : 0;
+      
+      // Determine if agent was completed or abandoned
+      const isCompleted = agent.state.currentStepIndex >= agent.steps.length - 1;
+      const eventType = isCompleted ? ANALYTICS_EVENTS.TEXT_AGENT_COMPLETED : ANALYTICS_EVENTS.TEXT_AGENT_ABANDONED;
+      
+      this.analytics.trackTextAgentEvent(eventType, {
+        agentId,
+        stepId: agent.steps[agent.state.currentStepIndex]?.id,
+        stepIndex: agent.state.currentStepIndex,
+        totalSteps: agent.steps.length,
+        stepDuration: lastStepDuration,
+        totalDuration,
+        isCompleted,
+        completionReason: isCompleted ? 'completed' : 'abandoned',
+        timestamp: endTime
+      });
+      
+      // Clean up tracking data
+      this.agentStartTimes.delete(agentId);
+      this.stepStartTimes.delete(agentId);
+    }
     
     this._cleanupCurrentStep(agentId);
     

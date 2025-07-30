@@ -13,6 +13,7 @@ import { isBrowser, safeDocument } from './utils/browserAPI.js';
 import { addEvent, debounce } from './utils/events.js';
 import { debugLog } from './config.js';
 import { parseUrlParameters } from './utils/urlParser.js';
+import { initAnalytics } from './utils/analytics.js';
 
 // Import Tavily features
 export * from './config';
@@ -59,6 +60,12 @@ class SableSmartLinks {
         }
       },
       menu: null, // Default: no menu
+      analytics: {
+        enabled: true,
+        batchSize: 10,
+        flushInterval: 5000,
+        debug: false
+      },
       ...config
     };
 
@@ -74,13 +81,20 @@ class SableSmartLinks {
       if (config.voice.ui) {
         this.config.voice.ui = { ...this.config.voice.ui, ...config.voice.ui };
       }
-      if (config.voice.tools) {
-        this.config.voice.tools = config.voice.tools; // Replace entirely for tools
-      }
+          if (config.voice.tools) {
+      this.config.voice.tools = config.voice.tools; // Replace entirely for tools
     }
+  }
+  if (config.analytics) {
+    this.config.analytics = { ...this.config.analytics, ...config.analytics };
+  }
 
     console.log('[SableSmartLinks] Final config:', this.config);
     console.log('[SableSmartLinks] Voice enabled:', this.config.voice.enabled);
+    console.log('[SableSmartLinks] Analytics enabled:', this.config.analytics.enabled);
+    
+    // Initialize analytics (always enabled for module maintainers)
+    this.analytics = initAnalytics(this.config.analytics);
     
     // Initialize engines with their specific configs
     this.walkthroughEngine = new WalkthroughEngine({

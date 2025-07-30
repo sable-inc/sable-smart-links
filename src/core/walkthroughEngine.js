@@ -7,7 +7,8 @@ import { waitForElement } from '../utils/elementSelector.js';
 import { highlightElement, removeHighlight } from '../ui/highlight.js';
 import { showTooltip, hideTooltip } from '../ui/tooltip.js';
 import { createSpotlight, removeSpotlights } from '../ui/spotlight.js';
-import { isBrowser, safeWindow, safeDocument } from '../utils/browserApi.js';
+import { isBrowser, safeWindow, safeDocument } from '../utils/browserAPI.js';
+import { getAnalyticsInstance, ANALYTICS_EVENTS } from '../utils/analytics.js';
 
 export class WalkthroughEngine {
   /**
@@ -36,6 +37,11 @@ export class WalkthroughEngine {
       tooltip: null,
       overlay: null
     };
+    
+    // Analytics tracking
+    this.analytics = getAnalyticsInstance();
+    this.walkthroughStartTime = null;
+    this.stepStartTime = null;
     
     // Bind methods to ensure correct 'this' context
     this.next = this.next.bind(this);
@@ -226,6 +232,18 @@ export class WalkthroughEngine {
     this.currentStep = 0;
     this.isRunning = true;
     
+    // Track analytics - walkthrough started
+    if (this.analytics) {
+      this.walkthroughStartTime = Date.now();
+      
+      this.analytics.trackWalkthroughEvent(ANALYTICS_EVENTS.WALKTHROUGH_STARTED, {
+        walkthroughId,
+        stepIndex: 0,
+        totalSteps: this.walkthroughs[walkthroughId].length,
+        timestamp: this.walkthroughStartTime
+      });
+    }
+    
     // Save the new state
     this._saveState();
     
@@ -240,6 +258,24 @@ export class WalkthroughEngine {
    */
   next() {
     if (!this.isRunning) return;
+    
+    // Track analytics - step completed
+    if (this.analytics) {
+      const stepEndTime = Date.now();
+      const stepDuration = this.stepStartTime ? stepEndTime - this.stepStartTime : 0;
+      
+      this.analytics.trackWalkthroughEvent(ANALYTICS_EVENTS.WALKTHROUGH_STEP_COMPLETED, {
+        walkthroughId: this.currentWalkthrough,
+        stepIndex: this.currentStep,
+        totalSteps: this.walkthroughs[this.currentWalkthrough].length,
+        stepDuration,
+        stepType: this._getStepType(this.walkthroughs[this.currentWalkthrough][this.currentStep]),
+        targetElement: this.walkthroughs[this.currentWalkthrough][this.currentStep]?.selector,
+        userAction: 'next',
+        isCompleted: false,
+        timestamp: stepEndTime
+      });
+    }
     
     // Clean up current step
     this.cleanupCurrentStep();
@@ -270,6 +306,9 @@ export class WalkthroughEngine {
     
     const steps = this.walkthroughs[this.currentWalkthrough];
     const step = steps[this.currentStep];
+    
+    // Track step start time for analytics
+    this.stepStartTime = Date.now();
     
     // Wait for element to be available in the DOM
     if (step.selector) {
@@ -467,10 +506,51 @@ export class WalkthroughEngine {
   }
   
   /**
+   * Get step type for analytics
+   * @private
+   */
+  _getStepType(step) {
+    if (!step) return 'unknown';
+    
+    if (step.highlight) return 'highlight';
+    if (step.spotlight) return 'spotlight';
+    if (step.tooltip) return 'tooltip';
+    if (step.action) return 'action';
+    
+    return 'text';
+  }
+  
+  /**
    * End the current walkthrough
    */
   end() {
     if (!this.isRunning) return;
+    
+    // Track analytics - walkthrough completed or abandoned
+    if (this.analytics) {
+      const endTime = Date.now();
+      const totalDuration = this.walkthroughStartTime ? endTime - this.walkthroughStartTime : 0;
+      const stepDuration = this.stepStartTime ? endTime - this.stepStartTime : 0;
+      
+      // Determine if walkthrough was completed or abandoned
+      const isCompleted = this.currentStep >= this.walkthroughs[this.currentWalkthrough]?.length - 1;
+      const eventType = isCompleted ? ANALYTICS_EVENTS.WALKTHROUGH_COMPLETED : ANALYTICS_EVENTS.WALKTHROUGH_ABANDONED;
+      
+      this.analytics.trackWalkthroughEvent(eventType, {
+        walkthroughId: this.currentWalkthrough,
+        stepIndex: this.currentStep,
+        totalSteps: this.walkthroughs[this.currentWalkthrough]?.length || 0,
+        stepDuration,
+        totalDuration,
+        isCompleted,
+        completionReason: isCompleted ? 'completed' : 'abandoned',
+        timestamp: endTime
+      });
+      
+      // Reset tracking data
+      this.walkthroughStartTime = null;
+      this.stepStartTime = null;
+    }
     
     if (this.config.debug) {
       console.log('[SableSmartLinks] Ending walkthrough');

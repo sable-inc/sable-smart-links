@@ -95,9 +95,10 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "framer-motion": "^12.16.0",
+    "mongodb": "^6.18.0",
     "openai": "^5.1.1",
-    "zod": "^3.25.53",
-    "socket.io-client": "^4.7.2"
+    "socket.io-client": "^4.0.0",
+    "zod": "^3.25.53"
   },
   "peerDependencies": {
     "socket.io-client": "^4.0.0"
