@@ -88,10 +88,22 @@ class SableSmartLinks {
       ...this.config.walkthrough
     });
     
-    this.textAgentEngine = new TextAgentEngine({
-      debug: this.config.debug,
-      ...this.config.textAgent
-    });
+    // Use singleton pattern for TextAgentEngine
+    const existingInstance = TextAgentEngine.getInstance();
+    if (existingInstance) {
+      // Update configuration of existing instance
+      existingInstance.updateConfig({
+        debug: this.config.debug,
+        ...this.config.textAgent
+      });
+      this.textAgentEngine = existingInstance;
+    } else {
+      // Create new singleton instance
+      this.textAgentEngine = new TextAgentEngine({
+        debug: this.config.debug,
+        ...this.config.textAgent
+      });
+    }
 
     // Initialize voice engine if enabled
     if (this.config.voice.enabled) {
@@ -457,15 +469,17 @@ class SableSmartLinks {
    * @param {Function} [beforeStart] - Optional async function to run before starting
    * @returns {SableSmartLinks} - This instance for chaining
    */
-  registerTextAgent(id, steps, autoStart = false, autoStartOnce = true, beforeStart) {
+  registerTextAgent(id, steps, autoStart = false, autoStartOnce = true, beforeStart, requiredSelector) {
     if (!this.textAgentEngine) {
       console.error('[SableSmartLinks] TextAgentEngine not initialized');
       return this;
     }
-    this.textAgentEngine.register(id, steps, autoStart, autoStartOnce, beforeStart);
-    if (autoStart) {
-      this.startTextAgent(id);
-    }
+    this.textAgentEngine.register(id, steps, {
+      autoStart,
+      autoStartOnce,
+      beforeStart,
+      requiredSelector
+    });
     return this;
   }
 
@@ -545,19 +559,11 @@ class SableSmartLinks {
       return this;
     }
 
-    // Remove the localStorage key to reset the auto-started state
-    const key = `SableTextAgentEngine_autoStartedOnce_${agentId}`;
-    try {
-      localStorage.removeItem(key);
-    } catch (e) {
-      console.warn('[SableSmartLinks] Failed to remove localStorage key:', e);
-    }
-
     // Dispatch the sable:textAgentStart event to trigger the restart (mirrors startAgent)
     if (options.useSessionStorage) {
       sessionStorage.setItem('sable_start_agent', JSON.stringify({
         agentId: agentId,
-        stepId: options.stepId ?? 'welcome',
+        stepId: options.stepId ?? undefined,
         skipTrigger: options.skipTrigger ?? false,
       }));
       return this;
