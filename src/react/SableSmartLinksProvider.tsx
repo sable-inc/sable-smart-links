@@ -211,7 +211,9 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
       if (processedStep.sections == null) { processedStep.sections = []; }
 
       // Handle sections property
-      console.log('[processTextAgentSteps] Before processing sections:', processedStep.sections);
+      if (config.debug) {
+        console.log('[processTextAgentSteps] Before processing sections:', processedStep.sections);
+      }
       if (Array.isArray(processedStep.sections)) {
         // If sections is an array, convert it to a function that can access step data
         const originalSections = processedStep.sections;
@@ -279,7 +281,9 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
         },
         menu: menu || config.menu
       };
-      console.log('[SableSmartLinksProvider] Merged config:', mergedConfig);
+      if (config.debug) {
+        console.log('[SableSmartLinksProvider] Merged config:', mergedConfig);
+      }
       sableInstance.current = new SableSmartLinks(mergedConfig);
       isMounted.current = true;
       // Register walkthroughs on mount
@@ -499,9 +503,13 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     },
     
     closeAllPopups: () => {
-      console.log('[SableSmartLinksProvider] Calling globalPopupManager.closeActivePopup() in closeAllPopups - this will affect hasActivePopup state');
+      if (config.debug) {
+        console.log('[SableSmartLinksProvider] Calling globalPopupManager.closeActivePopup() in closeAllPopups - this will affect hasActivePopup state');
+      }
       globalPopupManager.closeActivePopup();
-      console.log('[closeAllPopups] hasActivePopup changed');
+      if (config.debug) {
+        console.log('[closeAllPopups] hasActivePopup changed');
+      }
     },
     
     // Voice methods

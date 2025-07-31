@@ -7,6 +7,7 @@ import globalPopupManager from './GlobalPopupManager.js';
 export class SimplePopupManager {
     constructor(config) {
         this.config = {
+            debug: false,
             text: config.text || '',
             boxWidth: config.boxWidth || 200,
             buttonType: config.buttonType || 'arrow',
@@ -38,19 +39,27 @@ export class SimplePopupManager {
     }
 
     handleClose = () => {
-        console.log('Close clicked');
+        if (this.config.debug) {
+            console.log('Close clicked');
+        }
         // Remove the popup from the DOM
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
         }
         // Notify global popup manager that popup is closed
-        console.log('[SimplePopupManager] Calling globalPopupManager.closeActivePopup() in handleClose - this will affect hasActivePopup state');
+        if (this.config.debug) {
+            console.log('[SimplePopupManager] Calling globalPopupManager.closeActivePopup() in handleClose - this will affect hasActivePopup state');
+        }
         globalPopupManager.closeActivePopup();
-        console.log('[handleClose] hasActivePopup changed');
+        if (this.config.debug) {
+            console.log('[handleClose] hasActivePopup changed');
+        }
     }
 
     render() {
-        console.log('Rendering SimplePopupManager');
+        if (this.config.debug) {
+            console.log('Rendering SimplePopupManager');
+        }
         this.container.innerHTML = '';
 
         // Render full popup
@@ -88,9 +97,13 @@ export class SimplePopupManager {
     unmount() {
         this.container.remove();
         // Notify global popup manager that popup is closed
-        console.log('[SimplePopupManager] Calling globalPopupManager.closeActivePopup() in unmount - this will affect hasActivePopup state');
+        if (this.config.debug) {
+            console.log('[SimplePopupManager] Calling globalPopupManager.closeActivePopup() in unmount - this will affect hasActivePopup state');
+        }
         globalPopupManager.closeActivePopup();
-        console.log('[unmount] hasActivePopup changed');
+        if (this.config.debug) {
+            console.log('[unmount] hasActivePopup changed');
+        }
     }
     
     /**

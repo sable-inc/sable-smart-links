@@ -24,7 +24,9 @@ class SableSmartLinks {
    * @param {SableSmartLinksConfig} config - Configuration options
    */
   constructor(config = {}) {
-    console.log('[SableSmartLinks] Constructor called with config:', config);
+    if (config.debug) {
+      console.log('[SableSmartLinks] Constructor called with config:', config);
+    }
     
     // Set default configuration
     this.config = {
@@ -79,8 +81,10 @@ class SableSmartLinks {
       }
     }
 
-    console.log('[SableSmartLinks] Final config:', this.config);
-    console.log('[SableSmartLinks] Voice enabled:', this.config.voice.enabled);
+    if (this.config.debug) {
+      console.log('[SableSmartLinks] Final config:', this.config);
+      console.log('[SableSmartLinks] Voice enabled:', this.config.voice.enabled);
+    }
     
     // Initialize engines with their specific configs
     this.walkthroughEngine = new WalkthroughEngine({
@@ -107,18 +111,26 @@ class SableSmartLinks {
 
     // Initialize voice engine if enabled
     if (this.config.voice.enabled) {
-      console.log('[SableSmartLinks] Voice is enabled, initializing...');
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Voice is enabled, initializing...');
+      }
       this.initializeVoiceEngine();
     } else {
-      console.log('[SableSmartLinks] Voice is NOT enabled');
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Voice is NOT enabled');
+      }
     }
 
     // Initialize menu if configured
     if (this.config.menu && this.config.menu.enabled) {
-      console.log('[SableSmartLinks] Menu is configured and enabled, initializing...');
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Menu is configured and enabled, initializing...');
+      }
       this.initializeMenu();
     } else {
-      console.log('[SableSmartLinks] Menu is NOT configured or disabled');
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Menu is NOT configured or disabled');
+      }
     }
     
     // Bind methods
@@ -132,17 +144,13 @@ class SableSmartLinks {
     this.toggleVoiceChat = this.toggleVoiceChat.bind(this);
     
     // Auto-start walkthrough if enabled and in browser
-    const shouldAutoStart = this.config.walkthrough?.autoStart !== false;
-    if (shouldAutoStart && isBrowser) {
-      // Wait for DOM to be fully loaded
-      if (safeDocument.readyState === 'loading') {
-        safeDocument.addEventListener('DOMContentLoaded', () => this.init());
-      } else {
-        this.init();
-      }
+    if (typeof window !== 'undefined' && this.config.walkthrough.autoStart) {
+      this.init();
     }
     
-    console.log('[SableSmartLinks] Constructor finished. Voice engine:', !!this.voiceEngine);
+    if (this.config.debug) {
+      console.log('[SableSmartLinks] Constructor finished. Voice engine:', !!this.voiceEngine);
+    }
   }
 
   /**
@@ -150,37 +158,49 @@ class SableSmartLinks {
    * @private
    */
   initializeVoiceEngine() {
-    console.log('[SableSmartLinks] initializeVoiceEngine called');
+    if (this.config.debug) {
+      console.log('[SableSmartLinks] initializeVoiceEngine called');
+    }
 
     try {
-      debugLog('info', 'Initializing voice engine...');
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Initializing voice engine...');
+      }
       
       // Create voice engine based on config
       if (this.config.voice.engine === 'nova') {
-        console.log('[SableSmartLinks] Creating NovaVoiceEngine with config:', this.config.voice);
+        if (this.config.debug) {
+          console.log('[SableSmartLinks] Creating NovaVoiceEngine with config:', this.config.voice);
+        }
         this.voiceEngine = new NovaVoiceEngine(this.config.voice);
       } else {
-        debugLog('warn', 'Unknown voice engine:', this.config.voice.engine);
+        if (this.config.debug) {
+          console.warn('[SableSmartLinks] Unknown voice engine:', this.config.voice.engine);
+        }
         return;
       }
 
       // Set up voice engine callbacks
       this.voiceEngine.setCallbacks({
         onTextOutput: (text) => {
-          debugLog('info', 'Voice text output:', text);
+          if (this.config.debug) {
+            console.log('[SableSmartLinks] Voice text output:', text);
+          }
           if (this.voicePopup) {
             this.voicePopup.addMessage(text, false);
           }
         },
         onError: (error) => {
-          debugLog('error', 'Voice engine error:', error);
+          console.error('[SableSmartLinks] Voice engine error:', error);
           if (this.voicePopup) {
             this.voicePopup.setStatus('Error: ' + error.message);
             this.voicePopup.setActive(false);
           }
         },
         onStatusChange: (status) => {
-          debugLog('info', 'Voice status:', status);
+          if (this.config.debug) {
+            console.log('[SableSmartLinks] Voice status:', status);
+          }
           if (this.voicePopup) {
             this.voicePopup.setStatus(status);
           }
@@ -188,7 +208,9 @@ class SableSmartLinks {
       });
 
       // Create voice popup
-      console.log('[SableSmartLinks] Creating VoicePopup with UI config:', this.config.voice.ui);
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Creating VoicePopup with UI config:', this.config.voice.ui);
+      }
       // Use globalPopupManager to enforce singleton
       this.voicePopupManager = globalPopupManager.showStatefulPopup(
         (opts) => new VoicePopup(opts),
@@ -201,16 +223,21 @@ class SableSmartLinks {
         }
       );
       this.voicePopup = this.voicePopupManager && this.voicePopupManager.popup;
-      console.log('[SableSmartLinks] VoicePopup created:', !!this.voicePopup);
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] VoicePopup created:', !!this.voicePopup);
+      }
 
       // Mount voice popup to DOM
       // Mounting is handled by globalPopupManager
 
-      debugLog('info', 'Voice engine initialized successfully');
-      console.log('[SableSmartLinks] Voice engine initialization complete');
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Voice engine initialized successfully');
+      }
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Voice engine initialization complete');
+      }
     } catch (error) {
       console.error('[SableSmartLinks] Failed to initialize voice engine:', error);
-      debugLog('error', 'Failed to initialize voice engine:', error);
     }
   }
 
@@ -219,10 +246,14 @@ class SableSmartLinks {
    * @private
    */
   initializeMenu() {
-    console.log('[SableSmartLinks] initializeMenu called');
+    if (this.config.debug) {
+      console.log('[SableSmartLinks] initializeMenu called');
+    }
 
     try {
-      debugLog('info', 'Initializing menu...');
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Initializing menu...');
+      }
       
       // Create menu manager
       this.menuManager = new MenuTriggerManager(this.config.menu);
@@ -230,11 +261,14 @@ class SableSmartLinks {
       // Initialize the manager (this will set up DOM listeners and popup state tracking)
       this.menuManager.init();
 
-      debugLog('info', 'Menu initialized successfully');
-      console.log('[SableSmartLinks] Menu initialization complete');
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Menu initialized successfully');
+      }
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Menu initialization complete');
+      }
     } catch (error) {
       console.error('[SableSmartLinks] Failed to initialize menu:', error);
-      debugLog('error', 'Failed to initialize menu:', error);
     }
   }
 
@@ -242,14 +276,20 @@ class SableSmartLinks {
    * Toggle voice chat on/off
    */
   async toggleVoiceChat() {
-    console.log('[SableSmartLinks] toggleVoiceChat called');
-    console.log('[SableSmartLinks] this.voiceEngine exists:', !!this.voiceEngine);
-    console.log('[SableSmartLinks] this.config:', this.config);
+    if (this.config.debug) {
+      console.log('[SableSmartLinks] toggleVoiceChat called');
+      console.log('[SableSmartLinks] this.voiceEngine exists:', !!this.voiceEngine);
+      console.log('[SableSmartLinks] this.config:', this.config);
+    }
     
-    debugLog('info', 'Toggle voice chat called');
+    if (this.config.debug) {
+      console.log('[SableSmartLinks] Toggle voice chat called');
+    }
     
     if (!this.voiceEngine) {
-      console.error('[SableSmartLinks] Voice engine not initialized - attempting to initialize now');
+      if (this.config.debug) {
+        console.error('[SableSmartLinks] Voice engine not initialized - attempting to initialize now');
+      }
       
       // Try to initialize it now if it wasn't initialized before
       if (this.config.voice.enabled) {
@@ -257,14 +297,17 @@ class SableSmartLinks {
         // Wait a moment for initialization
         await new Promise(resolve => setTimeout(resolve, 100));
       } else {
-        console.error('[SableSmartLinks] Voice is not enabled in config');
+        if (this.config.debug) {
+          console.error('[SableSmartLinks] Voice is not enabled in config');
+        }
         return;
       }
       
       // Check again after initialization
       if (!this.voiceEngine) {
-        console.error('[SableSmartLinks] Failed to initialize voice engine');
-        debugLog('error', 'Voice engine not initialized');
+        if (this.config.debug) {
+          console.error('[SableSmartLinks] Failed to initialize voice engine');
+        }
         if (this.voicePopup) {
           this.voicePopup.setStatus('Voice not available');
         }
@@ -275,7 +318,9 @@ class SableSmartLinks {
     try {
       if (this.voiceEngine.isRunning()) {
         // Stop voice chat
-        console.log('[SableSmartLinks] Stopping voice chat...');
+        if (this.config.debug) {
+          console.log('[SableSmartLinks] Stopping voice chat...');
+        }
         await this.voiceEngine.stop();
         
         if (this.voicePopup) {
@@ -284,7 +329,9 @@ class SableSmartLinks {
         }
       } else {
         // Start voice chat
-        console.log('[SableSmartLinks] Starting voice chat...');
+        if (this.config.debug) {
+          console.log('[SableSmartLinks] Starting voice chat...');
+        }
         await this.voiceEngine.start();
         
         if (this.voicePopup) {
@@ -637,7 +684,9 @@ class SableSmartLinks {
    * Cleanup and destroy the instance
    */
   destroy() {
-    console.log('[SableSmartLinks] Destroy called');
+    if (this.config.debug) {
+      console.log('[SableSmartLinks] Destroy called');
+    }
     
     // Clean up voice engine
     if (this.voiceEngine) {
@@ -668,11 +717,17 @@ class SableSmartLinks {
     }
     
     // Close all popups
-    console.log('[SableSmartLinks] Calling globalPopupManager.closeActivePopup() in destroy - this will affect hasActivePopup state');
+    if (this.config.debug) {
+      console.log('[SableSmartLinks] Calling globalPopupManager.closeActivePopup() in destroy - this will affect hasActivePopup state');
+    }
     globalPopupManager.closeActivePopup();
-    console.log('[destroy] hasActivePopup changed');
+    if (this.config.debug) {
+      console.log('[destroy] hasActivePopup changed');
+    }
     
-    console.log('[SableSmartLinks] Destroy complete');
+    if (this.config.debug) {
+      console.log('[SableSmartLinks] Destroy complete');
+    }
   }
 }
 

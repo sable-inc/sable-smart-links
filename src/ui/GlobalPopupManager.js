@@ -17,7 +17,9 @@ class GlobalPopupManager {
      * @returns {Object|null} Popup manager instance or null if failed
      */
     showPopup(options) {
-        if (options && options.debug) {
+        const debug = options && options.debug;
+        
+        if (debug) {
             console.debug('[GlobalPopupManager] showPopup called with options:', options);
         }
         
@@ -27,16 +29,16 @@ class GlobalPopupManager {
         try {
             // Create new popup manager directly to avoid circular dependency
             const popupManager = this.createPopupManager(options);
-            if (options && options.debug) console.debug('[GlobalPopupManager] Popup manager created:', popupManager);
+            if (debug) console.debug('[GlobalPopupManager] Popup manager created:', popupManager);
             
             // Store reference to active popup
-            if (options && options.debug) console.debug('[GlobalPopupManager] Setting activePopup - hasActivePopup will change from', this.hasActivePopup(), 'to true');
+            if (debug) console.debug('[GlobalPopupManager] Setting activePopup - hasActivePopup will change from', this.hasActivePopup(), 'to true');
             this.activePopup = popupManager;
-            if (options && options.debug) console.debug('[showPopup] hasActivePopup changed');
+            if (debug) console.debug('[showPopup] hasActivePopup changed');
             
             // Mount the popup
             const parent = options.parent || document.body;
-            if (options && options.debug) console.debug('[GlobalPopupManager] Mounting popup to parent:', parent);
+            if (debug) console.debug('[GlobalPopupManager] Mounting popup to parent:', parent);
             popupManager.mount(parent);
             
             // Notify listeners
@@ -46,24 +48,34 @@ class GlobalPopupManager {
             const result = {
                 container: popupManager.container, // Expose container for positioning
                 unmount: () => {
-                    console.log('[GlobalPopupManager] Unmounting popup');
+                    if (debug) {
+                        console.log('[GlobalPopupManager] Unmounting popup');
+                    }
                     popupManager.unmount();
-                    console.log('[GlobalPopupManager] Setting activePopup to null - hasActivePopup will change from', this.hasActivePopup(), 'to false');
+                    if (debug) {
+                        console.log('[GlobalPopupManager] Setting activePopup to null - hasActivePopup will change from', this.hasActivePopup(), 'to false');
+                    }
                     this.activePopup = null;
-                    console.log('[showPopup.unmount] hasActivePopup changed');
+                    if (debug) {
+                        console.log('[showPopup.unmount] hasActivePopup changed');
+                    }
                     this.notifyListeners();
                 },
                 mount: (newParent) => {
-                    console.log('[GlobalPopupManager] Remounting popup to:', newParent);
+                    if (debug) {
+                        console.log('[GlobalPopupManager] Remounting popup to:', newParent);
+                    }
                     popupManager.mount(newParent);
                 },
                 updatePosition: (position) => {
-                    console.log('[GlobalPopupManager] Updating position:', position);
+                    if (debug) {
+                        console.log('[GlobalPopupManager] Updating position:', position);
+                    }
                     popupManager.updatePosition(position);
                 }
             };
             
-            if (options && options.debug) console.debug('[GlobalPopupManager] Returning popup result:', result);
+            if (debug) console.debug('[GlobalPopupManager] Returning popup result:', result);
             return result;
         } catch (error) {
             console.error('[GlobalPopupManager] Error creating popup:', error);
@@ -78,6 +90,8 @@ class GlobalPopupManager {
      * @returns {Object|null} Popup manager instance or null if failed
      */
     showStatefulPopup(createPopupFn, options) {
+        const debug = options && options.debug;
+        
         this.closeActivePopup();
         try {
             const popupManager = createPopupFn(options);
@@ -147,6 +161,7 @@ class GlobalPopupManager {
                 popupElement.remove();
                 // Update global state when popup is unmounted
                 if (this.activePopup === popupManager) {
+                    // Note: This log is always shown as it's important for debugging popup state
                     console.log('[GlobalPopupManager] Setting activePopup to null in inner unmount - hasActivePopup will change from', this.hasActivePopup(), 'to false');
                     this.activePopup = null;
                     console.log('[inner unmount] hasActivePopup changed');
@@ -189,7 +204,10 @@ class GlobalPopupManager {
      */
     hasActivePopup() {
         const result = this.activePopup !== null;
-        console.log('[GlobalPopupManager] hasActivePopup() called, returning:', result);
+        // Note: This log is always shown as it's important for debugging popup state
+        if (this.config?.debug) {
+            console.log('[GlobalPopupManager] hasActivePopup() called, returning:', result);
+        }
         return result;
     }
 

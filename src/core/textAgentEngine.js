@@ -17,7 +17,9 @@ export class TextAgentEngine {
   constructor(config = {}) {
     // Singleton check
     if (_instance) {
-      console.warn('[SableTextAgent] TextAgentEngine instance already exists. Returning existing instance.');
+      if (config.debug) {
+        console.warn('[SableTextAgent] TextAgentEngine instance already exists. Returning existing instance.');
+      }
       return _instance;
     }
     
@@ -122,17 +124,19 @@ export class TextAgentEngine {
     this._textAgentStartHandler = (event) => {
       const { agentId, stepId, skipTrigger } = event.detail || {};
       
-      console.log('[SableTextAgent] DEBUG: Received sable:textAgentStart event:', { agentId, stepId, skipTrigger });
-      console.log('[SableTextAgent] DEBUG: Event stack trace:', new Error().stack);
-      
       if (this.config.debug) {
-        console.log('[SableTextAgent] Received sable:textAgentStart event:', { agentId, stepId, skipTrigger });
+        console.log('[SableTextAgent] DEBUG: Received sable:textAgentStart event:', { agentId, stepId, skipTrigger });
+      }
+      if (this.config.debug) {
+        console.log('[SableTextAgent] DEBUG: Event stack trace:', new Error().stack);
       }
       
       if (agentId && this.agents.has(agentId)) {
         this.start(agentId, stepId, skipTrigger);
       } else if (agentId) {
-        console.warn(`[SableTextAgent] Agent "${agentId}" not found when handling sable:textAgentStart event`);
+        if (this.config.debug) {
+          console.warn(`[SableTextAgent] Agent "${agentId}" not found when handling sable:textAgentStart event`);
+        }
       }
     };
     
@@ -221,7 +225,7 @@ export class TextAgentEngine {
       if (this.config.debug) {
         console.log(`[SableTextAgent] Starting agent "${agentId}" (auto-start)`);
       }
-      this.start(agentId, null, false, true); // isAutoStart = true
+      this.start(agentId, null, false, true);
     }
   }
   
@@ -251,7 +255,9 @@ export class TextAgentEngine {
    */
   async start(agentId, stepId = null, skipTrigger = false, isAutoStart = false) {
     if (!this.agents.has(agentId)) {
-      console.warn(`[SableTextAgent] Agent "${agentId}" not registered`);
+      if (this.config.debug) {
+        console.warn(`[SableTextAgent] Agent "${agentId}" not registered`);
+      }
       return false;
     }
     
@@ -268,7 +274,9 @@ export class TextAgentEngine {
       const targetStepIndex = agent.steps.findIndex(step => step.id === stepId);
       
       if (targetStepIndex === -1) {
-        console.warn(`[SableTextAgent] Step "${stepId}" not found in agent "${agentId}"`);
+        if (this.config.debug) {
+          console.warn(`[SableTextAgent] Step "${stepId}" not found in agent "${agentId}"`);
+        }
         return false;
       }
       
@@ -890,7 +898,9 @@ export class TextAgentEngine {
    */
   async restart(agentId, stepId = null, skipTrigger = false) {
     if (!agentId || !this.agents.has(agentId)) {
-      console.warn(`[SableTextAgent] Agent "${agentId}" not found`);
+      if (this.config.debug) {
+        console.warn(`[SableTextAgent] Agent "${agentId}" not found`);
+      }
       return;
     }
     
@@ -914,7 +924,9 @@ export class TextAgentEngine {
    */
   showPopup(options) {
     if (!isBrowser) {
-      console.warn('[SableTextAgent] Popup can only be shown in browser environment');
+      if (this.config.debug) {
+        console.warn('[SableTextAgent] Popup can only be shown in browser environment');
+      }
       return null;
     }
     

@@ -24,7 +24,7 @@ export const config = {
       baseUrl: getEnvValue('API_BASE_URL', 'http://localhost:3000'),
     },
     debug: {
-      enabled: getBoolEnvValue('DEBUG_ENABLED', true),
+      enabled: getBoolEnvValue('DEBUG_ENABLED', false),
       logLevel: getEnvValue('DEBUG_LOG_LEVEL', 'info') as 'debug' | 'info' | 'warn' | 'error',
     }
 };
