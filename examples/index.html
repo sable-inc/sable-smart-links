@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,7 +14,7 @@
             margin: 0 auto;
             padding: 20px;
         }
-        
+
         header {
             background-color: #f8f9fa;
             padding: 20px;
@@ -21,12 +22,12 @@
             margin-bottom: 30px;
             border-bottom: 2px solid #e9ecef;
         }
-        
+
         h1 {
             margin-top: 0;
             color: #2c3e50;
         }
-        
+
         .sidebar-navigation {
             width: 250px;
             background-color: #f8f9fa;
@@ -35,17 +36,17 @@
             float: left;
             margin-right: 30px;
         }
-        
+
         .sidebar-navigation ul {
             list-style-type: none;
             padding: 0;
             margin: 0;
         }
-        
+
         .sidebar-navigation li {
             margin-bottom: 10px;
         }
-        
+
         .sidebar-navigation a {
             display: block;
             padding: 8px 10px;
@@ -54,24 +55,24 @@
             border-radius: 4px;
             transition: background-color 0.2s;
         }
-        
+
         .sidebar-navigation a:hover {
             background-color: #e9ecef;
         }
-        
+
         .main-content {
             margin-left: 280px;
             background-color: #fff;
             padding: 30px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
-        
+
         .user-profile-section {
             text-align: right;
             margin-bottom: 20px;
         }
-        
+
         .user-profile-icon {
             display: inline-block;
             width: 40px;
@@ -84,7 +85,7 @@
             font-weight: bold;
             cursor: pointer;
         }
-        
+
         button {
             background-color: #007bff;
             color: white;
@@ -95,21 +96,21 @@
             font-size: 16px;
             transition: background-color 0.2s;
         }
-        
+
         button:hover {
             background-color: #0069d9;
         }
-        
+
         .form-group {
             margin-bottom: 20px;
         }
-        
+
         label {
             display: block;
             margin-bottom: 5px;
             font-weight: 500;
         }
-        
+
         input[type="text"] {
             width: 100%;
             padding: 10px;
@@ -117,11 +118,11 @@
             border-radius: 4px;
             font-size: 16px;
         }
-        
+
         .hidden {
             display: none;
         }
-        
+
         .help-section {
             margin-top: 40px;
             padding-top: 20px;
@@ -129,16 +130,17 @@
         }
     </style>
 </head>
+
 <body>
     <header id="app-header">
         <h1>Sable Smart Links Demo</h1>
         <p>This page demonstrates the functionality of the Sable Smart Links package.</p>
     </header>
-    
+
     <div class="user-profile-section">
         <div class="user-profile-icon">U</div>
     </div>
-    
+
     <nav class="sidebar-navigation">
         <ul>
             <li><a href="#">Dashboard</a></li>
@@ -148,53 +150,53 @@
             <li><a href="#">Settings</a></li>
         </ul>
     </nav>
-    
+
     <div class="main-content">
         <h2>Welcome to Your Dashboard</h2>
         <p>This is a demo application to showcase the Sable Smart Links walkthrough functionality.</p>
-        
+
         <button id="create-new-button">Create New Item</button>
-        
+
         <div id="new-item-form" class="hidden">
             <h3>Create New Item</h3>
             <div class="form-group">
                 <label for="new-item-name">Item Name</label>
                 <input type="text" id="new-item-name" placeholder="Enter item name">
             </div>
-            
+
             <div class="form-group">
                 <label for="new-item-description">Description</label>
                 <input type="text" id="new-item-description" placeholder="Enter description">
             </div>
-            
+
             <button id="save-button">Save Item</button>
             <button id="cancel-button" style="background-color: #6c757d; margin-left: 10px;">Cancel</button>
         </div>
-        
+
         <div class="help-section">
             <h3>Need Help?</h3>
             <p>Click the button below to start a guided walkthrough of this application.</p>
             <button id="help-button">Start Walkthrough</button>
         </div>
     </div>
-    
+
     <!-- Load the built library - using script tag with proper UMD build -->
     <script src="../dist/index.umd.js"></script>
-    
+
     <!-- Initialize the application -->
     <script>
         // Show/hide the form when Create New Item button is clicked
-        document.getElementById('create-new-button').addEventListener('click', function() {
+        document.getElementById('create-new-button').addEventListener('click', function () {
             document.getElementById('new-item-form').classList.remove('hidden');
         });
-        
+
         // Hide the form when Cancel button is clicked
-        document.getElementById('cancel-button').addEventListener('click', function() {
+        document.getElementById('cancel-button').addEventListener('click', function () {
             document.getElementById('new-item-form').classList.add('hidden');
         });
-        
+
         // Show a success message when Save button is clicked
-        document.getElementById('save-button').addEventListener('click', function() {
+        document.getElementById('save-button').addEventListener('click', function () {
             const itemName = document.getElementById('new-item-name').value;
             if (itemName) {
                 document.getElementById('new-item-form').classList.add('hidden');
@@ -203,21 +205,22 @@
                 alert('Please enter an item name');
             }
         });
-        
+
         // Initialize Sable Smart Links
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             // Check if SableSmartLinks is available
             if (typeof window.SableSmartLinks !== 'undefined') {
                 console.log('Sable Smart Links found:', window.SableSmartLinks);
-                
+
                 // Use the default export which contains the instance
                 const smartLinks = window.SableSmartLinks.default;
-                
+
                 // Temporarily disable auto-start
                 const autoStartWasEnabled = smartLinks.config.autoStart;
                 smartLinks.config.autoStart = false;
-                
+
                 // Register the walkthrough
+                // Note: An "End Tour" button will automatically appear at the bottom of the screen when this walkthrough starts
                 smartLinks.registerWalkthrough('welcome', [
                     // Step 1: Welcome message with spotlight
                     {
@@ -230,7 +233,7 @@
                             nextButton: 'Start Tour'
                         }
                     },
-                    
+
                     // Step 2: Navigation menu
                     {
                         selector: '.sidebar-navigation',
@@ -242,7 +245,7 @@
                         },
                         position: 'right'
                     },
-                    
+
                     // Step 3: User profile with spotlight
                     {
                         selector: '.user-profile-icon',
@@ -257,7 +260,7 @@
                         },
                         position: 'left'
                     },
-                    
+
                     // Step 4: Create new item button with action
                     {
                         selector: '#create-new-button',
@@ -273,7 +276,7 @@
                             delay: 500
                         }
                     },
-                    
+
                     // Step 5: Form input example with spotlight
                     {
                         selector: '#new-item-name',
@@ -293,7 +296,7 @@
                             autoAdvance: false
                         }
                     },
-                    
+
                     // Step 6: Final step
                     {
                         selector: '#save-button',
@@ -305,26 +308,26 @@
                         }
                     }
                 ]);
-                
+
                 // Start walkthrough when help button is clicked
-                document.getElementById('help-button').addEventListener('click', function() {
+                document.getElementById('help-button').addEventListener('click', function () {
                     smartLinks.start('welcome');
                 });
-                
+
                 // Re-enable auto-start if it was enabled
                 smartLinks.config.autoStart = autoStartWasEnabled;
-                
+
                 // Manually check for URL parameters now that walkthrough is registered
                 const urlParams = new URLSearchParams(window.location.search);
                 const walkthroughParam = urlParams.get('walkthrough');
-                
+
                 if (walkthroughParam === 'welcome') {
                     // Start the walkthrough manually
                     setTimeout(() => {
                         smartLinks.start('welcome');
                     }, 500); // Small delay to ensure DOM is fully ready
                 }
-                
+
                 console.log('Sable Smart Links initialized successfully');
             } else {
                 console.error('Sable Smart Links library not loaded. Check the console for errors.');
@@ -332,4 +335,5 @@
         });
     </script>
 </body>
+
 </html>

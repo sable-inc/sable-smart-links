@@ -7,7 +7,8 @@ import { waitForElement } from '../utils/elementSelector.js';
 import { highlightElement, removeHighlight } from '../ui/highlight.js';
 import { showTooltip, hideTooltip } from '../ui/tooltip.js';
 import { createSpotlight, removeSpotlights } from '../ui/spotlight.js';
-import { isBrowser, safeWindow, safeDocument } from '../utils/browserApi.js';
+import { isBrowser, safeWindow, safeDocument } from '../utils/browserAPI.js';
+import { EndTourButton } from '../ui/components/EndTourButton.js';
 
 export class WalkthroughEngine {
   /**
@@ -36,6 +37,12 @@ export class WalkthroughEngine {
       tooltip: null,
       overlay: null
     };
+    
+    // Initialize end tour button
+    this.endTourButton = null;
+    if (isBrowser) {
+      this.endTourButton = new EndTourButton(() => this.end());
+    }
     
     // Bind methods to ensure correct 'this' context
     this.next = this.next.bind(this);
@@ -180,6 +187,11 @@ export class WalkthroughEngine {
       });
     }
     
+    // Show end tour button if walkthrough is running
+    if (this.isRunning && this.endTourButton) {
+      this.endTourButton.show();
+    }
+    
     // If we're not on the first step, advance to the saved step
     if (state.currentStep > 0) {
       this.currentStep = -1; // Reset to before first step
@@ -225,6 +237,11 @@ export class WalkthroughEngine {
     this.currentWalkthrough = walkthroughId;
     this.currentStep = 0;
     this.isRunning = true;
+    
+    // Show end tour button
+    if (this.endTourButton) {
+      this.endTourButton.show();
+    }
     
     // Save the new state
     this._saveState();
@@ -482,6 +499,11 @@ export class WalkthroughEngine {
     // Remove any spotlights
     removeSpotlights();
     
+    // Hide end tour button
+    if (this.endTourButton) {
+      this.endTourButton.hide();
+    }
+    
     // Clear the saved state
     this._clearState();
     
@@ -498,5 +520,27 @@ export class WalkthroughEngine {
     if (walkthrough && walkthrough.onComplete && typeof walkthrough.onComplete === 'function') {
       walkthrough.onComplete();
     }
+  }
+  
+  /**
+   * Destroy the walkthrough engine and clean up resources
+   */
+  destroy() {
+    // End any running walkthrough
+    if (this.isRunning) {
+      this.end();
+    }
+    
+    // Destroy end tour button
+    if (this.endTourButton) {
+      this.endTourButton.destroy();
+      this.endTourButton = null;
+    }
+    
+    // Clear walkthroughs
+    this.walkthroughs = {};
+    
+    // Clean up navigation handling
+    this._cleanupNavigationHandling();
   }
 }

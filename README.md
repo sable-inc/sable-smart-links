@@ -142,6 +142,39 @@ Each step in a walkthrough can have the following options:
 }
 ```
 
+## End Tour Button
+
+When a walkthrough is running, an "End Tour" button automatically appears at the bottom center of the screen. This button allows users to terminate the walkthrough at any time.
+
+### Features
+
+- **Fixed Positioning**: The button is positioned at the bottom center of the screen
+- **Modern Design**: Dark glassmorphism styling with backdrop blur for a modern look
+- **High Visibility**: Semi-transparent design with hover effects to ensure it's easily noticeable
+- **Automatic Management**: Appears when a walkthrough starts and disappears when it ends
+- **Responsive Design**: Works across different screen sizes and devices
+- **Smooth Animations**: Includes entrance and exit animations for better UX
+
+### Behavior
+
+- **Appears**: Automatically when a walkthrough starts via `startWalkthrough()` or when restored from localStorage
+- **Disappears**: Automatically when a walkthrough ends via `endWalkthrough()` or when the user clicks the button
+- **Functionality**: Clicking the button immediately terminates the current walkthrough and cleans up all UI elements
+
+### Customization
+
+The end tour button is automatically managed by the walkthrough engine and doesn't require any additional configuration. It's designed to be unobtrusive while providing an easy way for users to exit walkthroughs.
+
+```javascript
+// The end tour button appears automatically when you start a walkthrough
+smartLinks.startWalkthrough("my-walkthrough");
+
+// It disappears automatically when the walkthrough ends
+smartLinks.endWalkthrough();
+```
+
+````
+
 ## Menu Trigger System
 
 The library includes a menu trigger system that creates and manages a button that acts as a menu trigger. The button will automatically hide when any popup is active and show a menu popup when clicked. The button can be positioned in corners or attached to specific DOM elements.
@@ -197,7 +230,7 @@ const sable = new SableSmartLinks({
     },
   },
 });
-```
+````
 
 ### React Integration
 

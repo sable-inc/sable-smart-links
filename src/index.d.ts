@@ -350,6 +350,7 @@ export class WalkthroughEngine {
   start(walkthroughId: string): boolean;
   next(): void;
   end(): void;
+  destroy(): void;
   
   // Internal methods for state persistence
   _saveState(): void;
