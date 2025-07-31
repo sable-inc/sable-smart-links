@@ -99,8 +99,7 @@ export class ShortcutsAndRecents {
             const iconElement = document.createElement('span');
             Object.assign(iconElement.style, {
                 fontSize: '12px',
-                opacity: '0.75',
-                color: 'rgba(255, 255, 255, 0.5)',
+                color: 'rgba(255, 255, 255, 0.75)',
             });
             
             // Use the item's icon if present, otherwise the section icon

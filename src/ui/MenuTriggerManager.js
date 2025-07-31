@@ -20,7 +20,7 @@ export class MenuTriggerManager {
       targetElement: null, // Element to attach the button to
       urlPaths: [], // Array of URL paths where the button should be shown
       popupConfig: {
-        enableChat: true,
+        enableChat: false,
         sections: []
       },
       ...config

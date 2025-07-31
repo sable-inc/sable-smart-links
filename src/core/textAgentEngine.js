@@ -28,7 +28,7 @@ export class TextAgentEngine {
       primaryColor: '#FFFFFF',
       defaultBoxWidth: 300,
       finalPopupConfig: {
-        enableChat: true,
+        enableChat: false,
         sections: []
       },
       ...config
