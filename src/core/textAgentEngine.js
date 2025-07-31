@@ -258,6 +258,32 @@ export class TextAgentEngine {
     const agent = this.agents.get(agentId);
     const { config, state } = agent;
     
+    // Check if agent is already running and stepId is specified
+    if (state.isRunning && stepId) {
+      if (this.config.debug) {
+        console.log(`[SableTextAgent] Agent "${agentId}" is already running, navigating to step "${stepId}"`);
+      }
+      
+      // Find the target step index
+      const targetStepIndex = agent.steps.findIndex(step => step.id === stepId);
+      
+      if (targetStepIndex === -1) {
+        console.warn(`[SableTextAgent] Step "${stepId}" not found in agent "${agentId}"`);
+        return false;
+      }
+      
+      // Clean up current step (similar to next() method)
+      this._cleanupCurrentStep(agentId);
+      
+      // Update current step index to target step
+      state.currentStepIndex = targetStepIndex;
+      
+      // Render the new step (not auto-start for navigation)
+      this._renderCurrentStep(agentId, false);
+      
+      return true;
+    }
+    
     if (this.config.debug) {
       console.log(`[SableTextAgent] Starting agent "${agentId}"${isAutoStart ? ' (auto-start)' : ''}`);
     }
@@ -507,7 +533,9 @@ export class TextAgentEngine {
         if (typeof step.onProceed === 'function') {
           await step.onProceed(textInput);
         }
-        setTimeout(() => this.next(agentId), step.autoAdvanceDelay || 1000);
+        if (step.autoAdvance) {
+          setTimeout(() => this.next(agentId), step.autoAdvanceDelay || 1000);
+        }
       };
     }
     
