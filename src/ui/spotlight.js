@@ -35,22 +35,6 @@ function injectSpotlightStyles() {
       pointer-events: none;
       transition: all 0.3s ease;
     }
-    
-    .${SPOTLIGHT_CLASS}-animation {
-      animation: sable-spotlight-pulse 2s infinite;
-    }
-    
-    @keyframes sable-spotlight-pulse {
-      0% {
-        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
-      }
-      50% {
-        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
-      }
-      100% {
-        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
-      }
-    }
   `;
   document.head.appendChild(styleElement);
 }

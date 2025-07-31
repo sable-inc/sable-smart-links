@@ -1,6 +1,6 @@
 {
   "name": "sable-smart-links",
-  "version": "1.5.5",
+  "version": "1.5.6",
   "description": "Product walkthroughs triggered by a specified link, integrated directly with your platform.",
   "homepage": "https://github.com/sable-inc/sable-smart-links#readme",
   "bugs": {
@@ -58,7 +58,7 @@
     "lint": "eslint src/**/*.js",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit",
-    "update": "npm run build && npm pack && rm -rf ../tavily-platform-deployment/sable-smart-links-1.5.5.tgz && mv sable-smart-links-1.5.5.tgz ../tavily-platform-deployment"
+    "update": "npm run build && npm pack && rm -rf ../tavily-platform-deployment/sable-smart-links-1.5.6.tgz && mv sable-smart-links-1.5.6.tgz ../tavily-platform-deployment"
   },
   "devDependencies": {
     "@babel/core": "^7.22.5",
