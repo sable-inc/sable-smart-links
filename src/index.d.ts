@@ -12,18 +12,28 @@ export interface SableSmartLinksConfig {
     paramName?: string;
     /** Automatically start walkthrough if parameter is found (default: true) */
     autoStart?: boolean;
+    /** Only auto-start the walkthrough once per walkthrough id (default: false). If true, stores a key in localStorage after the first auto-start and will not auto-start again for that id. */
+    autoStartOnce?: boolean;
     /** Delay between steps in milliseconds (default: 500) */
     stepDelay?: number;
   };
 
   /** Configuration for the text agent engine */
   textAgent?: {
+    /** Automatically start text agent if parameter is found (default: true) */
+    autoStart?: boolean;
     /** Default state of the text agent (default: 'collapsed') */
     defaultState?: 'expanded' | 'collapsed';
     /** Position of the text agent (default: 'right') */
     position?: 'top' | 'right' | 'bottom' | 'left';
     /** Whether to persist state across page reloads (default: true) */
     persistState?: boolean;
+    /** Primary color for styling (default: '#FFFFFF') */
+    primaryColor?: string;
+    /** Default box width for popups (default: 300) */
+    defaultBoxWidth?: number;
+    /** Whether to enable chat input in text agent (default: false) */
+    enableChatInput?: boolean;
     /** Configuration for the final popup shown at the end of a text agent session */
     finalPopupConfig?: {
       /** Whether to enable chat input (default: true) */
@@ -101,6 +111,83 @@ export interface SableSmartLinksConfig {
       };
     };
   };
+
+  /** Configuration for menu */
+  menu?: {
+    /** Enable the menu trigger button (default: false) */
+    enabled?: boolean;
+    /** Text displayed on the button (default: 'Open Menu') */
+    text?: string;
+    /** Position of the button when not attached to a specific element */
+    position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+    /** Element to attach the button to */
+    targetElement?: {
+      /** CSS selector for the target element */
+      selector: string;
+      /** Whether to wait for the element to appear in DOM */
+      waitForElement?: boolean;
+      /** Maximum time to wait for element in milliseconds */
+      waitTimeout?: number;
+      /** Position to render the button relative to target element */
+      position?: 'top' | 'right' | 'bottom' | 'left';
+    };
+    /** URL paths where the button should be shown (empty array means all paths) */
+    urlPaths?: string[];
+    /** Custom styles for the button */
+    style?: {
+      /** Background color of the button */
+      backgroundColor?: string;
+      /** Text color of the button */
+      color?: string;
+      /** Border radius of the button */
+      borderRadius?: string;
+      /** Padding of the button */
+      padding?: string;
+      /** Font size of the button text */
+      fontSize?: string;
+      /** Box shadow of the button */
+      boxShadow?: string;
+      /** Any other CSS properties */
+      [key: string]: string | undefined;
+    };
+    /** Configuration for the menu popup that appears when trigger elements are clicked */
+    popupConfig: {
+      /** Whether to enable chat input (default: true) */
+      enableChat?: boolean;
+      /** 
+       * Custom sections to display in the menu popup
+       * Each section can have its own title, items, and behavior
+       */
+      sections?: Array<{
+        /** Title of the section */
+        title: string;
+        /** Icon to display next to items (emoji or URL) */
+        icon?: string;
+        /** Optional step ID to restart the text agent from when an item in this section is selected
+         * If provided, the text agent will restart from this step when any item in this section is selected
+         * If null or undefined (default), no restart will occur
+         * @property {boolean} skipTrigger - When true, any triggers (like triggerOnTyping) for the step will be ignored
+         *                                  and the popup will be displayed immediately
+         */
+        restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+        /** Items to display in this section */
+        items: Array<{
+          /** Display text for the item */
+          text: string;
+          /** Optional step ID to restart the text agent from when this specific item is selected
+           * This overrides the section-level restartFromStep if provided
+           * @property {boolean} skipTrigger - When true, any triggers (like triggerOnTyping) for the step will be ignored
+           *                                  and the popup will be displayed immediately
+           */
+          restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+          /** Additional data needed for the handler */
+          data?: any;
+        }>;
+        /** Handler function to execute when an item in this section is selected */
+        onSelect: (item: any) => void;
+      }>;
+    };
+  };
   
     /* --------------------------------------------------------------------- */
     /* ----------------------  NEW  VOICE-AGENT BLOCK  --------------------- */
@@ -122,6 +209,9 @@ export interface SableSmartLinksConfig {
     /** Function calls/tools configuration */
     tools?: VoiceToolConfig[];
 
+    /** Speaking speed multiplier (default: 1.1) */
+    speakingSpeed?: number;
+
     /** Popup look-and-feel */
     ui?: {
       /** Screen corner for the widget (default: bottom-right) */
@@ -140,6 +230,9 @@ export interface SableSmartLinksConfig {
       };
     };
   };
+
+  /** Per-agent text agent configuration */
+  textAgents?: Record<string, TextAgentAgentConfig>;
 }
 
 
@@ -257,6 +350,7 @@ export class WalkthroughEngine {
   start(walkthroughId: string): boolean;
   next(): void;
   end(): void;
+  destroy(): void;
   
   // Internal methods for state persistence
   _saveState(): void;
@@ -281,13 +375,28 @@ export class SableSmartLinks {
   endWalkthrough(): void;
 
   /* ----- text-agent API ----------- */
-  registerTextAgent(id: string, steps: TextAgentStep[]): void;
-  startTextAgent(agentId?: string): void;
+  registerTextAgent(id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>, requiredSelector?: string, endWithoutSelector?: boolean): void;
+  /**
+   * Start a text agent with the given ID
+   * @param agentId Optional ID of the text agent to start
+   * @param stepId Optional step ID to start the agent from
+   * @param skipTrigger Optional flag to skip trigger checks and show the popup immediately
+   * @returns Promise<boolean> - Success status
+   */
+  startTextAgent(agentId?: string, stepId?: string | null, skipTrigger?: boolean): Promise<boolean>;
   nextTextAgentStep(): void;
   previousTextAgentStep(): void;
   toggleTextAgentExpand(): void;
   sendTextAgentMessage(message: string): void;
   endTextAgent(): void;
+  /**
+   * Restart the text agent from a specific step or with options.
+   * @param options Options for restarting the text agent
+   * @param options.stepId Optional step ID to restart from
+   * @param options.skipTrigger Whether to skip trigger checks
+   * @param options.beforeRestartCallback Optional callback before restart
+   */
+  restartTextAgent(options?: { stepId?: string | null; skipTrigger?: boolean; beforeRestartCallback?: (() => void) | null }): void;
 
   /* ----- voice-agent (minimal) ------ */
   /** Start/stop voice chat */
@@ -345,6 +454,7 @@ export interface TextAgentStep {
   /** Unique identifier for the step (will be auto-generated if not provided) */
   id?: string;
 
+  /** Font size for the popup text (default: '15px') */
   fontSize?: string;
   
   /** Main text content to display in the popup */
@@ -354,6 +464,33 @@ export interface TextAgentStep {
     getAllStepData: () => Record<string, any>;
     clearStepData: () => void;
   }) => string);
+
+  sections?: Array<{
+    title: string;
+    icon?: string;
+    restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+    items: Array<{
+      text: string;
+      restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+      data?: any;
+    }>;
+    onSelect: (item: any) => void;
+  }> | ((dataUtils?: {
+    setStepData: (key: string, value: any) => void;
+    getStepData: (key: string) => any;
+    getAllStepData: () => Record<string, any>;
+    clearStepData: () => void;
+  }) => Array<{
+    title: string;
+    icon?: string;
+    restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+    items: Array<{
+      text: string;
+      restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+      data?: any;
+    }>;
+    onSelect: (item: any) => void;
+  }>);
   
   /** Secondary text content (displayed in a different style) */
   secondaryText?: string | (() => string);
@@ -378,14 +515,7 @@ export interface TextAgentStep {
   /** Primary color for styling the popup */
   primaryColor?: string;
   
-  /** Whether the popup should be minimizable */
-  minimizable?: boolean;
-  
-  /** Whether the popup starts in minimized state */
-  startMinimized?: boolean;
-  
-  /** Callback when minimized state changes */
-  onMinimizeStateChange?: (isMinimized: boolean) => void;
+
   
   /** Element to highlight or focus during this step */
   targetElement?: {
@@ -426,8 +556,10 @@ export interface TextAgentStep {
   /** Custom callback function called when step is executed */
   callback?: (element: HTMLElement | null, engine: any) => void;
   
+  /** Whether to include a text input box in the popup (default: false) */
   includeTextBox?: boolean;
 
+  /** Trigger the step when typing occurs in an input field */
   triggerOnTyping?: {
     /** CSS selector for the input element */
     selector: string;
@@ -446,20 +578,13 @@ export interface TextAgentStep {
     /** Delay in ms before showing popup after the event (default: 0) */
     delay?: number;
   };
-  
-  // /** Position of the popup relative to the viewport or target element */
-  // position?: {
-  //   top?: string | number;
-  //   left?: string | number;
-  //   right?: string | number;
-  //   bottom?: string | number;
-  // };
-  
-  // /** Custom CSS class names */
-  // className?: {
-  //   container?: string;
-  //   text?: string;
-  //   secondaryText?: string;
-  //   buttons?: string;
-  // };
+}
+
+export interface TextAgentAgentConfig {
+  steps: TextAgentStep[];
+  autoStart?: boolean;
+  autoStartOnce?: boolean;
+  beforeStart?: () => void | Promise<void>;
+  /** Whether to end the text agent immediately when the required selector is no longer present in the DOM (default: false) */
+  endWithoutSelector?: boolean;
 }

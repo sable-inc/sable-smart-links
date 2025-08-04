@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sable Smart Links - Menu Example</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #333;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .demo-section {
+      margin: 30px 0;
+      padding: 20px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+    }
+
+    .demo-section h2 {
+      margin-top: 0;
+      color: #555;
+    }
+
+    .trigger-button {
+      background-color: #4A90E2;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px;
+      transition: background-color 0.3s;
+    }
+
+    .trigger-button:hover {
+      background-color: #357ABD;
+    }
+
+    .trigger-button.secondary {
+      background-color: #6C757D;
+    }
+
+    .trigger-button.secondary:hover {
+      background-color: #5A6268;
+    }
+
+    .trigger-button.success {
+      background-color: #28A745;
+    }
+
+    .trigger-button.success:hover {
+      background-color: #218838;
+    }
+
+    .info-box {
+      background-color: #E3F2FD;
+      border: 1px solid #2196F3;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 20px 0;
+    }
+
+    .info-box h3 {
+      margin-top: 0;
+      color: #1976D2;
+    }
+
+    .code-block {
+      background-color: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 4px;
+      padding: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      overflow-x: auto;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Menu Example</h1>
+
+    <div class="info-box">
+      <h3>How it works:</h3>
+      <p>This example demonstrates the <code>menu</code> functionality. A button will be created that:</p>
+      <ul>
+        <li>Is hidden when any popup is active (using <code>display: none</code>)</li>
+        <li>Shows when no popup is active</li>
+        <li>Triggers a menu popup in the center of the screen when clicked</li>
+      </ul>
+    </div>
+
+    <div class="demo-section">
+      <h2>Menu Button</h2>
+      <p>A menu button will be created and positioned in the bottom-right corner. It will be hidden when popups
+        are active and show a menu when clicked.</p>
+
+      <div class="info-box">
+        <h3>How to test:</h3>
+        <ol>
+          <li>Look for the "Open Menu" button in the bottom-right corner</li>
+          <li>Click the "Show Test Popup" button below to see the menu button disappear</li>
+          <li>Close the test popup to see the menu button reappear</li>
+          <li>Click the menu button to see the menu popup</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>Test Popup</h2>
+      <p>Click this button to show a regular popup and see the menu trigger buttons disappear:</p>
+      <button class="trigger-button" onclick="showTestPopup()">Show Test Popup</button>
+    </div>
+
+    <div class="demo-section">
+      <h2>Configuration</h2>
+      <p>This example uses the following configuration:</p>
+      <div class="code-block">
+        const config = {
+        menu: {
+        enabled: true,
+        text: 'Open Menu',
+        position: 'bottom-right',
+        targetElement: {
+        selector: '.menu-container',
+        position: 'top'
+        },
+        urlPaths: [], // Show on all paths
+        style: {
+        backgroundColor: '#4A90E2',
+        color: '#FFFFFF',
+        borderRadius: '20px',
+        padding: '8px 16px',
+        fontSize: '14px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
+        },
+        popupConfig: {
+        enableChat: true,
+        sections: [
+        {
+        title: "Quick Actions",
+        icon: "⚡",
+        items: [
+        { text: "Action 1", data: { action: "action1" } },
+        { text: "Action 2", data: { action: "action2" } },
+        { text: "Action 3", data: { action: "action3" } }
+        ],
+        onSelect: (item) => {
+        console.log('Selected:', item);
+        alert(`Selected: ${item.text}`);
+        }
+        },
+        {
+        title: "Settings",
+        icon: "⚙️",
+        items: [
+        { text: "Preferences", data: { setting: "preferences" } },
+        { text: "Account", data: { setting: "account" } }
+        ],
+        onSelect: (item) => {
+        console.log('Setting selected:', item);
+        alert(`Setting: ${item.text}`);
+        }
+        }
+        ]
+        }
+        }
+        };
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import SableSmartLinks from '../src/index.js';
+
+    // Initialize SableSmartLinks with menu configuration
+    const sable = new SableSmartLinks({
+      debug: false, // Changed from true to false to demonstrate debug control
+      menu: {
+        enabled: true,
+        text: 'Open Menu',
+        position: 'bottom-right',
+        // targetElement: {
+        //     selector: '.menu-container',
+        //     position: 'top'
+        // },
+        urlPaths: [], // Show on all paths
+        style: {
+          backgroundColor: '#4A90E2',
+          color: '#FFFFFF',
+          borderRadius: '20px',
+          padding: '8px 16px',
+          fontSize: '14px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
+        },
+        popupConfig: {
+          enableChat: true,
+          sections: [
+            {
+              title: "Quick Actions",
+              icon: "⚡",
+              items: [
+                { text: "Action 1", data: { action: "action1" } },
+                { text: "Action 2", data: { action: "action2" } },
+                { text: "Action 3", data: { action: "action3" } }
+              ],
+              onSelect: (item) => {
+                console.log('Selected:', item);
+                alert(`Selected: ${item.text}`);
+              }
+            },
+            {
+              title: "Settings",
+              icon: "⚙️",
+              items: [
+                { text: "Preferences", data: { setting: "preferences" } },
+                { text: "Account", data: { setting: "account" } }
+              ],
+              onSelect: (item) => {
+                console.log('Setting selected:', item);
+                alert(`Setting: ${item.text}`);
+              }
+            }
+          ]
+        }
+      }
+    });
+
+    // Make showTestPopup function globally available
+    window.showTestPopup = function () {
+      sable.showPopup({
+        text: "This is a test popup. Notice that the menu trigger buttons are now hidden!",
+        boxWidth: 300,
+        buttonType: 'arrow',
+        onProceed: () => {
+          console.log('Test popup closed');
+        }
+      });
+    };
+
+    console.log('SableSmartLinks initialized with menu configuration');
+  </script>
+</body>
+
+</html>

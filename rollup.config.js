@@ -147,6 +147,35 @@ export default [
     ]
   },
 
+  // Tavily helper functions (ESM)
+  {
+    input: 'src/tavily/index.ts',
+    external,
+    output: {
+      file: 'dist/tavily/index.js',
+      format: 'esm',
+      sourcemap: true
+    },
+    plugins: [
+      ...commonPlugins,
+      typescript({
+        tsconfig: './tsconfig.json',
+        declaration: true,
+        declarationDir: 'dist/tavily'
+      }),
+      babel({
+        babelHelpers: 'bundled',
+        exclude: 'node_modules/**',
+        extensions: ['.js', '.jsx', '.ts', '.tsx'],
+        presets: [
+          ['@babel/preset-env', { targets: { esmodules: true } }],
+          '@babel/preset-typescript',
+          '@babel/preset-react'
+        ]
+      })
+    ]
+  },
+
   // Type definitions
   {
     input: 'src/index.d.ts',
@@ -162,6 +191,16 @@ export default [
     input: 'src/features/tavily/index.ts',
     output: {
       dir: 'dist/features/tavily',
+      format: 'es'
+    },
+    plugins: [dts()]
+  },
+
+  // Type definitions for Tavily helper functions
+  {
+    input: 'src/tavily/index.ts',
+    output: {
+      file: 'dist/tavily/index.d.ts',
       format: 'es'
     },
     plugins: [dts()]
@@ -203,6 +242,47 @@ export default [
     input: 'src/react/index.ts',
     output: {
       dir: 'dist/react',
+      format: 'es'
+    },
+    plugins: [dts()]
+  },
+
+  // Interactor build (ESM)
+  {
+    input: 'src/interactor/index.ts',
+    output: {
+      dir: 'dist/interactor',
+      format: 'esm',
+      sourcemap: true
+    },
+    external,
+    plugins: [
+      ...commonPlugins,
+      typescript({
+        tsconfig: './tsconfig.json',
+        outDir: 'dist/interactor',
+        declarationDir: 'dist/interactor',
+        declaration: true,
+        rootDir: 'src'
+      }),
+      babel({
+        babelHelpers: 'bundled',
+        exclude: 'node_modules/**',
+        extensions: ['.js', '.jsx', '.ts', '.tsx'],
+        presets: [
+          ['@babel/preset-env', { targets: { esmodules: true } }],
+          '@babel/preset-typescript',
+          '@babel/preset-react'
+        ]
+      })
+    ]
+  },
+
+  // Interactor type definitions
+  {
+    input: 'src/interactor/index.ts',
+    output: {
+      dir: 'dist/interactor',
       format: 'es'
     },
     plugins: [dts()]

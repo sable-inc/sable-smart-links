@@ -26,9 +26,11 @@ export class NovaVoiceEngine extends VoiceEngine {
         
         // Store tool handlers for client-side processing
         this.toolHandlers = new Map();
+        if (config.tools && config.debug) {
+            console.debug('[NovaVoiceEngine] Constructor - config.tools:', config.tools);
+            console.debug('[NovaVoiceEngine] Constructor - tools length:', config.tools?.length || 0);
+        }
         if (config.tools) {
-            console.log('[NovaVoiceEngine] Constructor - config.tools:', config.tools);
-            console.log('[NovaVoiceEngine] Constructor - tools length:', config.tools?.length || 0);
             config.tools.forEach(tool => {
                 this.toolHandlers.set(tool.name, tool.handler);
             });

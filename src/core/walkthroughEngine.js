@@ -7,7 +7,8 @@ import { waitForElement } from '../utils/elementSelector.js';
 import { highlightElement, removeHighlight } from '../ui/highlight.js';
 import { showTooltip, hideTooltip } from '../ui/tooltip.js';
 import { createSpotlight, removeSpotlights } from '../ui/spotlight.js';
-import { isBrowser, safeWindow, safeDocument } from '../utils/browserApi.js';
+import { isBrowser, safeWindow, safeDocument } from '../utils/browserAPI.js';
+import { EndTourButton } from '../ui/components/EndTourButton.js';
 
 export class WalkthroughEngine {
   /**
@@ -36,6 +37,12 @@ export class WalkthroughEngine {
       tooltip: null,
       overlay: null
     };
+    
+    // Initialize end tour button
+    this.endTourButton = null;
+    if (isBrowser) {
+      this.endTourButton = new EndTourButton(() => this.end());
+    }
     
     // Bind methods to ensure correct 'this' context
     this.next = this.next.bind(this);
@@ -91,23 +98,24 @@ export class WalkthroughEngine {
       
       const state = JSON.parse(savedState);
       
-      // Log the loaded state (before any validation)
       if (this.config.debug) {
         console.log('[SableSmartLinks] Loaded state from localStorage:', state);
       }
       
-      // Check for required fields
-      if (!state.walkthroughId || state.currentStep === undefined) {
+      // Validate state structure
+      if (!state.walkthroughId || typeof state.currentStep !== 'number' || typeof state.isRunning !== 'boolean') {
         if (this.config.debug) {
           console.log('[SableSmartLinks] Invalid state: missing required fields');
         }
-        this._clearState();
         return null;
       }
       
-      // Check for expiration (1 hour)
-      const EXPIRATION_MS = 60 * 60 * 1000;
-      if (state.timestamp && (Date.now() - state.timestamp > EXPIRATION_MS)) {
+      // Check if state is expired (24 hours)
+      const now = Date.now();
+      const stateAge = now - state.timestamp;
+      const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+      
+      if (stateAge > maxAge) {
         if (this.config.debug) {
           console.log('[SableSmartLinks] State expired, clearing...');
         }
@@ -120,7 +128,7 @@ export class WalkthroughEngine {
           walkthroughId: state.walkthroughId,
           currentStep: state.currentStep,
           isRunning: state.isRunning,
-          age: state.timestamp ? `${((Date.now() - state.timestamp) / 1000).toFixed(1)}s ago` : 'unknown'
+          age: Math.round(stateAge / 1000 / 60) + ' minutes'
         });
       }
       
@@ -132,15 +140,14 @@ export class WalkthroughEngine {
   }
   
   /**
-   * Clear saved walkthrough state
+   * Clear walkthrough state from localStorage
    */
   _clearState() {
     if (!isBrowser) return;
+    
     try {
-      const hadState = !!localStorage.getItem('sableWalkthroughState');
       localStorage.removeItem('sableWalkthroughState');
-      
-      if (this.config.debug && hadState) {
+      if (this.config.debug) {
         console.log('[SableSmartLinks] Cleared walkthrough state from localStorage');
       }
     } catch (e) {
@@ -157,20 +164,26 @@ export class WalkthroughEngine {
     }
     
     const state = this._loadState();
-    if (!state || !state.walkthroughId) {
+    if (!state || !state.isRunning) {
       if (this.config.debug) {
         console.log('[SableSmartLinks] No valid walkthrough state to restore');
       }
       return false;
     }
     
-    // Wait a small delay to ensure the page is fully rendered
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Check if walkthrough exists
+    if (!this.walkthroughs[state.walkthroughId]) {
+      if (this.config.debug) {
+        console.log('[SableSmartLinks] Saved walkthrough not found:', state.walkthroughId);
+      }
+      this._clearState();
+      return false;
+    }
     
-    // Restore the walkthrough state
+    // Restore walkthrough
     this.currentWalkthrough = state.walkthroughId;
-    this.currentStep = state.currentStep || 0;
-    this.isRunning = state.isRunning !== false; // Default to true if not set
+    this.currentStep = state.currentStep;
+    this.isRunning = true;
     
     if (this.config.debug) {
       console.log(`[SableSmartLinks] Restored walkthrough state:`, {
@@ -180,16 +193,10 @@ export class WalkthroughEngine {
       });
     }
     
-    // If we're not on the first step, advance to the saved step
-    if (state.currentStep > 0) {
-      this.currentStep = -1; // Reset to before first step
-      for (let i = 0; i <= state.currentStep; i++) {
-        this.next();
-      }
-    } else {
-      // Otherwise just start normally
-      this.executeStep();
-    }
+    // Execute current step
+    await this.executeStep();
+    
+    return true;
   }
   
   /**
@@ -225,6 +232,11 @@ export class WalkthroughEngine {
     this.currentWalkthrough = walkthroughId;
     this.currentStep = 0;
     this.isRunning = true;
+    
+    // Show end tour button
+    if (this.endTourButton) {
+      this.endTourButton.show();
+    }
     
     // Save the new state
     this._saveState();
@@ -482,6 +494,11 @@ export class WalkthroughEngine {
     // Remove any spotlights
     removeSpotlights();
     
+    // Hide end tour button
+    if (this.endTourButton) {
+      this.endTourButton.hide();
+    }
+    
     // Clear the saved state
     this._clearState();
     
@@ -498,5 +515,27 @@ export class WalkthroughEngine {
     if (walkthrough && walkthrough.onComplete && typeof walkthrough.onComplete === 'function') {
       walkthrough.onComplete();
     }
+  }
+  
+  /**
+   * Destroy the walkthrough engine and clean up resources
+   */
+  destroy() {
+    // End any running walkthrough
+    if (this.isRunning) {
+      this.end();
+    }
+    
+    // Destroy end tour button
+    if (this.endTourButton) {
+      this.endTourButton.destroy();
+      this.endTourButton = null;
+    }
+    
+    // Clear walkthroughs
+    this.walkthroughs = {};
+    
+    // Clean up navigation handling
+    this._cleanupNavigationHandling();
   }
 }

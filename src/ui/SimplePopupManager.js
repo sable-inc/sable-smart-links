@@ -1,10 +1,13 @@
 // managers/SimplePopupManager.js
 import { SimplePopup } from './components/SimplePopup.js';
-import { MinimizedState } from './components/MinimizedState.js';
+import globalPopupManager from './GlobalPopupManager.js';
 
+// NOTE: This class should only be used by GlobalPopupManager to enforce singleton popups.
+// Do not instantiate or mount SimplePopupManager directly elsewhere in the codebase.
 export class SimplePopupManager {
     constructor(config) {
         this.config = {
+            debug: false,
             text: config.text || '',
             boxWidth: config.boxWidth || 200,
             buttonType: config.buttonType || 'arrow',
@@ -15,8 +18,7 @@ export class SimplePopupManager {
             fontSize: config.fontSize || '15px'
         };
 
-        // Single state variable
-        this.isMinimized = false;
+
         
         // Track position state
         this.position = {
@@ -36,84 +38,56 @@ export class SimplePopupManager {
         this.render();
     }
 
-    handleMinimize = () => {
-        console.log('Minimize clicked, before:', this.isMinimized);
-        this.isMinimized = true;
-        console.log('After setting isMinimized:', this.isMinimized);
-        this.render();
-    }
-
-    handleMaximize = () => {
-        this.isMinimized = false;
-        this.render();
+    handleClose = () => {
+        if (this.config.debug) {
+            console.log('Close clicked');
+        }
+        // Remove the popup from the DOM
+        if (this.container && this.container.parentNode) {
+            this.container.parentNode.removeChild(this.container);
+        }
+        // Notify global popup manager that popup is closed
+        if (this.config.debug) {
+            console.log('[SimplePopupManager] Calling globalPopupManager.closeActivePopup() in handleClose - this will affect hasActivePopup state');
+        }
+        globalPopupManager.closeActivePopup();
+        if (this.config.debug) {
+            console.log('[handleClose] hasActivePopup changed');
+        }
     }
 
     render() {
-        console.log('Rendering with isMinimized:', this.isMinimized);
+        if (this.config.debug) {
+            console.log('Rendering SimplePopupManager');
+        }
         this.container.innerHTML = '';
 
-        if (this.isMinimized) {
-            console.log('Attempting to render MinimizedState');
-            try {
-                const minimizedState = new MinimizedState({
-                    text: this.config.text,
-                    onClick: () => this.handleMaximize(),
-                    primaryColor: this.config.primaryColor
-                });
-                console.log('MinimizedState created successfully');
-            } catch (error) {
-                console.error('Error creating MinimizedState:', error);
-            }
-            // Render minimized state
-            const minimizedState = new MinimizedState({
-                text: this.config.text,
-                onClick: () => this.handleMaximize(),
-                primaryColor: this.config.primaryColor
-            });
-            
-            // Update container styles for minimized state
-            Object.assign(this.container.style, {
-                background: 'rgba(0, 0, 0, 0.8)',
-                padding: '8px 16px',
-                borderRadius: '16px',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-                backdropFilter: 'blur(8px)',
-                cursor: 'pointer',
-                top: `${this.position.top}px`,
-                left: `${this.position.left}px`,
-                transform: 'none'
-            });
+        // Render full popup
+        const popup = new SimplePopup({
+            ...this.config,
+            isVisible: true,
+            onClose: () => this.handleClose(),
+            position: this.position,
+            onPositionChange: (newPosition) => {
+                this.position = newPosition;
+            },
+            fontSize: this.config.fontSize // Explicitly pass it through
+        });
 
-            this.container.appendChild(minimizedState.render());
-        } else {
-            // Render full popup
-            const popup = new SimplePopup({
-                ...this.config,
-                isVisible: true,
-                onMinimize: () => this.handleMinimize(),
-                position: this.position,
-                onPositionChange: (newPosition) => {
-                    this.position = newPosition;
-                },
-                fontSize: this.config.fontSize // Explicitly pass it through
-            });
+        // Set container styles for popup
+        Object.assign(this.container.style, {
+            background: 'transparent',
+            padding: '0',
+            border: 'none',
+            boxShadow: 'none',
+            backdropFilter: 'none',
+            cursor: 'default',
+            top: `${this.position.top}px`,
+            left: `${this.position.left}px`,
+            transform: 'none'
+        });
 
-            // Reset container styles for full popup
-            Object.assign(this.container.style, {
-                background: 'transparent',
-                padding: '0',
-                border: 'none',
-                boxShadow: 'none',
-                backdropFilter: 'none',
-                cursor: 'default',
-                top: `${this.position.top}px`,
-                left: `${this.position.left}px`,
-                transform: 'none'
-            });
-
-            this.container.appendChild(popup.render());
-        }
+        this.container.appendChild(popup.render());
     }
 
     mount(parentElement) {
@@ -122,6 +96,14 @@ export class SimplePopupManager {
 
     unmount() {
         this.container.remove();
+        // Notify global popup manager that popup is closed
+        if (this.config.debug) {
+            console.log('[SimplePopupManager] Calling globalPopupManager.closeActivePopup() in unmount - this will affect hasActivePopup state');
+        }
+        globalPopupManager.closeActivePopup();
+        if (this.config.debug) {
+            console.log('[unmount] hasActivePopup changed');
+        }
     }
     
     /**
@@ -148,10 +130,8 @@ export class SimplePopupManager {
             left: `${this.position.left}px`
         });
         
-        // Re-render if needed to ensure child components get updated position
-        if (!this.isMinimized) {
-            this.render();
-        }
+        // Re-render to ensure child components get updated position
+        this.render();
         
         return this.position;
     }

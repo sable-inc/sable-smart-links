@@ -1,10 +1,9 @@
 // Import all required components
-import { MinimizedState } from './components/MinimizedState.js';
 import { TextInputOnly } from './components/TextInputOnly.js';
 import { ExpandedWithShortcuts } from './components/ExpandedWithShortcuts.js';
 import { ExpandedWithMessages } from './components/ExpandedWithMessages.js';
 import { ChatInput } from './components/ChatInput.js';
-import { MinimizeButton } from './components/MinimizeButton.js';
+import { CloseButton } from './components/CloseButton.js';
 
 // PopupStateManager.js
 export class PopupStateManager {
@@ -17,13 +16,13 @@ export class PopupStateManager {
             customButtons: config.customButtons || [],
             initialMessage: config.initialMessage || null,
             sections: config.sections || [],
-            enableChat: config.enableChat !== undefined ? config.enableChat : true
+            enableChat: config.enableChat !== undefined ? config.enableChat : true,
+            onClose: config.onClose || (() => {})
         };
 
         // State variables
-        // If chat is disabled, start in expanded state with shortcuts
-        this.currentState = this.config.enableChat ? 'textInput' : 'expanded';
-        this.previousState = null; // Store the state before minimization
+        // Start in expanded state by default:
+        this.currentState = 'expanded';
         this.messages = [];
         
         // If we have an initial message, add it and start in messages state
@@ -39,7 +38,10 @@ export class PopupStateManager {
         this.chatInput = '';
         
         // Dragging state
-        this.position = { top: 360, left: 660 };
+        this.position = { 
+            top: 240,
+            left: ((window?.innerWidth ?? 1700) - (this.config.width ?? 380)) / 2, 
+        };
         this.isDragging = false;
         this.dragStart = { x: 0, y: 0 };
         
@@ -193,19 +195,30 @@ export class PopupStateManager {
         }
     }
 
-    handleMinimize = () => {
-        this.previousState = this.currentState;
-        this.transitionTo('minimized');
-    }
-
-    handleMaximize = () => {
-        if (this.previousState) {
-            this.transitionTo(this.previousState);
-            this.previousState = null;
-        } else {
-            this.transitionTo('textInput');
+    handleClose = () => {
+        // Call the onClose callback if provided
+        if (typeof this.config.onClose === 'function') {
+            this.config.onClose();
+        }
+        
+        // Remove the popup from the DOM
+        if (this.container && this.container.parentNode) {
+            this.container.parentNode.removeChild(this.container);
+        }
+        
+        // Clean up event listeners
+        if (this.cleanupDragging) {
+            this.cleanupDragging();
         }
     }
+
+    /**
+     * Unmount the popup (for use by globalPopupManager)
+     */
+    unmount() {
+        this.handleClose();
+    }
+
 
     // No legacy handlers needed - sections handle their own selection logic
 
@@ -295,66 +308,45 @@ export class PopupStateManager {
         // Clear existing content
         this.container.innerHTML = '';
         
-        // Add minimize button (except in minimized state)
-        if (this.currentState !== 'minimized') {
-            const minimizeButton = new MinimizeButton({
-                onMinimize: this.handleMinimize,
-                primaryColor: this.config.primaryColor
-            });
-            
-            const minimizeButtonElement = minimizeButton.render();
-            Object.assign(minimizeButtonElement.style, {
-                position: 'absolute',
-                top: '8px',
-                left: '8px',
-                zIndex: 2147483648, // One higher than container
-            });
-            
-            this.container.appendChild(minimizeButtonElement);
-        }
+        // Add close button
+        const closeButton = new CloseButton({
+            onClose: this.handleClose,
+            primaryColor: this.config.primaryColor
+        });
+        
+        const closeButtonElement = closeButton.render();
+        Object.assign(closeButtonElement.style, {
+            position: 'absolute',
+            top: '8px',
+            left: '8px',
+            zIndex: 2147483648, // One higher than container
+        });
+        
+        this.container.appendChild(closeButtonElement);
 
-        // Add drag handle (except in minimized state)
-        if (this.currentState !== 'minimized') {
-            const dragHandle = this.createDragHandle();
-            this.container.appendChild(dragHandle);
-        }
+        // Add drag handle
+        const dragHandle = this.createDragHandle();
+        this.container.appendChild(dragHandle);
 
-        // Update container styles based on state
-        if (this.currentState === 'minimized') {
-            Object.assign(this.container.style, {
-                width: 'auto',
-                padding: '8px 16px',
-                cursor: 'pointer',
-            });
-        } else {
-            Object.assign(this.container.style, {
-                width: `${this.config.width}px`,
-                padding: '16px',
-                paddingBottom: '0',
-                cursor: 'default',
-                display: 'flex',
-                flexDirection: 'column',
-            });
-        }
+        // Update container styles
+        Object.assign(this.container.style, {
+            width: `${this.config.width}px`,
+            padding: '16px',
+            paddingBottom: '0',
+            cursor: 'default',
+            display: 'flex',
+            flexDirection: 'column',
+        });
 
         // Reset component references for current state
         this.components = {
             expandedWithMessages: null,
             textInputOnly: null,
-            expandedWithShortcuts: null,
-            minimizedState: null
+            expandedWithShortcuts: null
         };
         
         let component;
         switch (this.currentState) {
-            case 'minimized':
-                this.components.minimizedState = new MinimizedState({
-                    onClick: this.handleMaximize,
-                    primaryColor: this.config.primaryColor,
-                    text: `Ask ${this.config.platform}...`
-                });
-                component = this.components.minimizedState;
-                break;
 
             case 'textInput':
                 // If chat is disabled, switch to expanded state instead
@@ -369,7 +361,6 @@ export class PopupStateManager {
                     onExpand: () => this.transitionTo('expanded'),
                     platform: this.config.platform,
                     primaryColor: this.config.primaryColor,
-                    onMinimize: this.handleMinimize,
                     value: this.chatInput
                 });
                 component = this.components.textInputOnly;
@@ -408,8 +399,8 @@ export class PopupStateManager {
                             }
                             
                             // Emit a custom event that TextAgentEngine can listen for
-                            const restartEvent = new CustomEvent('sable:textAgentRestart', {
-                                detail: { stepId, skipTrigger }
+                            const restartEvent = new CustomEvent('sable:textAgentStart', {
+                                detail: { stepId, skipTrigger, agentId: this.lastActiveAgentId }
                             });
                             window.dispatchEvent(restartEvent);
                         }

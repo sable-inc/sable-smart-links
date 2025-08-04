@@ -1,8 +1,30 @@
 // components/SimplePopup.js
 import { ArrowButton } from './ArrowButton.js';
 import { YesNoButtons } from './YesNoButtons.js';
-import { MinimizedState } from './MinimizedState.js';
-import { MinimizeButton } from './MinimizeButton.js';
+import { CloseButton } from './CloseButton.js';
+import { ShortcutsAndRecents } from './ShortcutsAndRecents.js';
+
+// Simple markdown parser for basic formatting
+function parseMarkdown(text) {
+    if (!text) return '';
+    
+    // Process bold text (** or __)
+    text = text.replace(/\*\*(.*?)\*\*|__(.*?)__/g, '<strong>$1$2</strong>');
+    
+    // Process italic text (* or _)
+    text = text.replace(/\*(.*?)\*|_(.*?)_/g, '<em>$1$2</em>');
+    
+    // Process code snippets (`code`)
+    text = text.replace(/`(.*?)`/g, '<code style="background-color:rgba(0,0,0,0.2);padding:2px 4px;border-radius:3px;">$1</code>');
+    
+    // Process links [text](url)
+    text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;">$1</a>');
+    
+    // Process line breaks
+    text = text.replace(/\n/g, '<br>');
+    
+    return text;
+}
 
 export class SimplePopup {
     constructor(config) {
@@ -13,14 +35,15 @@ export class SimplePopup {
             onProceed: config.onProceed || (() => {}),
             onYesNo: config.onYesNo || (() => {}),
             primaryColor: config.primaryColor || '#FFFFFF',
-            onMinimize: config.onMinimize || (() => {}),
+            onClose: config.onClose || (() => {}),
             onPositionChange: config.onPositionChange || (() => {}),
             includeTextBox: config.includeTextBox || false,
-            fontSize: config.fontSize || '15px'
+            fontSize: config.fontSize || '15px',
+            sections: config.sections || [],
+            debug: config.debug || false // Add debug flag to config
         };
 
         // State
-        this.isMinimized = false;
         // Use position from config if provided, otherwise use default
         this.position = config.position || { top: window.innerHeight / 2, left: window.innerWidth / 2 };
         this.isDragging = false;
@@ -69,12 +92,12 @@ export class SimplePopup {
         const dragHandle = this.createDragHandle();
         popup.appendChild(dragHandle);
 
-        // Replace custom minimize button with MinimizeButton component
-        const minimizeButton = new MinimizeButton({
-            onMinimize: () => this.minimize(),
+        // Replace custom close button with CloseButton component
+        const closeButton = new CloseButton({
+            onClose: () => this.close(),
             primaryColor: this.config.primaryColor
         });
-        popup.appendChild(minimizeButton.render());
+        popup.appendChild(closeButton.render());
 
         // Add content container
         const content = this.createContent();
@@ -172,20 +195,18 @@ export class SimplePopup {
             // Create the arrow button with click handler
             const arrowButton = new ArrowButton(() => {
                 const textInput = this.inputBox ? this.inputBox.value : '';
-                console.log('[SimplePopup] Input box exists:', !!this.inputBox);
-                console.log('[SimplePopup] Raw input box value:', textInput);
-                
+                if (this.config.debug) {
+                  console.debug('[SimplePopup] Input box exists:', !!this.inputBox);
+                  console.debug('[SimplePopup] Raw input box value:', textInput);
+                }
                 // Pass the string value directly
                 if (typeof this.config.onProceed === 'function') {
-                    console.log('function called arrow button');
-                    
+                    if (this.config.debug) console.debug('function called arrow button');
                     try {
                         // Set button to loading state
                         arrowButton.setLoading(true);
-                        
                         // Call onProceed and handle Promise resolution
                         const result = this.config.onProceed(textInput);
-                        
                         // Handle both synchronous and asynchronous results
                         if (result instanceof Promise) {
                             result
@@ -215,7 +236,7 @@ export class SimplePopup {
             // Store reference to the arrow button
             this.arrowButton = arrowButton;
             buttonContainer.appendChild(arrowButton.render());
-        } else {
+        } else if (this.config.buttonType === 'yes-no') {
             // For yes/no buttons, use the original implementation
             const yesNoButtons = new YesNoButtons((isYes) => {
                 if (typeof this.config.onYesNo === 'function') {
@@ -224,6 +245,7 @@ export class SimplePopup {
             }, this.config.primaryColor);
             buttonContainer.appendChild(yesNoButtons.render());
         }
+        // If buttonType is 'none', do not add any button to the buttonContainer or DOM
 
         // Add text and button to the row container
         rowContainer.appendChild(textContainer);
@@ -231,14 +253,21 @@ export class SimplePopup {
         // For arrow button, add it to the row. For yes-no buttons, add them below the text
         if (this.config.buttonType === 'arrow') {
             rowContainer.appendChild(buttonContainer);
-        } else {
-            mainContainer.appendChild(rowContainer);
+        }
+        mainContainer.appendChild(rowContainer);
+        if (this.config.buttonType === 'yes-no') {
             mainContainer.appendChild(buttonContainer);
         }
 
-        // Add the row container to the main container if it's not already added
-        if (this.config.buttonType === 'arrow') {
-            mainContainer.appendChild(rowContainer);
+        if (Array.isArray(this.config.sections) && this.config.sections.length > 0) {
+            if (this.config.debug) console.debug('[SimplePopup][createContent] Rendering sections:', this.config.sections);
+            const shortcutsAndRecents = new ShortcutsAndRecents({
+                sections: this.config.sections
+            });
+            // Insert after the rowContainer (which contains the text)
+            mainContainer.appendChild(shortcutsAndRecents.render());
+        } else if (this.config.sections !== undefined && !Array.isArray(this.config.sections)) {
+            if (this.config.debug) console.warn('[SimplePopup][createContent] this.config.sections is not an array:', this.config.sections);
         }
 
         // Add textbox if needed - always at the bottom
@@ -263,7 +292,7 @@ export class SimplePopup {
                         inputBox.disabled = true;
                         
                         // Call the onProceed function
-                        console.log('function called input box');
+                        if (this.config.debug) console.debug('function called input box');
                         
                         // If we have an arrow button, set it to loading state too
                         if (this.arrowButton) {
@@ -279,7 +308,7 @@ export class SimplePopup {
                             // Handle both synchronous and asynchronous results
                             // Check if result is promise-like (has a then method)
                             if (result && typeof result.then === 'function') {
-                                console.log('[SimplePopup] Input box: Detected async result, waiting for completion');
+                                if (this.config.debug) console.log('[SimplePopup] Input box: Detected async result, waiting for completion');
                                 // For promises, wait for completion before resetting state
                                 return Promise.resolve(result)
                                     .catch(err => {
@@ -287,7 +316,7 @@ export class SimplePopup {
                                         throw err; // Re-throw to propagate the error
                                     })
                                     .finally(() => {
-                                        console.log('[SimplePopup] Input box: Async operation completed, resetting state');
+                                        if (this.config.debug) console.log('[SimplePopup] Input box: Async operation completed, resetting state');
                                         // Restore the input box state when done
                                         inputBox.disabled = false;
                                         
@@ -297,7 +326,7 @@ export class SimplePopup {
                                         }
                                     });
                             } else {
-                                console.log('[SimplePopup] Input box: Detected synchronous result');
+                                if (this.config.debug) console.log('[SimplePopup] Input box: Detected synchronous result');
                                 // For synchronous functions, reset after a short delay
                                 // to make the loading state visible
                                 setTimeout(() => {
@@ -338,17 +367,35 @@ export class SimplePopup {
             this.element.style.opacity = '1';
         }, 0);
 
-        // Animate text - use the direct reference instead of querySelector
-        const charDelay = 800 / this.config.text.length;
+        // Parse the markdown text first
+        const parsedText = parseMarkdown(this.config.text);
         
-        for (let i = 0; i <= this.config.text.length; i++) {
+        // For animation, we need to work with the raw text
+        const rawText = this.config.text;
+        const charDelay = 800 / rawText.length;
+        
+        // Animate text character by character
+        for (let i = 0; i <= rawText.length; i++) {
             setTimeout(() => {
-                this.textContainer.textContent = this.config.text.slice(0, i);
-                if (i < this.config.text.length) {
+                // For the animation, use the raw text sliced to current position
+                const currentText = rawText.slice(0, i);
+                
+                // Parse the current slice of text with markdown
+                const currentParsedText = parseMarkdown(currentText);
+                
+                // Set the HTML content
+                this.textContainer.innerHTML = currentParsedText;
+                
+                // Add the blinking cursor if not at the end
+                if (i < rawText.length) {
                     const cursor = document.createElement('span');
                     cursor.style.borderRight = '2px solid rgba(255, 255, 255, 0.7)';
                     cursor.style.animation = 'blink 1s step-end infinite';
                     this.textContainer.appendChild(cursor);
+                }
+                // When we reach the end, set the full parsed text to ensure all formatting is applied
+                else {
+                    this.textContainer.innerHTML = parsedText;
                 }
             }, 300 + (i * charDelay));
         }
@@ -362,7 +409,7 @@ export class SimplePopup {
 
     setupDragging() {
         const handleDragStart = (e) => {
-            if (e.target.closest('.minimize-button') || e.target.closest('.action-button')) {
+            if (e.target.closest('.close-button') || e.target.closest('.action-button')) {
                 return; // Don't start dragging when clicking buttons
             }
             
@@ -415,71 +462,23 @@ export class SimplePopup {
         };
     }
 
-    minimize() {
-        console.log('Minimize clicked');
-        
-        // Call the onMinimize callback if provided in config
-        if (this.config.onMinimize) {
-            this.config.onMinimize();
+    close() {
+        if (this.config.debug) console.log('Close clicked');
+        if (this.config.debug) console.trace('[SimplePopup.close] Stack trace for close');
+        // Call the onClose callback if provided in config
+        if (this.config.onClose) {
+            this.config.onClose();
         }
 
-        // Update state
-        this.isMinimized = true;
+        // Remove the popup from the DOM
+        if (this.element && this.element.parentNode) {
+            this.element.parentNode.removeChild(this.element);
+        }
 
-        // Clear existing content
-        this.element.innerHTML = '';
-
-        // Create and render minimized state
-        const minimizedState = new MinimizedState({
-            text: this.config.text,
-            onClick: () => {
-                // Handle maximize
-                this.isMinimized = false;
-                this.element.innerHTML = '';
-                
-                // Restore original content
-                const dragHandle = this.createDragHandle();
-                const minimizeButton = new MinimizeButton({
-                    onMinimize: () => this.minimize(),
-                    primaryColor: this.config.primaryColor
-                });
-                const content = this.createContent();
-                
-                this.element.appendChild(dragHandle);
-                this.element.appendChild(minimizeButton.render());
-                this.element.appendChild(content);
-                
-                // Restore original styles
-                Object.assign(this.element.style, {
-                    width: 'fit-content',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    background: `radial-gradient(
-                        circle at center,
-                        rgba(60, 60, 60, 0.5) 0%,
-                        rgba(60, 60, 60, 0.65) 100%
-                    )`,
-                    padding: '12px',
-                    cursor: 'grab',
-                });
-
-                // The references to textContainer and buttonContainer are updated in createContent
-                // so we can safely call startAnimationSequence
-                this.startAnimationSequence();
-            },
-            primaryColor: this.config.primaryColor
-        });
-
-        // Update styles for minimized state
-        Object.assign(this.element.style, {
-            width: 'auto',
-            background: 'rgba(0, 0, 0, 0.8)',
-            padding: '8px 16px',
-            cursor: 'pointer',
-        });
-
-        // Append minimized state
-        this.element.appendChild(minimizedState.render());
+        // Clean up event listeners
+        if (this.cleanupDragging) {
+            this.cleanupDragging();
+        }
     }
 
     render() {

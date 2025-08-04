@@ -69,16 +69,15 @@ export function findElement(selector) {
 }
 
 /**
- * Wait for an element to appear in the DOM
+ * Wait for an element to appear in the DOM (MutationObserver-based)
  * @param {string|Object} selector - CSS selector, XPath, or element object
  * @param {Object} options - Options for waiting
  * @param {number} [options.timeout=10000] - Maximum time to wait in milliseconds
- * @param {number} [options.interval=100] - Check interval in milliseconds
  * @returns {Promise<Element>} Promise resolving to the found element
  */
 export function waitForElement(selector, options = {}) {
-  const { timeout = 10000, interval = 100 } = options;
-  
+  const { timeout = 10000 } = options;
+
   return new Promise((resolve, reject) => {
     // First try to find the element immediately
     const element = findElement(selector);
@@ -86,21 +85,49 @@ export function waitForElement(selector, options = {}) {
       resolve(element);
       return;
     }
-    
+
     const startTime = Date.now();
-    
-    // Set up an interval to check for the element
-    const checkInterval = setInterval(() => {
-      const element = findElement(selector);
-      
-      if (element) {
-        clearInterval(checkInterval);
-        resolve(element);
-      } else if (Date.now() - startTime > timeout) {
-        clearInterval(checkInterval);
-        reject(new Error(`Element "${selector}" not found after ${timeout}ms`));
+    let observer = null;
+    let finished = false;
+
+    // Helper to clean up observer and timeout
+    function cleanup() {
+      if (observer) observer.disconnect();
+      if (timeoutId) clearTimeout(timeoutId);
+      finished = true;
+    }
+
+    // Check for the element (used on each mutation)
+    function check() {
+      if (finished) return;
+      const el = findElement(selector);
+      if (el) {
+        cleanup();
+        resolve(el);
       }
-    }, interval);
+    }
+
+    // Set up MutationObserver
+    observer = new MutationObserver(() => {
+      check();
+    });
+    if (safeDocument && safeDocument.body) {
+      observer.observe(safeDocument.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        characterData: true
+      });
+    }
+
+    // Also check on a timeout
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Element "${selector}" not found after ${timeout}ms`));
+    }, timeout);
+
+    // Initial check in case the element appears synchronously after setup
+    check();
   });
 }
 
