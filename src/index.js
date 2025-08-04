@@ -737,3 +737,6 @@ export { SableSmartLinks };
 // Create and export a default instance
 const instance = new SableSmartLinks();
 export default instance;
+
+// Export tavily helper functions
+export * from './tavily';

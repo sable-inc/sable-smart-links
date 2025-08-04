@@ -443,6 +443,227 @@ Each step can have various options:
 }
 ```
 
+## Tavily Helper Functions
+
+Sable Smart Links includes helper functions for optimizing Tavily search and crawl parameters using AWS Bedrock. These functions can help you get the best results from Tavily's API by automatically determining optimal parameters based on your query or crawl instructions.
+
+### Installation
+
+The tavily helper functions are included in the main package and can be imported separately:
+
+```javascript
+import {
+  getOptimalCrawlParameters,
+  getOptimalSearchParameters,
+} from "sable-smart-links/tavily";
+```
+
+### Usage
+
+#### getOptimalCrawlParameters
+
+Get optimal crawl parameters for a given URL and instructions:
+
+```javascript
+import { getOptimalCrawlParameters } from "sable-smart-links/tavily";
+
+const bedrockApiKey = "YOUR_ACCESS_KEY:YOUR_SECRET_KEY"; // AWS Bedrock credentials
+
+try {
+  const params = await getOptimalCrawlParameters(
+    "https://example.com/docs",
+    "Crawl the documentation to understand the API structure and available endpoints",
+    bedrockApiKey
+  );
+
+  console.log("Crawl Parameters:", params);
+  // {
+  //   extractDepth: "advanced",
+  //   categories: ["Documentation", "Blogs"],
+  //   explanation: "I've set the following parameters:<br> **Extract Depth is advanced** — Documentation sites need detailed extraction.<br> **Categories include Documentation** — API docs are the primary target.<br>",
+  //   otherCrawls: [
+  //     { url: "https://example.com/api", instructions: "Crawl the API reference documentation" },
+  //     { url: "https://example.com/tutorials", instructions: "Crawl tutorials and guides" }
+  //   ]
+  // }
+
+  // Use the parameters for your Tavily crawl
+  const tavilyCrawlConfig = {
+    extractDepth: params.extractDepth,
+    categories: params.categories,
+  };
+} catch (error) {
+  console.error("Error:", error);
+}
+```
+
+#### getOptimalSearchParameters
+
+Get optimal search parameters for a given query:
+
+```javascript
+import { getOptimalSearchParameters } from "sable-smart-links/tavily";
+
+const bedrockApiKey = "YOUR_ACCESS_KEY:YOUR_SECRET_KEY"; // AWS Bedrock credentials
+
+try {
+  const params = await getOptimalSearchParameters(
+    "latest developments in artificial intelligence and machine learning",
+    bedrockApiKey
+  );
+
+  console.log("Search Parameters:", params);
+  // {
+  //   searchTopic: "news",
+  //   searchDepth: "advanced",
+  //   timeRange: "month",
+  //   includeAnswer: "advanced",
+  //   explanation: "I've set the following parameters:<br> **Search Topic is news** — AI/ML developments are current events.<br> **Search Depth is advanced** — Complex topic needs detailed analysis.<br> **Time Range is month** — Recent developments are most relevant.<br>",
+  //   otherQueries: [
+  //     "AI breakthroughs 2024",
+  //     "machine learning research papers",
+  //     "artificial intelligence industry trends"
+  //   ]
+  // }
+
+  // Use the parameters for your Tavily search
+  const tavilySearchConfig = {
+    searchTopic: params.searchTopic,
+    searchDepth: params.searchDepth,
+    timeRange: params.timeRange,
+    includeAnswer: params.includeAnswer,
+  };
+} catch (error) {
+  console.error("Error:", error);
+}
+```
+
+### Next.js API Route Example
+
+Here's how to use these functions in a Next.js API route:
+
+```javascript
+// pages/api/tavily-optimize.js
+import {
+  getOptimalCrawlParameters,
+  getOptimalSearchParameters,
+} from "sable-smart-links/tavily";
+
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  try {
+    const { url, instructions, query, type } = req.body;
+    const bedrockApiKey = process.env.BEDROCK_API_KEY; // Set in your environment variables
+
+    if (!bedrockApiKey) {
+      return res
+        .status(500)
+        .json({ error: "BEDROCK_API_KEY environment variable is required" });
+    }
+
+    if (type === "crawl") {
+      if (!url || !instructions) {
+        return res.status(400).json({
+          error: "URL and instructions are required for crawl optimization",
+        });
+      }
+
+      const params = await getOptimalCrawlParameters(
+        url,
+        instructions,
+        bedrockApiKey
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          explanation: params.explanation,
+          otherCrawls: params.otherCrawls,
+          crawlParams: {
+            extractDepth: params.extractDepth,
+            categories: params.categories,
+          },
+        },
+      });
+    } else if (type === "search") {
+      if (!query) {
+        return res
+          .status(400)
+          .json({ error: "Query is required for search optimization" });
+      }
+
+      const params = await getOptimalSearchParameters(query, bedrockApiKey);
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          explanation: params.explanation,
+          otherQueries: params.otherQueries,
+          searchParams: {
+            searchTopic: params.searchTopic,
+            searchDepth: params.searchDepth,
+            timeRange: params.timeRange,
+            includeAnswer: params.includeAnswer,
+          },
+        },
+      });
+    } else {
+      return res
+        .status(400)
+        .json({ error: 'Type must be either "crawl" or "search"' });
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    return res.status(500).json({
+      error: "Failed to process optimization",
+      details: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+}
+```
+
+### Requirements
+
+- AWS Bedrock API credentials in the format `ACCESS_KEY:SECRET_KEY`
+- The `@aws-sdk/client-bedrock-runtime` package (included as a dependency)
+
+### Types
+
+The functions return typed objects with the following interfaces:
+
+```typescript
+interface CrawlParameters {
+  extractDepth: "basic" | "advanced";
+  categories: (
+    | "Documentation"
+    | "Blogs"
+    | "Community"
+    | "About"
+    | "Contact"
+    | "Pricing"
+    | "Enterprise"
+    | "Careers"
+    | "E-Commerce"
+    | "Media"
+    | "People"
+  )[];
+  explanation: string;
+  otherCrawls: { url: string; instructions: string }[];
+}
+
+interface SearchParameters {
+  searchTopic: "general" | "news" | "finance";
+  searchDepth: "basic" | "advanced";
+  timeRange: "none" | "day" | "week" | "month" | "year";
+  includeAnswer: "none" | "basic" | "advanced";
+  explanation: string;
+  otherQueries: string[];
+}
+```
+
 ## API Reference
 
 ### SableSmartLinks
