@@ -156,7 +156,7 @@ app.get('/api/keys/:clientKey', async (req, res) => {
 
 // Text Agent Analytics Logging
 app.post('/api/analytics/text-agent', async (req, res) => {
-  try {
+  try {``
     const { 
       event, 
       agentId, 
