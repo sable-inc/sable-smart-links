@@ -19,19 +19,23 @@ app.use(express.json());
 
 // MongoDB connection
 let db;
+let mongoClient;
 
 const connectToMongoDB = async () => {
   try {
-    const client = new MongoClient(process.env.MONGODB_URI || 'mongodb://localhost:27017');
-    await client.connect();
-    db = client.db('sable-smart-links');
-    console.log('Connected to MongoDB');
-    
-    // Set up collections and indexes
-    await setupCollections();
+    if (!mongoClient) {
+      mongoClient = new MongoClient(process.env.MONGODB_URI || 'mongodb://localhost:27017');
+      await mongoClient.connect();
+      db = mongoClient.db('sable-smart-links');
+      console.log('Connected to MongoDB');
+      
+      // Set up collections and indexes
+      await setupCollections();
+    }
+    return db;
   } catch (error) {
     console.error('MongoDB connection error:', error);
-    process.exit(1);
+    throw error;
   }
 };
 
@@ -131,7 +135,10 @@ app.get('/api/keys/:clientKey', async (req, res) => {
       return res.status(400).json({ error: 'Client API key is required' });
     }
 
-    const keyMapping = await db.collection('keys').findOne({ 
+    // Ensure database connection is established
+    const database = await connectToMongoDB();
+    
+    const keyMapping = await database.collection('keys').findOne({ 
       clientKey: clientKey,
     });
 
@@ -190,7 +197,9 @@ app.post('/api/analytics/text-agent', async (req, res) => {
       createdAt: new Date()
     };
 
-    const result = await db.collection('textAgentAnalytics').insertOne(analyticsEntry);
+    // Ensure database connection is established
+    const database = await connectToMongoDB();
+    const result = await database.collection('textAgentAnalytics').insertOne(analyticsEntry);
     
     res.status(201).json({
       success: true,
@@ -240,7 +249,9 @@ app.post('/api/analytics/walkthrough', async (req, res) => {
       createdAt: new Date()
     };
 
-    const result = await db.collection('walkthroughAnalytics').insertOne(analyticsEntry);
+    // Ensure database connection is established
+    const database = await connectToMongoDB();
+    const result = await database.collection('walkthroughAnalytics').insertOne(analyticsEntry);
     
     res.status(201).json({
       success: true,
@@ -279,7 +290,9 @@ app.get('/api/analytics/text-agent', async (req, res) => {
       if (endDate) filter.timestamp.$lte = new Date(endDate);
     }
 
-    const analytics = await db.collection('textAgentAnalytics')
+    // Ensure database connection is established
+    const database = await connectToMongoDB();
+    const analytics = await database.collection('textAgentAnalytics')
       .find(filter)
       .sort({ timestamp: -1 })
       .skip(parseInt(skip))
@@ -322,7 +335,9 @@ app.get('/api/analytics/walkthrough', async (req, res) => {
       if (endDate) filter.timestamp.$lte = new Date(endDate);
     }
 
-    const analytics = await db.collection('walkthroughAnalytics')
+    // Ensure database connection is established
+    const database = await connectToMongoDB();
+    const analytics = await database.collection('walkthroughAnalytics')
       .find(filter)
       .sort({ timestamp: -1 })
       .skip(parseInt(skip))
@@ -381,7 +396,9 @@ app.get('/api/analytics/text-agent/summary', async (req, res) => {
       }
     ];
 
-    const summary = await db.collection('textAgentAnalytics').aggregate(pipeline).toArray();
+    // Ensure database connection is established
+    const database = await connectToMongoDB();
+    const summary = await database.collection('textAgentAnalytics').aggregate(pipeline).toArray();
 
     res.json({
       success: true,
@@ -434,7 +451,9 @@ app.get('/api/analytics/walkthrough/summary', async (req, res) => {
       }
     ];
 
-    const summary = await db.collection('walkthroughAnalytics').aggregate(pipeline).toArray();
+    // Ensure database connection is established
+    const database = await connectToMongoDB();
+    const summary = await database.collection('walkthroughAnalytics').aggregate(pipeline).toArray();
 
     res.json({
       success: true,
