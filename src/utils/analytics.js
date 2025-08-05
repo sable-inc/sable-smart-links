@@ -96,16 +96,23 @@ export const logTextAgentEvent = async (eventData) => {
       timestamp: new Date().toISOString()
     };
     
-    const response = await fetch(`${getApiBaseUrl()}/api/analytics/text-agent`, {
+    const apiUrl = `${getApiBaseUrl()}/api/analytics/text-agent`;
+    console.log('[SableAnalytics] Attempting to log event:', event, 'to:', apiUrl);
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
+      mode: 'cors',
+      credentials: 'omit',
       body: JSON.stringify(analyticsPayload)
     });
     
     if (!response.ok) {
-      throw new Error(`Analytics API error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`Analytics API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
     
     const result = await response.json();
@@ -117,6 +124,12 @@ export const logTextAgentEvent = async (eventData) => {
     }
   } catch (error) {
     console.error('[SableAnalytics] Error logging analytics event:', error);
+    console.error('[SableAnalytics] Error details:', {
+      message: error.message,
+      stack: error.stack,
+      url: window.location.href,
+      apiUrl: getApiBaseUrl()
+    });
     // Don't throw - analytics failures shouldn't break the app
   }
 };
