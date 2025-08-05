@@ -208,6 +208,134 @@ export const logTextAgentStepTriggered = (agentId, stepId, stepIndex, metadata =
   });
 };
 
+// Log walkthrough analytics event
+export const logWalkthroughEvent = async (eventData) => {
+  if (!isBrowser) {
+    console.warn('[SableAnalytics] Cannot log analytics in non-browser environment');
+    return;
+  }
+  
+  try {
+    const {
+      event,
+      walkthroughId,
+      stepIndex,
+      stepSelector,
+      metadata = {}
+    } = eventData;
+    
+    // Validate required fields
+    if (!event || !walkthroughId || stepIndex === undefined) {
+      console.error('[SableAnalytics] Missing required fields for walkthrough analytics event:', eventData);
+      return;
+    }
+    
+    const analyticsPayload = {
+      event,
+      walkthroughId,
+      stepIndex,
+      stepSelector: stepSelector || null,
+      sessionId: getOrCreateSessionId(),
+      userId: getOrCreateUserId(),
+      metadata: {
+        ...metadata,
+        pageUrl: window.location.href,
+        screenSize: `${window.screen.width}x${window.screen.height}`,
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString()
+      },
+      timestamp: new Date().toISOString()
+    };
+    
+    const apiUrl = `${getApiBaseUrl()}/api/analytics/walkthrough`;
+    console.log('[SableAnalytics] Attempting to log walkthrough event:', event, 'to:', apiUrl);
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      mode: 'cors',
+      credentials: 'omit',
+      body: JSON.stringify(analyticsPayload)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Walkthrough Analytics API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log('[SableAnalytics] Walkthrough event logged successfully:', event);
+    } else {
+      console.error('[SableAnalytics] Failed to log walkthrough event:', result);
+    }
+  } catch (error) {
+    console.error('[SableAnalytics] Error logging walkthrough analytics event:', error);
+    console.error('[SableAnalytics] Error details:', {
+      message: error.message,
+      stack: error.stack,
+      url: window.location.href,
+      apiUrl: getApiBaseUrl()
+    });
+    // Don't throw - analytics failures shouldn't break the app
+  }
+};
+
+// Log specific walkthrough events
+export const logWalkthroughStart = (walkthroughId, stepIndex, metadata = {}) => {
+  return logWalkthroughEvent({
+    event: 'start',
+    walkthroughId,
+    stepIndex,
+    metadata: {
+      ...metadata,
+      walkthroughType: metadata.walkthroughType || 'tutorial'
+    }
+  });
+};
+
+export const logWalkthroughNext = (walkthroughId, stepIndex, metadata = {}) => {
+  return logWalkthroughEvent({
+    event: 'next',
+    walkthroughId,
+    stepIndex,
+    metadata
+  });
+};
+
+export const logWalkthroughEnd = (walkthroughId, stepIndex, metadata = {}) => {
+  return logWalkthroughEvent({
+    event: 'end',
+    walkthroughId,
+    stepIndex,
+    metadata
+  });
+};
+
+export const logWalkthroughStepExecuted = (walkthroughId, stepIndex, stepSelector, metadata = {}) => {
+  return logWalkthroughEvent({
+    event: 'step_executed',
+    walkthroughId,
+    stepIndex,
+    stepSelector,
+    metadata
+  });
+};
+
+export const logWalkthroughStepError = (walkthroughId, stepIndex, stepSelector, metadata = {}) => {
+  return logWalkthroughEvent({
+    event: 'step_error',
+    walkthroughId,
+    stepIndex,
+    stepSelector,
+    metadata
+  });
+};
+
 // Utility functions for session and user management
 export const getCurrentSessionId = () => {
   return getOrCreateSessionId();

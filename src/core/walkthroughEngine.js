@@ -9,6 +9,13 @@ import { showTooltip, hideTooltip } from '../ui/tooltip.js';
 import { createSpotlight, removeSpotlights } from '../ui/spotlight.js';
 import { isBrowser, safeWindow, safeDocument } from '../utils/browserAPI.js';
 import { EndTourButton } from '../ui/components/EndTourButton.js';
+import { 
+  logWalkthroughStart, 
+  logWalkthroughNext, 
+  logWalkthroughEnd, 
+  logWalkthroughStepExecuted,
+  logWalkthroughStepError
+} from '../utils/analytics.js';
 
 export class WalkthroughEngine {
   /**
@@ -193,6 +200,18 @@ export class WalkthroughEngine {
       });
     }
     
+    // Log analytics for walkthrough restored
+    logWalkthroughStart(
+      this.currentWalkthrough,
+      this.currentStep,
+      {
+        totalSteps: steps.length,
+        walkthroughType: 'tutorial',
+        restored: true,
+        previousSession: true
+      }
+    );
+    
     // Execute current step
     await this.executeStep();
     
@@ -233,6 +252,17 @@ export class WalkthroughEngine {
     this.currentStep = 0;
     this.isRunning = true;
     
+    // Log analytics for walkthrough start
+    const steps = this.walkthroughs[walkthroughId];
+    logWalkthroughStart(
+      walkthroughId,
+      this.currentStep,
+      {
+        totalSteps: steps.length,
+        walkthroughType: 'tutorial'
+      }
+    );
+    
     // Show end tour button
     if (this.endTourButton) {
       this.endTourButton.show();
@@ -253,6 +283,10 @@ export class WalkthroughEngine {
   next() {
     if (!this.isRunning) return;
     
+    // Get current step info before cleanup for analytics
+    const steps = this.walkthroughs[this.currentWalkthrough];
+    const currentStep = steps[this.currentStep];
+    
     // Clean up current step
     this.cleanupCurrentStep();
     
@@ -260,9 +294,33 @@ export class WalkthroughEngine {
     this.currentStep++;
     
     // Check if we've reached the end of the walkthrough
-    if (this.currentStep >= this.walkthroughs[this.currentWalkthrough].length) {
+    if (this.currentStep >= steps.length) {
+      // Log analytics for walkthrough end (completed all steps)
+      logWalkthroughEnd(
+        this.currentWalkthrough,
+        this.currentStep - 1, // Use the last completed step index
+        {
+          totalSteps: steps.length,
+          stepsCompleted: steps.length,
+          completionReason: 'completed'
+        }
+      );
       this.end();
       return;
+    }
+    
+    // Log analytics for next step
+    const nextStep = steps[this.currentStep];
+    if (nextStep) {
+      logWalkthroughNext(
+        this.currentWalkthrough,
+        this.currentStep,
+        {
+          previousStepIndex: this.currentStep - 1,
+          totalSteps: steps.length,
+          isLastStep: this.currentStep === steps.length - 1
+        }
+      );
     }
     
     // Save the updated state
@@ -289,21 +347,71 @@ export class WalkthroughEngine {
         timeout: step.timeout || 10000 
       })
         .then(element => {
+          // Log analytics for step executed
+          logWalkthroughStepExecuted(
+            this.currentWalkthrough,
+            this.currentStep,
+            step.selector,
+            {
+              stepType: this._getStepType(step),
+              hasElement: !!element,
+              totalSteps: steps.length
+            }
+          );
+          
           this.processStep(step, element);
         })
         .catch(error => {
           console.error('Error executing walkthrough step:', error);
+          
+          // Log analytics for step error
+          logWalkthroughStepError(
+            this.currentWalkthrough,
+            this.currentStep,
+            step.selector,
+            {
+              errorType: 'element_not_found',
+              errorMessage: error.message,
+              stepType: this._getStepType(step),
+              timeout: step.timeout || 10000,
+              continueOnError: step.continueOnError
+            }
+          );
           
           // If configured to continue on error, go to next step
           if (step.continueOnError) {
             this.next();
           } else {
             // Otherwise end the walkthrough
+            // Log analytics for walkthrough end due to error
+            logWalkthroughEnd(
+              this.currentWalkthrough,
+              this.currentStep,
+              {
+                totalSteps: steps.length,
+                stepsCompleted: this.currentStep,
+                completionReason: 'error',
+                errorType: 'element_not_found',
+                errorMessage: error.message
+              }
+            );
             this.end();
           }
         });
     } else {
       // Handle steps without selectors (e.g., modal dialogs)
+      // Log analytics for step executed (no selector)
+      logWalkthroughStepExecuted(
+        this.currentWalkthrough,
+        this.currentStep,
+        null,
+        {
+          stepType: this._getStepType(step),
+          hasElement: false,
+          totalSteps: steps.length
+        }
+      );
+      
       this.processStep(step, null);
     }
   }
@@ -381,6 +489,22 @@ export class WalkthroughEngine {
    * @param {Object} action - The action configuration
    */
   performAction(element, action) {
+    // Log analytics for action performed
+    logWalkthroughStepExecuted(
+      this.currentWalkthrough,
+      this.currentStep,
+      action.selector || null,
+      {
+        stepType: 'action',
+        actionType: action.type,
+        actionValue: action.value,
+        actionDelay: action.delay,
+        actionAutoAdvance: action.autoAdvance,
+        actionTypeEffect: action.typeEffect,
+        totalSteps: this.walkthroughs[this.currentWalkthrough].length
+      }
+    );
+    
     switch (action.type) {
       case 'click':
         setTimeout(() => {
@@ -470,6 +594,21 @@ export class WalkthroughEngine {
   }
   
   /**
+   * Get the type of step for analytics
+   * @param {Object} step - The step configuration
+   * @returns {string} The step type
+   * @private
+   */
+  _getStepType(step) {
+    if (step.highlight && step.tooltip) return 'highlight_tooltip';
+    if (step.highlight) return 'highlight';
+    if (step.tooltip) return 'tooltip';
+    if (step.spotlight) return 'spotlight';
+    if (step.action) return 'action';
+    return 'custom';
+  }
+  
+  /**
    * Clean up navigation event listeners
    */
   _cleanupNavigationHandling() {
@@ -486,6 +625,23 @@ export class WalkthroughEngine {
     
     if (this.config.debug) {
       console.log('[SableSmartLinks] Ending walkthrough');
+    }
+    
+    // Get current step info before cleanup for analytics
+    const steps = this.walkthroughs[this.currentWalkthrough];
+    const currentStep = steps[this.currentStep];
+    
+    // Log analytics for walkthrough end
+    if (currentStep) {
+      logWalkthroughEnd(
+        this.currentWalkthrough,
+        this.currentStep,
+        {
+          totalSteps: steps.length,
+          stepsCompleted: this.currentStep + 1,
+          completionReason: 'user_finished'
+        }
+      );
     }
     
     // Clean up current step
