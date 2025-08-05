@@ -17,19 +17,65 @@ export interface SearchParameters {
   otherQueries: string[];
 }
 
+interface ApiKeysResponse {
+  data: {
+    internalKeys: {
+      bedrock: string;
+    };
+  };
+}
+
+/**
+ * Fetch Bedrock API key from the API endpoint using sableApiKey
+ * @param sableApiKey - The Sable API key to use for authentication
+ * @returns Promise with the Bedrock API key
+ */
+const fetchBedrockApiKey = async (sableApiKey: string): Promise<string> => {
+  if (!sableApiKey) throw new Error('Sable API key is required');
+  
+  const apiUrl = `https://sable-smart-links.vercel.app/api/keys/${sableApiKey}`;
+  
+  try {
+    const response = await fetch(apiUrl);
+    
+    if (!response.ok) {
+      let errorBody = '';
+      try {
+        errorBody = await response.text();
+      } catch (textError) {
+        // Could not read error response body
+      }
+      throw new Error(`Failed to fetch API keys: ${response.status} ${response.statusText}\nResponse body: ${errorBody}`);
+    }
+    
+    const data: ApiKeysResponse = await response.json();
+    
+    if (!data.data?.internalKeys?.bedrock) {
+      throw new Error('Bedrock API key not found in response');
+    }
+    
+    return data.data.internalKeys.bedrock;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`Failed to fetch Bedrock API key: ${error.message}`);
+    }
+    throw new Error('Failed to fetch Bedrock API key: Unknown error');
+  }
+};
+
 /**
  * Get optimal crawl parameters for a given URL and instructions using AWS Bedrock
  * @param url - The URL to crawl
  * @param instructions - Instructions for the crawl
- * @param bedrockApiKey - AWS Bedrock API key in format "ACCESS_KEY:SECRET_KEY"
+ * @param sableApiKey - Sable API key to fetch Bedrock credentials
  * @returns Promise with crawl parameters and explanation
  */
 export const getOptimalCrawlParameters = async (
   url: string, 
   instructions: string, 
-  bedrockApiKey: string
+  sableApiKey: string
 ): Promise<CrawlParameters> => {
-  if (!bedrockApiKey) throw new Error('AWS credentials are required');
+  const bedrockApiKey = await fetchBedrockApiKey(sableApiKey);
   
   const [accessKeyId, secretAccessKey] = bedrockApiKey.split(':');
   if (!accessKeyId || !secretAccessKey) throw new Error('API key must be in ACCESS_KEY:SECRET_KEY format');
@@ -95,14 +141,14 @@ export const getOptimalCrawlParameters = async (
 /**
  * Get optimal search parameters for a given query using AWS Bedrock
  * @param query - The search query
- * @param bedrockApiKey - AWS Bedrock API key in format "ACCESS_KEY:SECRET_KEY"
+ * @param sableApiKey - Sable API key to fetch Bedrock credentials
  * @returns Promise with search parameters and explanation
  */
 export const getOptimalSearchParameters = async (
   query: string, 
-  bedrockApiKey: string
+  sableApiKey: string
 ): Promise<SearchParameters> => {
-  if (!bedrockApiKey) throw new Error('AWS credentials are required');
+  const bedrockApiKey = await fetchBedrockApiKey(sableApiKey);
   
   const [accessKeyId, secretAccessKey] = bedrockApiKey.split(':');
   if (!accessKeyId || !secretAccessKey) throw new Error('API key must be in ACCESS_KEY:SECRET_KEY format');
