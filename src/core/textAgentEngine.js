@@ -9,6 +9,15 @@ import { SimplePopupManager } from '../ui/SimplePopupManager.js';
 import globalPopupManager from '../ui/GlobalPopupManager.js';
 import { PopupStateManager } from '../ui/PopupStateManager.js';
 import { addEvent, debounce } from '../utils/events.js';
+import { 
+  logTextAgentStart, 
+  logTextAgentNext, 
+  logTextAgentPrevious, 
+  logTextAgentEnd, 
+  logTextAgentRestart,
+  logTextAgentStepRendered,
+  logTextAgentStepTriggered
+} from '../utils/analytics.js';
 
 // Singleton instance
 let _instance = null;
@@ -312,6 +321,22 @@ export class TextAgentEngine {
     
     this.activeAgentId = agentId;
     
+    // Log analytics for agent start
+    const currentStep = agent.steps[state.currentStepIndex];
+    if (currentStep) {
+      logTextAgentStart(
+        agentId, 
+        currentStep.id, 
+        state.currentStepIndex,
+        {
+          autoStart: isAutoStart,
+          skipTrigger,
+          stepId,
+          totalSteps: agent.steps.length
+        }
+      );
+    }
+    
     // Render first step
     if (skipTrigger) {
       this._renderCurrentStep(agentId, isAutoStart);
@@ -364,6 +389,21 @@ export class TextAgentEngine {
       
       const showStep = () => {
         if (cleanup) cleanup();
+        
+        // Log analytics for step triggered
+        logTextAgentStepTriggered(
+          agentId,
+          step.id,
+          this.agents.get(agentId).state.currentStepIndex,
+          {
+            triggerType: 'typing',
+            triggerSelector: selector,
+            triggerOn: on,
+            stopDelay,
+            isAutoStart
+          }
+        );
+        
         this._renderCurrentStep(agentId, isAutoStart);
       };
       
@@ -405,6 +445,20 @@ export class TextAgentEngine {
       const showStep = () => {
         // Remove event listeners
         elements.forEach(el => el.removeEventListener(event, handler));
+        
+        // Log analytics for step triggered
+        logTextAgentStepTriggered(
+          agentId,
+          step.id,
+          this.agents.get(agentId).state.currentStepIndex,
+          {
+            triggerType: 'button',
+            triggerSelector: selector,
+            triggerEvent: event,
+            delay,
+            isAutoStart
+          }
+        );
         
         if (delay > 0) {
           setTimeout(() => this._renderCurrentStep(agentId, isAutoStart), delay);
@@ -456,6 +510,21 @@ export class TextAgentEngine {
     // Handle target element
     this._handleTargetElement(step).then(targetElement => {
       this._createPopupForStep(agentId, step, targetElement);
+      
+      // Log analytics for step rendered
+      logTextAgentStepRendered(
+        agentId,
+        step.id,
+        state.currentStepIndex,
+        {
+          isAutoStart,
+          stepType: step.buttonType || 'popup',
+          hasTargetElement: !!targetElement,
+          targetSelector: step.targetElement?.selector,
+          totalSteps: steps.length
+        }
+      );
+      
       // Set autoStartOnce localStorage key when first step is rendered (only for auto-starts)
       if (isAutoStart && config.autoStart && config.autoStartOnce) {
         const localStorageKey = `SableTextAgent_autoStartedOnce_${agentId}`;
@@ -747,14 +816,48 @@ export class TextAgentEngine {
     const agent = this.agents.get(agentId);
     const { steps, state } = agent;
     
+    // Get current step before cleanup for analytics
+    const currentStep = steps[state.currentStepIndex];
+    
     // Clean up current step
     this._cleanupCurrentStep(agentId);
     
     if (state.currentStepIndex < steps.length - 1) {
       state.currentStepIndex++;
+      
+      // Log analytics for next step
+      const nextStep = steps[state.currentStepIndex];
+      if (nextStep) {
+        logTextAgentNext(
+          agentId,
+          nextStep.id,
+          state.currentStepIndex,
+          {
+            previousStepId: currentStep?.id,
+            previousStepIndex: state.currentStepIndex - 1,
+            totalSteps: steps.length,
+            isLastStep: false
+          }
+        );
+      }
+      
       this._renderCurrentStep(agentId, false); // Not auto-start for navigation
     } else {
       // End of steps - show final popup or end
+      // Log analytics for agent end
+      if (currentStep) {
+        logTextAgentEnd(
+          agentId,
+          currentStep.id,
+          state.currentStepIndex,
+          {
+            totalSteps: steps.length,
+            stepsCompleted: steps.length,
+            completionReason: 'user_finished'
+          }
+        );
+      }
+      
       // Determine finalPopupConfig: agent config > global config
       if (agent.config.finalPopupConfig != null) {
         if (!state.finalPopupShown) {
@@ -788,12 +891,31 @@ export class TextAgentEngine {
     }
     
     const agent = this.agents.get(agentId);
-    const { state } = agent;
+    const { steps, state } = agent;
+    
+    // Get current step before cleanup for analytics
+    const currentStep = steps[state.currentStepIndex];
     
     this._cleanupCurrentStep(agentId);
     
     if (state.currentStepIndex > 0) {
       state.currentStepIndex--;
+      
+      // Log analytics for previous step
+      const previousStep = steps[state.currentStepIndex];
+      if (previousStep) {
+        logTextAgentPrevious(
+          agentId,
+          previousStep.id,
+          state.currentStepIndex,
+          {
+            nextStepId: currentStep?.id,
+            nextStepIndex: state.currentStepIndex + 1,
+            totalSteps: steps.length
+          }
+        );
+      }
+      
       this._renderCurrentStep(agentId, false); // Not auto-start for navigation
     }
   }
@@ -854,6 +976,24 @@ export class TextAgentEngine {
     const agent = this.agents.get(agentId);
     if (!agent) return;
     
+    // Log analytics for agent end if it was running
+    if (agent.state.isRunning) {
+      const currentStep = agent.steps[agent.state.currentStepIndex];
+      if (currentStep) {
+        logTextAgentEnd(
+          agentId,
+          currentStep.id,
+          agent.state.currentStepIndex,
+          {
+            totalSteps: agent.steps.length,
+            stepsCompleted: agent.state.currentStepIndex + 1,
+            completionReason: 'agent_ended',
+            hasRenderedOnce: agent.state.hasRenderedOnce
+          }
+        );
+      }
+    }
+    
     this._cleanupCurrentStep(agentId);
     
     // Clean up final popup
@@ -905,6 +1045,22 @@ export class TextAgentEngine {
     }
     
     const agent = this.agents.get(agentId);
+    
+    // Log analytics for restart
+    const currentStep = agent.steps[agent.state.currentStepIndex];
+    if (currentStep) {
+      logTextAgentRestart(
+        agentId,
+        currentStep.id,
+        agent.state.currentStepIndex,
+        {
+          stepId,
+          skipTrigger,
+          totalSteps: agent.steps.length,
+          wasRunning: agent.state.isRunning
+        }
+      );
+    }
     
     // End if currently running
     if (agent.state.isRunning) {

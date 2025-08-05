@@ -13,10 +13,14 @@ import { isBrowser, safeDocument } from './utils/browserAPI.js';
 import { addEvent, debounce } from './utils/events.js';
 import { debugLog } from './config.js';
 import { parseUrlParameters } from './utils/urlParser.js';
+import { getCurrentSessionId, getCurrentUserId, resetSessionId, resetUserId } from './utils/analytics.js';
 
 // Import Tavily features
 export * from './config';
 export * from './features/tavily';
+
+// Export analytics utilities
+export * from './utils/analytics';
 
 class SableSmartLinks {
   /**
@@ -60,6 +64,12 @@ class SableSmartLinks {
           }
         }
       },
+      analytics: {
+        enabled: true,
+        logEvents: true,
+        sessionStorage: true,
+        localStorage: true
+      },
       menu: null, // Default: no menu
       ...config
     };
@@ -76,9 +86,12 @@ class SableSmartLinks {
       if (config.voice.ui) {
         this.config.voice.ui = { ...this.config.voice.ui, ...config.voice.ui };
       }
-      if (config.voice.tools) {
-        this.config.voice.tools = config.voice.tools; // Replace entirely for tools
-      }
+          if (config.voice.tools) {
+      this.config.voice.tools = config.voice.tools; // Replace entirely for tools
+    }
+    if (config.analytics) {
+      this.config.analytics = { ...this.config.analytics, ...config.analytics };
+    }
     }
 
     if (this.config.debug) {
@@ -142,6 +155,10 @@ class SableSmartLinks {
     this.endTextAgent = this.endTextAgent.bind(this);
     this.startTextAgent = this.startTextAgent.bind(this);
     this.toggleVoiceChat = this.toggleVoiceChat.bind(this);
+    this.getAnalyticsSessionId = this.getAnalyticsSessionId.bind(this);
+    this.getAnalyticsUserId = this.getAnalyticsUserId.bind(this);
+    this.resetAnalyticsSession = this.resetAnalyticsSession.bind(this);
+    this.resetAnalyticsUser = this.resetAnalyticsUser.bind(this);
     
     // Auto-start walkthrough if enabled and in browser
     if (typeof window !== 'undefined' && this.config.walkthrough.autoStart) {
@@ -678,6 +695,46 @@ class SableSmartLinks {
     
     this.voiceEngine = null;
     this.config.voice.enabled = false;
+  }
+
+  /**
+   * Get current analytics session ID
+   * @returns {string} Current session ID
+   */
+  getAnalyticsSessionId() {
+    if (!this.config.analytics.enabled) {
+      return null;
+    }
+    return getCurrentSessionId();
+  }
+
+  /**
+   * Get current analytics user ID
+   * @returns {string} Current user ID
+   */
+  getAnalyticsUserId() {
+    if (!this.config.analytics.enabled) {
+      return null;
+    }
+    return getCurrentUserId();
+  }
+
+  /**
+   * Reset analytics session ID
+   */
+  resetAnalyticsSession() {
+    if (this.config.analytics.enabled) {
+      resetSessionId();
+    }
+  }
+
+  /**
+   * Reset analytics user ID
+   */
+  resetAnalyticsUser() {
+    if (this.config.analytics.enabled) {
+      resetUserId();
+    }
   }
 
   /**
