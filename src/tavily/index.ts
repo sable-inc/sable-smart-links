@@ -1,4 +1,5 @@
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
+import { logCrawlBedrockQuery, logSearchBedrockQuery } from '../utils/analytics.js';
 
 // Types for the function parameters and return values
 export interface CrawlParameters {
@@ -121,6 +122,11 @@ export const getOptimalCrawlParameters = async (
   console.log('[SableTavilySearch] getOptimalCrawlParameters called with URL:', url);
   console.log('[SableTavilySearch] Instructions length:', instructions?.length || 0);
   
+  const startTime = Date.now();
+  let duration: number;
+  let outputs: CrawlParameters | null = null;
+  let error: string | null = null;
+  
   try {
     console.log('[SableTavilySearch] Fetching Bedrock API key...');
     const bedrockApiKey = await fetchBedrockApiKey(sableApiKey);
@@ -184,10 +190,36 @@ export const getOptimalCrawlParameters = async (
     const jsonMatch = completionContent.match(/{[\s\S]*}/);
     if (!jsonMatch) throw new Error('Failed to extract JSON from completion');
 
-    return JSON.parse(jsonMatch[0]);
+    const result = JSON.parse(jsonMatch[0]) as CrawlParameters;
+    outputs = result;
+    duration = Date.now() - startTime;
+    
+    // Log successful analytics
+    await logCrawlBedrockQuery({
+      url,
+      instructions,
+      output: outputs,
+      duration,
+      error: null
+    });
+    
+    return result;
     
   } catch (error) {
+    duration = Date.now() - startTime;
+    error = error instanceof Error ? error.message : 'Unknown error';
+    
     console.error('[SableTavilySearch] Error in getOptimalCrawlParameters:', error);
+    
+    // Log error analytics
+    await logCrawlBedrockQuery({
+      url,
+      instructions,
+      output: null,
+      duration,
+      error
+    });
+    
     throw error;
   }
 };
@@ -204,6 +236,11 @@ export const getOptimalSearchParameters = async (
 ): Promise<SearchParameters> => {
   console.log('[SableTavilySearch] getOptimalSearchParameters called with query:', query);
   console.log('[SableTavilySearch] Query length:', query?.length || 0);
+  
+  const startTime = Date.now();
+  let duration: number;
+  let outputs: SearchParameters | null = null;
+  let error: string | null = null;
   
   try {
     console.log('[SableTavilySearch] Fetching Bedrock API key...');
@@ -270,10 +307,34 @@ export const getOptimalSearchParameters = async (
   const jsonMatch = completionContent.match(/{[\s\S]*}/);
   if (!jsonMatch) throw new Error('Failed to extract JSON from completion');
 
-  return JSON.parse(jsonMatch[0]);
+  const result = JSON.parse(jsonMatch[0]) as SearchParameters;
+  outputs = result;
+  duration = Date.now() - startTime;
+  
+  // Log successful analytics
+  await logSearchBedrockQuery({
+    query,
+    output: outputs,
+    duration,
+    error: null
+  });
+  
+  return result;
   
   } catch (error) {
+    duration = Date.now() - startTime;
+    error = error instanceof Error ? error.message : 'Unknown error';
+    
     console.error('[SableTavilySearch] Error in getOptimalSearchParameters:', error);
+    
+      // Log error analytics
+  await logSearchBedrockQuery({
+    query,
+    output: null,
+    duration,
+    error
+  });
+    
     throw error;
   }
 }; 

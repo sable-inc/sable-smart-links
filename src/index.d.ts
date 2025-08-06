@@ -258,6 +258,8 @@ export interface VoiceToolConfig {
  */
 
 export interface WalkthroughStep {
+  /** Unique identifier for the step (required for analytics tracking) */
+  stepId: string;
   /** CSS selector for the target element */
   selector?: string;
   /** Highlight configuration for the element */

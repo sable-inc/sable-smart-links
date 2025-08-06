@@ -224,6 +224,7 @@
                 smartLinks.registerWalkthrough('welcome', [
                     // Step 1: Welcome message with spotlight
                     {
+                        stepId: 'welcome-step',
                         selector: '//p[contains(@class, "chakra-text") and contains(@class, "css-us3qx6") and text()="API Playground"]',
                         highlight: true,
                         spotlight: true,
@@ -236,6 +237,7 @@
 
                     // Step 2: Click on the API Playground button 
                     {
+                        stepId: 'api-button-step',
                         selector: '//button[contains(@class, "chakra-button") and contains(@class, "css-11d35fb") and text()="API Playground"]',
                         highlight: true,
                         action: {
@@ -243,8 +245,9 @@
                         }
                     },
 
-                    // Step 3: Go through search, extract, crawl tabs to showcase the functionalities -- automatic 
+                    // Step 3: Go through search, extract, crawl tabs to showcase the functionalities -- automatic
                     {
+                        stepId: 'search-tab-step',
                         selector: "//p[contains(@class, 'chakra-text') and text()='Search']",
                         highlight: true,
                         spotlight: true,
@@ -258,6 +261,7 @@
                     },
 
                     {
+                        stepId: 'extract-tab-step',
                         selector: "//p[contains(@class, 'chakra-text') and text()='Extract']",
                         highlight: true,
                         spotlight: true,
@@ -271,6 +275,7 @@
                     },
 
                     {
+                        stepId: 'crawl-tab-step',
                         selector: "//p[contains(@class, 'chakra-text') and text()='Crawl']",
                         highlight: true,
                         spotlight: true,
@@ -285,6 +290,7 @@
 
                     // Step 4: Click on the Search button with text
                     {
+                        stepId: 'search-example-step',
                         selector: "//p[contains(@class, 'chakra-text') and text()='Search']",
                         highlight: true,
                         spotlight: true,
@@ -302,6 +308,7 @@
                     // Step 5: 
 
                     {
+                        stepId: 'api-key-step',
                         selector: "//select[@id='api-key' and contains(@class, 'chakra-select') and contains(@class, 'css-4nt0n4')]",
                         highlight: true,
                         spotlight: true,
@@ -317,6 +324,7 @@
                     // Step 6: 
 
                     {
+                        stepId: 'query-input-step',
                         selector: ".chakra-textarea.css-1bp0xr6",
                         highlight: true,
                         spotlight: true,
@@ -332,6 +340,7 @@
                     // Step 7: 
 
                     {
+                        stepId: 'additional-fields-step',
                         selector: "//p[contains(@class, 'chakra-text') and contains(@class, 'css-z8bl7j') and text()='Additional fields']",
                         highlight: true,
                         spotlight: true,

@@ -3,6 +3,7 @@ import { ArrowButton } from './ArrowButton.js';
 import { YesNoButtons } from './YesNoButtons.js';
 import { CloseButton } from './CloseButton.js';
 import { ShortcutsAndRecents } from './ShortcutsAndRecents.js';
+import { logTextAgentEnd } from '../../utils/analytics.js';
 
 // Simple markdown parser for basic formatting
 function parseMarkdown(text) {
@@ -40,8 +41,15 @@ export class SimplePopup {
             includeTextBox: config.includeTextBox || false,
             fontSize: config.fontSize || '15px',
             sections: config.sections || [],
-            debug: config.debug || false // Add debug flag to config
+            debug: config.debug || false, // Add debug flag to config
+            // Add agent information for analytics logging
+            agentInfo: config.agentInfo || null
         };
+
+        // Debug log to verify agentInfo is received
+        if (this.config.debug) {
+            console.log('[SimplePopup] DEBUG: Constructor called with agentInfo:', this.config.agentInfo);
+        }
 
         // State
         // Use position from config if provided, otherwise use default
@@ -468,6 +476,31 @@ export class SimplePopup {
         // Call the onClose callback if provided in config
         if (this.config.onClose) {
             this.config.onClose();
+        }
+
+        // Log analytics when the user manually closes the popup
+        if (this.config.agentInfo) {
+            if (this.config.debug) {
+                console.log(`[SimplePopup] DEBUG: Manual close detected for agent "${this.config.agentInfo.agentId}", step "${this.config.agentInfo.stepId}", instance "${this.config.agentInfo.instanceId}"`);
+            }
+            // Calculate agentDuration fresh at the time of logging
+            const currentTime = Date.now();
+            const agentStartTime = this.config.agentInfo.agentStartTime;
+            const agentDuration = agentStartTime ? currentTime - agentStartTime : null;
+            
+            logTextAgentEnd(
+                this.config.agentInfo.agentId,
+                this.config.agentInfo.stepId,
+                this.config.agentInfo.instanceId,
+                {
+                    completionReason: 'manual'
+                },
+                agentDuration
+            );
+        } else {
+            if (this.config.debug) {
+                console.log(`[SimplePopup] DEBUG: Manual close detected but no agent info available`);
+            }
         }
 
         // Remove the popup from the DOM

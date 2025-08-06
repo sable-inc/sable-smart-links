@@ -4,6 +4,7 @@ import { ExpandedWithShortcuts } from './components/ExpandedWithShortcuts.js';
 import { ExpandedWithMessages } from './components/ExpandedWithMessages.js';
 import { ChatInput } from './components/ChatInput.js';
 import { CloseButton } from './components/CloseButton.js';
+import { logTextAgentEnd } from '../utils/analytics.js';
 
 // PopupStateManager.js
 export class PopupStateManager {
@@ -17,7 +18,9 @@ export class PopupStateManager {
             initialMessage: config.initialMessage || null,
             sections: config.sections || [],
             enableChat: config.enableChat !== undefined ? config.enableChat : true,
-            onClose: config.onClose || (() => {})
+            onClose: config.onClose || (() => {}),
+            // Add agent information for analytics logging
+            agentInfo: config.agentInfo || null
         };
 
         // State variables
@@ -199,6 +202,31 @@ export class PopupStateManager {
         // Call the onClose callback if provided
         if (typeof this.config.onClose === 'function') {
             this.config.onClose();
+        }
+        
+        // Log analytics for manual close
+        if (this.config.agentInfo) {
+            if (this.config.debug) {
+                console.log(`[PopupStateManager] DEBUG: Manual close detected for agent "${this.config.agentInfo.agentId}", step "${this.config.agentInfo.stepId}", instance "${this.config.agentInfo.instanceId}"`);
+            }
+            // Calculate agentDuration fresh at the time of logging
+            const currentTime = Date.now();
+            const agentStartTime = this.config.agentInfo.agentStartTime;
+            const agentDuration = agentStartTime ? currentTime - agentStartTime : null;
+            
+            logTextAgentEnd(
+                this.config.agentInfo.agentId,
+                this.config.agentInfo.stepId,
+                this.config.agentInfo.instanceId,
+                {
+                    completionReason: 'manual'
+                },
+                agentDuration
+            );
+        } else {
+            if (this.config.debug) {
+                console.log(`[PopupStateManager] DEBUG: Manual close detected but no agent info available`);
+            }
         }
         
         // Remove the popup from the DOM

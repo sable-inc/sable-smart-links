@@ -130,14 +130,23 @@ class GlobalPopupManager {
             primaryColor: config.primaryColor || '#FFFFFF',
             includeTextBox: config.includeTextBox || false,
             fontSize: config.fontSize || '15px',
-            sections: config.sections || []
+            sections: config.sections || [],
+            // Add agentInfo for analytics logging
+            agentInfo: config.agentInfo || null,
+            debug: config.debug || false
         };
+
+        // Debug log to verify agentInfo is being passed
+        if (config.debug) {
+            console.log('[GlobalPopupManager] DEBUG: Creating popup with agentInfo:', config.agentInfo);
+        }
 
         // Create popup instance
         const popup = new SimplePopup({
             ...popupConfig,
             onClose: () => {
                 console.trace('[GlobalPopupManager.createPopupManager] onClose callback called');
+                console.log('[GlobalPopupManager] DEBUG: onClose callback triggered, calling closeActivePopup()');
                 // Close the popup and update state
                 this.closeActivePopup();
             },

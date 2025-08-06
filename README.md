@@ -40,6 +40,7 @@ import SableSmartLinks from "sable-smart-links";
 // Register a walkthrough
 SableSmartLinks.registerWalkthrough("new-user-onboarding", [
   {
+    stepId: "welcome-step",
     selector: "#welcome-panel",
     highlight: true,
     spotlight: true,
@@ -50,6 +51,7 @@ SableSmartLinks.registerWalkthrough("new-user-onboarding", [
     },
   },
   {
+    stepId: "navigation-step",
     selector: ".navigation-menu",
     highlight: true,
     tooltip: {
@@ -59,6 +61,7 @@ SableSmartLinks.registerWalkthrough("new-user-onboarding", [
     },
   },
   {
+    stepId: "create-step",
     selector: "#create-button",
     highlight: true,
     tooltip: {
@@ -96,6 +99,9 @@ Each step in a walkthrough can have the following options:
 
 ```javascript
 {
+  // Required: Unique identifier for the step (used in analytics)
+  stepId: 'welcome-step',        // Unique identifier for analytics tracking
+
   // Element targeting
   selector: '#element-id',       // CSS selector, XPath, or element ID
 

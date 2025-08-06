@@ -48,9 +48,12 @@ const setupCollections = async () => {
     // Create indexes for text agent analytics
     await textAgentAnalytics.createIndex({ sessionId: 1 });
     await textAgentAnalytics.createIndex({ agentId: 1 });
+    await textAgentAnalytics.createIndex({ instanceId: 1 });
     await textAgentAnalytics.createIndex({ event: 1 });
     await textAgentAnalytics.createIndex({ timestamp: -1 });
+    await textAgentAnalytics.createIndex({ agentDuration: 1 });
     await textAgentAnalytics.createIndex({ sessionId: 1, agentId: 1 });
+    await textAgentAnalytics.createIndex({ sessionId: 1, instanceId: 1 });
     await textAgentAnalytics.createIndex({ sessionId: 1, timestamp: -1 });
     
     // Walkthrough Analytics Collection
@@ -59,10 +62,37 @@ const setupCollections = async () => {
     // Create indexes for walkthrough analytics
     await walkthroughAnalytics.createIndex({ sessionId: 1 });
     await walkthroughAnalytics.createIndex({ walkthroughId: 1 });
+    await walkthroughAnalytics.createIndex({ stepId: 1 });
+    await walkthroughAnalytics.createIndex({ instanceId: 1 });
     await walkthroughAnalytics.createIndex({ event: 1 });
     await walkthroughAnalytics.createIndex({ timestamp: -1 });
+    await walkthroughAnalytics.createIndex({ agentDuration: 1 });
     await walkthroughAnalytics.createIndex({ sessionId: 1, walkthroughId: 1 });
+    await walkthroughAnalytics.createIndex({ sessionId: 1, instanceId: 1 });
     await walkthroughAnalytics.createIndex({ sessionId: 1, timestamp: -1 });
+    
+    // Crawl Bedrock Queries Collection
+    const crawlBedrockQueries = db.collection('crawlBedrockQueries');
+    
+    // Create indexes for crawl Bedrock queries
+    await crawlBedrockQueries.createIndex({ sessionId: 1 });
+    await crawlBedrockQueries.createIndex({ userId: 1 });
+    await crawlBedrockQueries.createIndex({ 'input.url': 1 });
+    await crawlBedrockQueries.createIndex({ timestamp: -1 });
+    await crawlBedrockQueries.createIndex({ error: 1 });
+    await crawlBedrockQueries.createIndex({ sessionId: 1, timestamp: -1 });
+    
+    // Search Bedrock Queries Collection
+    const searchBedrockQueries = db.collection('searchBedrockQueries');
+    
+    // Create indexes for search Bedrock queries
+    await searchBedrockQueries.createIndex({ sessionId: 1 });
+    await searchBedrockQueries.createIndex({ userId: 1 });
+    await searchBedrockQueries.createIndex({ 'input.query': 'text' });
+    await searchBedrockQueries.createIndex({ timestamp: -1 });
+    await searchBedrockQueries.createIndex({ error: 1 });
+    await searchBedrockQueries.createIndex({ 'output.searchTopic': 1 });
+    await searchBedrockQueries.createIndex({ sessionId: 1, timestamp: -1 });
     
     console.log('Analytics collections and indexes set up successfully');
   } catch (error) {
@@ -77,8 +107,26 @@ const generateSessionId = () => {
 
 // Validate text agent analytics data
 const validateTextAgentAnalytics = (data) => {
-  const required = ['event', 'agentId', 'stepId', 'stepIndex'];
+  const required = ['event', 'agentId', 'stepId'];
   const validEvents = ['start', 'next', 'previous', 'end', 'restart', 'step_rendered', 'step_triggered'];
+  
+  for (const field of required) {
+    if (!data[field] && data[field] !== 0) {
+      throw new Error(`Missing required field: ${field}`);
+    }
+  }
+  
+  if (!validEvents.includes(data.event)) {
+    throw new Error(`Invalid event type: ${data.event}. Must be one of: ${validEvents.join(', ')}`);
+  }
+  
+  return true;
+};
+
+// Validate walkthrough analytics data
+const validateWalkthroughAnalytics = (data) => {
+  const required = ['event', 'walkthroughId', 'stepIndex', 'stepId'];
+  const validEvents = ['start', 'next', 'end', 'step_executed', 'step_error'];
   
   for (const field of required) {
     if (!data[field] && data[field] !== 0) { // Allow 0 for stepIndex
@@ -98,24 +146,37 @@ const validateTextAgentAnalytics = (data) => {
   return true;
 };
 
-// Validate walkthrough analytics data
-const validateWalkthroughAnalytics = (data) => {
-  const required = ['event', 'walkthroughId', 'stepIndex'];
-  const validEvents = ['start', 'next', 'end', 'step_executed', 'step_error'];
+// Validate crawl Bedrock query data
+const validateCrawlBedrockQuery = (data) => {
+  const required = ['url', 'instructions', 'duration'];
   
   for (const field of required) {
-    if (!data[field] && data[field] !== 0) { // Allow 0 for stepIndex
+    if (!data[field] && data[field] !== 0) { // Allow 0 for duration
       throw new Error(`Missing required field: ${field}`);
     }
   }
   
-  if (!validEvents.includes(data.event)) {
-    throw new Error(`Invalid event type: ${data.event}. Must be one of: ${validEvents.join(', ')}`);
+  // Validate duration is a number
+  if (typeof data.duration !== 'number' || data.duration < 0) {
+    throw new Error('duration must be a non-negative number');
   }
   
-  // Validate stepIndex is a number
-  if (typeof data.stepIndex !== 'number' || data.stepIndex < 0) {
-    throw new Error('stepIndex must be a non-negative number');
+  return true;
+};
+
+// Validate search Bedrock query data
+const validateSearchBedrockQuery = (data) => {
+  const required = ['query', 'duration'];
+  
+  for (const field of required) {
+    if (!data[field] && data[field] !== 0) { // Allow 0 for duration
+      throw new Error(`Missing required field: ${field}`);
+    }
+  }
+  
+  // Validate duration is a number
+  if (typeof data.duration !== 'number' || data.duration < 0) {
+    throw new Error('duration must be a non-negative number');
   }
   
   return true;
@@ -163,12 +224,14 @@ app.get('/api/keys/:clientKey', async (req, res) => {
 
 // Text Agent Analytics Logging
 app.post('/api/analytics/text-agent', async (req, res) => {
-  try {``
+  try {
     const { 
       event, 
       agentId, 
       stepId, 
-      stepIndex, 
+      instanceId,
+      stepDuration,
+      agentDuration,
       sessionId, 
       userId, 
       metadata,
@@ -177,7 +240,7 @@ app.post('/api/analytics/text-agent', async (req, res) => {
     
     // Validate required fields
     try {
-      validateTextAgentAnalytics({ event, agentId, stepId, stepIndex });
+      validateTextAgentAnalytics({ event, agentId, stepId });
     } catch (error) {
       return res.status(400).json({ error: error.message });
     }
@@ -189,7 +252,9 @@ app.post('/api/analytics/text-agent', async (req, res) => {
       event,
       agentId,
       stepId: stepId || null,
-      stepIndex: stepIndex !== undefined ? stepIndex : null,
+      instanceId: instanceId || null,
+      stepDuration: stepDuration !== undefined ? stepDuration : null,
+      agentDuration: agentDuration !== undefined ? agentDuration : null,
       sessionId: finalSessionId,
       userId: userId || null,
       metadata: metadata || {},
@@ -213,6 +278,90 @@ app.post('/api/analytics/text-agent', async (req, res) => {
   }
 });
 
+// Update Text Agent Analytics Event Duration
+app.patch('/api/analytics/text-agent/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { stepDuration } = req.body;
+    
+    if (stepDuration === null || stepDuration === undefined) {
+      return res.status(400).json({ error: 'stepDuration is required' });
+    }
+    
+    if (typeof stepDuration !== 'number' || stepDuration < 0) {
+      return res.status(400).json({ error: 'stepDuration must be a non-negative number' });
+    }
+    
+    // Ensure database connection is established
+    const database = await connectToMongoDB();
+    const { ObjectId } = await import('mongodb');
+    
+    const result = await database.collection('textAgentAnalytics').updateOne(
+      { _id: new ObjectId(id) },
+      { 
+        $set: { 
+          stepDuration,
+          updatedAt: new Date()
+        } 
+      }
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Analytics record not found' });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Analytics event duration updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating text agent analytics duration:', error);
+    res.status(500).json({ error: 'Failed to update text agent analytics duration' });
+  }
+});
+
+// Update Walkthrough Analytics Event Duration
+app.patch('/api/analytics/walkthrough/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { stepDuration } = req.body;
+    
+    if (stepDuration === null || stepDuration === undefined) {
+      return res.status(400).json({ error: 'stepDuration is required' });
+    }
+    
+    if (typeof stepDuration !== 'number' || stepDuration < 0) {
+      return res.status(400).json({ error: 'stepDuration must be a non-negative number' });
+    }
+    
+    // Ensure database connection is established
+    const database = await connectToMongoDB();
+    const { ObjectId } = await import('mongodb');
+    
+    const result = await database.collection('walkthroughAnalytics').updateOne(
+      { _id: new ObjectId(id) },
+      { 
+        $set: { 
+          stepDuration,
+          updatedAt: new Date()
+        } 
+      }
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Analytics record not found' });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Walkthrough analytics event duration updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating walkthrough analytics duration:', error);
+    res.status(500).json({ error: 'Failed to update walkthrough analytics duration' });
+  }
+});
+
 // Walkthrough Analytics Logging
 app.post('/api/analytics/walkthrough', async (req, res) => {
   try {
@@ -220,7 +369,11 @@ app.post('/api/analytics/walkthrough', async (req, res) => {
       event, 
       walkthroughId, 
       stepIndex, 
+      stepId,
       stepSelector,
+      instanceId,
+      stepDuration,
+      agentDuration,
       sessionId, 
       userId, 
       metadata,
@@ -229,7 +382,7 @@ app.post('/api/analytics/walkthrough', async (req, res) => {
     
     // Validate required fields
     try {
-      validateWalkthroughAnalytics({ event, walkthroughId, stepIndex });
+      validateWalkthroughAnalytics({ event, walkthroughId, stepIndex, stepId });
     } catch (error) {
       return res.status(400).json({ error: error.message });
     }
@@ -241,7 +394,11 @@ app.post('/api/analytics/walkthrough', async (req, res) => {
       event,
       walkthroughId,
       stepIndex: stepIndex !== undefined ? stepIndex : null,
+      stepId: stepId || null,
       stepSelector: stepSelector || null,
+      instanceId: instanceId || null,
+      stepDuration: stepDuration !== undefined ? stepDuration : null,
+      agentDuration: agentDuration !== undefined ? agentDuration : null,
       sessionId: finalSessionId,
       userId: userId || null,
       metadata: metadata || {},
@@ -316,6 +473,7 @@ app.get('/api/analytics/walkthrough', async (req, res) => {
     const { 
       sessionId, 
       walkthroughId, 
+      stepId,
       event, 
       userId,
       startDate, 
@@ -327,6 +485,7 @@ app.get('/api/analytics/walkthrough', async (req, res) => {
     const filter = {};
     if (sessionId) filter.sessionId = sessionId;
     if (walkthroughId) filter.walkthroughId = walkthroughId;
+    if (stepId) filter.stepId = stepId;
     if (event) filter.event = event;
     if (userId) filter.userId = userId;
     if (startDate || endDate) {
@@ -462,6 +621,209 @@ app.get('/api/analytics/walkthrough/summary', async (req, res) => {
   } catch (error) {
     console.error('Error fetching walkthrough analytics summary:', error);
     res.status(500).json({ error: 'Failed to fetch walkthrough analytics summary' });
+  }
+});
+
+// Crawl Bedrock Queries Analytics Logging
+app.post('/api/analytics/crawl-bedrock', async (req, res) => {
+  try {
+    const { 
+      input, 
+      output, 
+      duration, 
+      error, 
+      sessionId, 
+      userId, 
+      timestamp 
+    } = req.body;
+    
+    // Validate required fields
+    try {
+      validateCrawlBedrockQuery({ 
+        url: input?.url, 
+        instructions: input?.instructions, 
+        duration 
+      });
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
+    
+    // Generate session ID if not provided
+    const finalSessionId = sessionId || generateSessionId();
+    
+    const analyticsEntry = {
+      input,
+      output: output || null,
+      duration,
+      error: error || null,
+      sessionId: finalSessionId || null,
+      userId: userId || null,
+      timestamp: timestamp ? new Date(timestamp) : new Date(),
+      createdAt: new Date()
+    };
+
+    // Ensure database connection is established
+    const database = await connectToMongoDB();
+    const result = await database.collection('crawlBedrockQueries').insertOne(analyticsEntry);
+    
+    res.status(201).json({
+      success: true,
+      id: result.insertedId,
+      sessionId: finalSessionId,
+      message: 'Crawl Bedrock query analytics logged successfully'
+    });
+  } catch (error) {
+    console.error('Error logging crawl Bedrock query analytics:', error);
+    res.status(500).json({ error: 'Failed to log crawl Bedrock query analytics' });
+  }
+});
+
+// Search Bedrock Queries Analytics Logging
+app.post('/api/analytics/search-bedrock', async (req, res) => {
+  try {
+    const { 
+      input, 
+      output, 
+      duration, 
+      error, 
+      sessionId, 
+      userId, 
+      timestamp 
+    } = req.body;
+    
+    // Validate required fields
+    try {
+      validateSearchBedrockQuery({ 
+        query: input?.query, 
+        duration 
+      });
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
+    
+    // Generate session ID if not provided
+    const finalSessionId = sessionId || generateSessionId();
+    
+    const analyticsEntry = {
+      input,
+      output: output || null,
+      duration,
+      error: error || null,
+      sessionId: finalSessionId || null,
+      userId: userId || null,
+      timestamp: timestamp ? new Date(timestamp) : new Date(),
+      createdAt: new Date()
+    };
+
+    // Ensure database connection is established
+    const database = await connectToMongoDB();
+    const result = await database.collection('searchBedrockQueries').insertOne(analyticsEntry);
+    
+    res.status(201).json({
+      success: true,
+      id: result.insertedId,
+      sessionId: finalSessionId,
+      message: 'Search Bedrock query analytics logged successfully'
+    });
+  } catch (error) {
+    console.error('Error logging search Bedrock query analytics:', error);
+    res.status(500).json({ error: 'Failed to log search Bedrock query analytics' });
+  }
+});
+
+// Get Crawl Bedrock Queries Analytics
+app.get('/api/analytics/crawl-bedrock', async (req, res) => {
+  try {
+    const { 
+      sessionId, 
+      userId, 
+      url, 
+      hasError,
+      startDate, 
+      endDate,
+      limit = 100, 
+      skip = 0 
+    } = req.query;
+    
+    const filter = {};
+    if (sessionId) filter.sessionId = sessionId;
+    if (userId) filter.userId = userId;
+    if (url) filter['input.url'] = url;
+    if (hasError !== undefined) {
+      filter.error = hasError === 'true' ? { $ne: null } : null;
+    }
+    if (startDate || endDate) {
+      filter.timestamp = {};
+      if (startDate) filter.timestamp.$gte = new Date(startDate);
+      if (endDate) filter.timestamp.$lte = new Date(endDate);
+    }
+
+    // Ensure database connection is established
+    const database = await connectToMongoDB();
+    const analytics = await database.collection('crawlBedrockQueries')
+      .find(filter)
+      .sort({ timestamp: -1 })
+      .skip(parseInt(skip))
+      .limit(parseInt(limit))
+      .toArray();
+
+    res.json({
+      success: true,
+      data: analytics,
+      count: analytics.length
+    });
+  } catch (error) {
+    console.error('Error fetching crawl Bedrock query analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch crawl Bedrock query analytics' });
+  }
+});
+
+// Get Search Bedrock Queries Analytics
+app.get('/api/analytics/search-bedrock', async (req, res) => {
+  try {
+    const { 
+      sessionId, 
+      userId, 
+      query, 
+      searchTopic,
+      hasError,
+      startDate, 
+      endDate,
+      limit = 100, 
+      skip = 0 
+    } = req.query;
+    
+    const filter = {};
+    if (sessionId) filter.sessionId = sessionId;
+    if (userId) filter.userId = userId;
+    if (query) filter['input.query'] = { $regex: query, $options: 'i' };
+    if (searchTopic) filter['output.searchTopic'] = searchTopic;
+    if (hasError !== undefined) {
+      filter.error = hasError === 'true' ? { $ne: null } : null;
+    }
+    if (startDate || endDate) {
+      filter.timestamp = {};
+      if (startDate) filter.timestamp.$gte = new Date(startDate);
+      if (endDate) filter.timestamp.$lte = new Date(endDate);
+    }
+
+    // Ensure database connection is established
+    const database = await connectToMongoDB();
+    const analytics = await database.collection('searchBedrockQueries')
+      .find(filter)
+      .sort({ timestamp: -1 })
+      .skip(parseInt(skip))
+      .limit(parseInt(limit))
+      .toArray();
+
+    res.json({
+      success: true,
+      data: analytics,
+      count: analytics.length
+    });
+  } catch (error) {
+    console.error('Error fetching search Bedrock query analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch search Bedrock query analytics' });
   }
 });
 

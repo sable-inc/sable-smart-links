@@ -224,6 +224,7 @@
                 smartLinks.registerWalkthrough('welcome', [
                     // Step 1:  
                     {
+                        stepId: 'create-team-step',
                         selector: "//button[contains(@class, 'chakra-button') and contains(@class, 'chakra-menu__menu-button') and contains(@class, 'css-grjyxi')]",
                         highlight: true,
                         spotlight: true,
@@ -239,8 +240,9 @@
                         autoAdvanceDelay: 4000  // 4 second delay before auto-advancing
                     },
 
-                    // Step 2: Click on the API Playground button 
+                    // Step 2: Click on the API Playground button
                     {
+                        stepId: 'team-menu-step',
                         selector: "//p[contains(@class, 'chakra-text') and contains(@class, 'css-128nlh6') and text()='Create Team']",
                         highlight: true,
                         spotlight: true,
@@ -253,6 +255,7 @@
 
                     // Step 3: Go through search, extract, crawl tabs to showcase the functionalities -- automatic 
                     {
+                        stepId: 'team-name-step',
                         selector: ".chakra-input.css-32tk93",
                         highlight: true,
                         spotlight: true,
@@ -267,6 +270,7 @@
 
                     // Step 4: Click on the Search button with text
                     {
+                        stepId: 'create-button-step',
                         selector: "//button[contains(@class, 'chakra-button') and contains(@class, 'css-q6s2cd') and text()='Create']",
                         highlight: true,
                         spotlight: true,
@@ -280,6 +284,7 @@
                     // Step 5: 
 
                     {
+                        stepId: 'invite-email-step',
                         selector: "//input[@placeholder='Email' and contains(@class, 'chakra-input') and contains(@class, 'css-1r3onl0')]",
                         highlight: true,
                         spotlight: true,
@@ -295,6 +300,7 @@
                     // Step 6: 
 
                     {
+                        stepId: 'upgrade-step',
                         selector: "//a[contains(@class, 'chakra-button') and contains(@class, 'css-14dr6v6') and @href='/billing' and text()='Upgrade']",
                         highlight: true,
                         spotlight: true,
