@@ -377,6 +377,13 @@ export class TextAgentEngine {
         if (this.config.debug) {
           console.log(`[SableTextAgent] DEBUG: Already on target step "${stepId}" (index: ${targetStepIndex}), skipping navigation`);
         }
+        // If skipTrigger is true and we're on the same step, render it anyway
+        if (skipTrigger) {
+          if (this.config.debug) {
+            console.log(`[SableTextAgent] DEBUG: skipTrigger is true, rendering current step anyway`);
+          }
+          await this._renderCurrentStep(agentId, false);
+        }
         return true;
       }
       
@@ -394,6 +401,15 @@ export class TextAgentEngine {
       // Render the new step (not auto-start for navigation)
       await this._renderCurrentStep(agentId, false);
       
+      return true;
+    }
+    
+    // Handle case where agent is running but no stepId specified (auto-started but not rendered)
+    if (state.isRunning && skipTrigger) {
+      if (this.config.debug) {
+        console.log(`[SableTextAgent] DEBUG: Agent "${agentId}" is already running but skipTrigger is true, rendering current step`);
+      }
+      await this._renderCurrentStep(agentId, false);
       return true;
     }
     
