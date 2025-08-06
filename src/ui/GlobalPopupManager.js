@@ -17,28 +17,18 @@ class GlobalPopupManager {
      * @returns {Object|null} Popup manager instance or null if failed
      */
     showPopup(options) {
-        const debug = options && options.debug;
-        
-        if (debug) {
-            console.debug('[GlobalPopupManager] showPopup called with options:', options);
-        }
-        
         // Close any existing popup first
         this.closeActivePopup();
 
         try {
             // Create new popup manager directly to avoid circular dependency
             const popupManager = this.createPopupManager(options);
-            if (debug) console.debug('[GlobalPopupManager] Popup manager created:', popupManager);
             
             // Store reference to active popup
-            if (debug) console.debug('[GlobalPopupManager] Setting activePopup - hasActivePopup will change from', this.hasActivePopup(), 'to true');
             this.activePopup = popupManager;
-            if (debug) console.debug('[showPopup] hasActivePopup changed');
             
             // Mount the popup
             const parent = options.parent || document.body;
-            if (debug) console.debug('[GlobalPopupManager] Mounting popup to parent:', parent);
             popupManager.mount(parent);
             
             // Notify listeners
@@ -48,34 +38,18 @@ class GlobalPopupManager {
             const result = {
                 container: popupManager.container, // Expose container for positioning
                 unmount: () => {
-                    if (debug) {
-                        console.log('[GlobalPopupManager] Unmounting popup');
-                    }
                     popupManager.unmount();
-                    if (debug) {
-                        console.log('[GlobalPopupManager] Setting activePopup to null - hasActivePopup will change from', this.hasActivePopup(), 'to false');
-                    }
                     this.activePopup = null;
-                    if (debug) {
-                        console.log('[showPopup.unmount] hasActivePopup changed');
-                    }
                     this.notifyListeners();
                 },
                 mount: (newParent) => {
-                    if (debug) {
-                        console.log('[GlobalPopupManager] Remounting popup to:', newParent);
-                    }
                     popupManager.mount(newParent);
                 },
                 updatePosition: (position) => {
-                    if (debug) {
-                        console.log('[GlobalPopupManager] Updating position:', position);
-                    }
                     popupManager.updatePosition(position);
                 }
             };
             
-            if (debug) console.debug('[GlobalPopupManager] Returning popup result:', result);
             return result;
         } catch (error) {
             console.error('[GlobalPopupManager] Error creating popup:', error);
@@ -90,8 +64,6 @@ class GlobalPopupManager {
      * @returns {Object|null} Popup manager instance or null if failed
      */
     showStatefulPopup(createPopupFn, options) {
-        const debug = options && options.debug;
-        
         this.closeActivePopup();
         try {
             const popupManager = createPopupFn(options);
@@ -136,17 +108,10 @@ class GlobalPopupManager {
             debug: config.debug || false
         };
 
-        // Debug log to verify agentInfo is being passed
-        if (config.debug) {
-            console.log('[GlobalPopupManager] DEBUG: Creating popup with agentInfo:', config.agentInfo);
-        }
-
         // Create popup instance
         const popup = new SimplePopup({
             ...popupConfig,
             onClose: () => {
-                console.trace('[GlobalPopupManager.createPopupManager] onClose callback called');
-                console.log('[GlobalPopupManager] DEBUG: onClose callback triggered, calling closeActivePopup()');
                 // Close the popup and update state
                 this.closeActivePopup();
             },
@@ -166,14 +131,10 @@ class GlobalPopupManager {
                 parentElement.appendChild(popupElement);
             },
             unmount: () => {
-                console.trace('[GlobalPopupManager] popupManager.unmount() stack trace');
                 popupElement.remove();
                 // Update global state when popup is unmounted
                 if (this.activePopup === popupManager) {
-                    // Note: This log is always shown as it's important for debugging popup state
-                    console.log('[GlobalPopupManager] Setting activePopup to null in inner unmount - hasActivePopup will change from', this.hasActivePopup(), 'to false');
                     this.activePopup = null;
-                    console.log('[inner unmount] hasActivePopup changed');
                     this.notifyListeners();
                 }
             },
@@ -213,10 +174,6 @@ class GlobalPopupManager {
      */
     hasActivePopup() {
         const result = this.activePopup !== null;
-        // Note: This log is always shown as it's important for debugging popup state
-        if (this.config?.debug) {
-            console.log('[GlobalPopupManager] hasActivePopup() called, returning:', result);
-        }
         return result;
     }
 

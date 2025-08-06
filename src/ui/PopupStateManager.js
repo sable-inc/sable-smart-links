@@ -109,7 +109,6 @@ export class PopupStateManager {
     }
 
     handleSubmit = async () => {
-        console.log('handleSubmit called, current state:', this.currentState);
         if (!this.chatInput.trim()) return;
 
         const userMessage = this.chatInput.trim();
@@ -251,7 +250,6 @@ export class PopupStateManager {
     // No legacy handlers needed - sections handle their own selection logic
 
     transitionTo(newState) {
-        console.log(`Transitioning from ${this.currentState} to ${newState}`);
         this.currentState = newState;
         this.render();
     }
@@ -332,7 +330,6 @@ export class PopupStateManager {
     }
 
     render() {
-        console.log('Rendering PopupStateManager, current state:', this.currentState);
         // Clear existing content
         this.container.innerHTML = '';
         
@@ -460,7 +457,6 @@ export class PopupStateManager {
                     return;
                 }
                 
-                console.log('Creating ExpandedWithMessages component with messages:', this.messages);
                 const chatInputForMessages = new ChatInput({
                     value: this.chatInput,
                     onChange: this.handleInputChange,
@@ -479,7 +475,6 @@ export class PopupStateManager {
                 break;
         }
 
-        console.log('Created component:', component);
         this.container.appendChild(component.render());
     }
 

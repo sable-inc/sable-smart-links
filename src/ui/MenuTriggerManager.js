@@ -38,28 +38,15 @@ export class MenuTriggerManager {
    */
   init() {
     if (!isBrowser || this.isInitialized) {
-      if (this.config.debug) {
-        console.log('[MenuTriggerManager] Skipping init - not browser or already initialized');
-      }
       return;
-    }
-
-    if (this.config.debug) {
-      console.log('[MenuTriggerManager] Initializing with config:', this.config);
     }
 
     // Wait for page to be fully loaded before creating trigger button
     if (document.readyState === 'loading') {
-      if (this.config.debug) {
-        console.log('[MenuTriggerManager] Document still loading, waiting for DOMContentLoaded');
-      }
       document.addEventListener('DOMContentLoaded', async () => {
         await this._initAfterPageLoad();
       });
     } else {
-      if (this.config.debug) {
-        console.log('[MenuTriggerManager] Document already loaded, proceeding with init');
-      }
       this._initAfterPageLoad();
     }
   }
@@ -69,42 +56,24 @@ export class MenuTriggerManager {
    * @private
    */
   async _initAfterPageLoad() {
-    if (this.config.debug) {
-      console.log('[MenuTriggerManager] Page loaded, checking for existing trigger button');
-    }
     
     // Check if trigger button already exists in DOM
     const existingButton = document.querySelector('.sable-menu-trigger');
     if (existingButton) {
-      if (this.config.debug) {
-        console.log('[MenuTriggerManager] Found existing trigger button in DOM:', existingButton);
-      }
       this.triggerButtonElement = existingButton;
     }
 
     // Create trigger button if enabled and doesn't exist
     if (this.config.enabled && !this.triggerButtonElement) {
-      if (this.config.debug) {
-        console.log('[MenuTriggerManager] Creating new trigger button');
-      }
       await this._createTriggerButton();
     } else if (this.config.enabled && this.triggerButtonElement) {
-      if (this.config.debug) {
-        console.log('[MenuTriggerManager] Using existing trigger button');
-      }
     } else if (!this.config.enabled) {
-      if (this.config.debug) {
-        console.log('[MenuTriggerManager] Trigger button creation disabled in config');
-      }
     }
 
     // Set up popup state listener
     this.setupPopupStateListener();
 
     this.isInitialized = true;
-    if (this.config.debug) {
-      console.log('[MenuTriggerManager] Initialization complete');
-    }
   }
 
   /**
@@ -113,30 +82,20 @@ export class MenuTriggerManager {
    */
   async _createTriggerButton() {
     // Check if we should show the button based on current URL path
-    if (this.config.debug) {
-      console.log('[MenuTriggerManager] Checking trigger button visibility', this._shouldShowTriggerButton());
-    }
     if (!this._shouldShowTriggerButton()) {
       return;
     }
     
     // Check if button already exists in DOM
     if (document.querySelector('.sable-menu-trigger')) {
-      if (this.config.debug) {
-        console.log('[MenuTriggerManager] Trigger button already exists in DOM, skipping creation');
-      }
       return;
     }
 
-    if (this.config.debug) {
-      console.log('[MenuTriggerManager] Creating new trigger button element');
-    }
     
     // Create button using MenuTrigger component
     const menuTrigger = new MenuTrigger({
       text: this.config.text,
       onClick: () => {
-        console.log('[MenuTriggerManager] Trigger button clicked');
         this.showMenuPopup();
       },
       primaryColor: '#FFFFFF',
@@ -184,9 +143,6 @@ export class MenuTriggerManager {
     }
     
     const currentPath = safeWindow.location.pathname;
-    if (this.config.debug) {
-      console.log('[MenuTriggerManager] Current path:', currentPath);
-    }
     
     // Check if current path matches any of the specified paths
     return this.config.urlPaths.some(path => {
@@ -289,9 +245,6 @@ export class MenuTriggerManager {
    * @param {Object} targetConfig - The target configuration
    */
   _watchForTargetElement(targetConfig) {
-    if (this.config.debug) {
-      console.log(`[MenuTriggerManager] Watching for target element: ${targetConfig.selector}`);
-    }
     
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
@@ -327,9 +280,6 @@ export class MenuTriggerManager {
     // Set a timeout to stop observing after a reasonable time
     setTimeout(() => {
       observer.disconnect();
-      if (this.config.debug) {
-        console.log(`[MenuTriggerManager] Stopped watching for target element: ${targetConfig.selector}`);
-      }
     }, targetConfig.waitTimeout || 10000);
   }
 
@@ -380,9 +330,6 @@ export class MenuTriggerManager {
         targetElement.appendChild(this.triggerButtonElement);
       }
       
-      if (this.config.debug) {
-        console.log(`[MenuTriggerManager] Attached trigger button to element: ${targetConfig.selector}`);
-      }
     } catch (error) {
       console.error(`[MenuTriggerManager] Failed to attach trigger button to target: ${error.message}`);
     }
@@ -413,29 +360,17 @@ export class MenuTriggerManager {
    * @private
    */
   setupPopupStateListener() {
-    if (this.config.debug) {
-      console.log('[MenuTriggerManager] Setting up popup state listener');
-    }
     
     this.popupStateListener = (state) => {
-      if (this.config.debug) {
-        console.log('[MenuTriggerManager] Received popup state change - hasActivePopup:', state.hasActivePopup);
-      }
       this.updateTriggerVisibility(state.hasActivePopup);
     };
 
     // Get initial state
     const initialState = globalPopupManager.getState();
-    if (this.config.debug) {
-      console.log('[MenuTriggerManager] Initial popup state - hasActivePopup:', initialState.hasActivePopup);
-    }
     this.updateTriggerVisibility(initialState.hasActivePopup);
 
     // Add listener for state changes
     globalPopupManager.addListener(this.popupStateListener);
-    if (this.config.debug) {
-      console.log('[MenuTriggerManager] Popup state listener registered');
-    }
   }
 
   /**
@@ -445,28 +380,15 @@ export class MenuTriggerManager {
    */
   updateTriggerVisibility(hasActivePopup) {
     if (!this.triggerButtonElement) {
-      if (this.config.debug) {
-        console.log('[MenuTriggerManager] No trigger button element to update visibility');
-      }
       return;
-    }
-    
-    if (this.config.debug) {
-      console.log('[MenuTriggerManager] Updating trigger visibility - hasActivePopup:', hasActivePopup);
     }
     
     if (hasActivePopup) {
       // Hide button when popup is active
       this.triggerButtonElement.style.display = 'none';
-      if (this.config.debug) {
-        console.log('[MenuTriggerManager] Trigger button hidden');
-      }
     } else {
       // Show button when no popup is active
       this.triggerButtonElement.style.display = 'flex';
-      if (this.config.debug) {
-        console.log('[MenuTriggerManager] Trigger button shown');
-      }
     }
   }
 
@@ -475,9 +397,6 @@ export class MenuTriggerManager {
    * @private
    */
   showMenuPopup() {
-    if (this.config.debug) {
-      console.log('[MenuTriggerManager] Showing menu popup');
-    }
 
     // Hide the trigger button since we're showing a popup
     this.updateTriggerVisibility(true);
@@ -527,9 +446,5 @@ export class MenuTriggerManager {
     }
 
     this.isInitialized = false;
-
-    if (this.config.debug) {
-      console.log('[MenuTriggerManager] Destroyed');
-    }
   }
 } 

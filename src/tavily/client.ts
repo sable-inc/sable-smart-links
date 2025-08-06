@@ -40,9 +40,6 @@ export const getOptimalCrawlParameters = async (
   url: string, 
   instructions: string
 ): Promise<CrawlParameters> => {
-  console.log('[SableTavilyClient] getOptimalCrawlParameters called with URL:', url);
-  console.log('[SableTavilyClient] Instructions length:', instructions?.length || 0);
-  
   const startTime = Date.now();
   let duration: number;
   let output: CrawlParameters | null = null;
@@ -50,7 +47,6 @@ export const getOptimalCrawlParameters = async (
   
   try {
     const apiUrl = `${getApiBaseUrl()}/api/sable/crawl`;
-    console.log('[SableTavilyClient] Calling API endpoint:', apiUrl);
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -125,9 +121,6 @@ export const getOptimalCrawlParameters = async (
 export const getOptimalSearchParameters = async (
   query: string
 ): Promise<SearchParameters> => {
-  console.log('[SableTavilyClient] getOptimalSearchParameters called with query:', query);
-  console.log('[SableTavilyClient] Query length:', query?.length || 0);
-  
   const startTime = Date.now();
   let duration: number;
   let output: SearchParameters | null = null;
@@ -135,7 +128,6 @@ export const getOptimalSearchParameters = async (
   
   try {
     const apiUrl = `${getApiBaseUrl()}/api/sable/search`;
-    console.log('[SableTavilyClient] Calling API endpoint:', apiUrl);
     
     const response = await fetch(apiUrl, {
       method: 'POST',

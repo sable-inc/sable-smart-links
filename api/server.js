@@ -27,14 +27,12 @@ const connectToMongoDB = async () => {
       mongoClient = new MongoClient(process.env.MONGODB_URI || 'mongodb://localhost:27017');
       await mongoClient.connect();
       db = mongoClient.db('sable-smart-links');
-      console.log('Connected to MongoDB');
       
       // Set up collections and indexes
       await setupCollections();
     }
     return db;
   } catch (error) {
-    console.error('MongoDB connection error:', error);
     throw error;
   }
 };
@@ -94,9 +92,8 @@ const setupCollections = async () => {
     await searchBedrockQueries.createIndex({ 'output.searchTopic': 1 });
     await searchBedrockQueries.createIndex({ sessionId: 1, timestamp: -1 });
     
-    console.log('Analytics collections and indexes set up successfully');
   } catch (error) {
-    console.error('Error setting up collections:', error);
+    throw error;
   }
 };
 
@@ -217,7 +214,6 @@ app.get('/api/keys/:clientKey', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching key mapping:', error);
     res.status(500).json({ error: 'Failed to fetch key mapping' });
   }
 });
@@ -273,7 +269,6 @@ app.post('/api/analytics/text-agent', async (req, res) => {
       message: 'Text agent analytics logged successfully'
     });
   } catch (error) {
-    console.error('Error logging text agent analytics:', error);
     res.status(500).json({ error: 'Failed to log text agent analytics' });
   }
 });
@@ -315,7 +310,6 @@ app.patch('/api/analytics/text-agent/:id', async (req, res) => {
       message: 'Analytics event duration updated successfully'
     });
   } catch (error) {
-    console.error('Error updating text agent analytics duration:', error);
     res.status(500).json({ error: 'Failed to update text agent analytics duration' });
   }
 });
@@ -357,7 +351,6 @@ app.patch('/api/analytics/walkthrough/:id', async (req, res) => {
       message: 'Walkthrough analytics event duration updated successfully'
     });
   } catch (error) {
-    console.error('Error updating walkthrough analytics duration:', error);
     res.status(500).json({ error: 'Failed to update walkthrough analytics duration' });
   }
 });
@@ -417,7 +410,6 @@ app.post('/api/analytics/walkthrough', async (req, res) => {
       message: 'Walkthrough analytics logged successfully'
     });
   } catch (error) {
-    console.error('Error logging walkthrough analytics:', error);
     res.status(500).json({ error: 'Failed to log walkthrough analytics' });
   }
 });
@@ -462,7 +454,6 @@ app.get('/api/analytics/text-agent', async (req, res) => {
       count: analytics.length
     });
   } catch (error) {
-    console.error('Error fetching text agent analytics:', error);
     res.status(500).json({ error: 'Failed to fetch text agent analytics' });
   }
 });
@@ -509,7 +500,6 @@ app.get('/api/analytics/walkthrough', async (req, res) => {
       count: analytics.length
     });
   } catch (error) {
-    console.error('Error fetching walkthrough analytics:', error);
     res.status(500).json({ error: 'Failed to fetch walkthrough analytics' });
   }
 });
@@ -564,7 +554,6 @@ app.get('/api/analytics/text-agent/summary', async (req, res) => {
       data: summary
     });
   } catch (error) {
-    console.error('Error fetching text agent analytics summary:', error);
     res.status(500).json({ error: 'Failed to fetch text agent analytics summary' });
   }
 });
@@ -619,7 +608,6 @@ app.get('/api/analytics/walkthrough/summary', async (req, res) => {
       data: summary
     });
   } catch (error) {
-    console.error('Error fetching walkthrough analytics summary:', error);
     res.status(500).json({ error: 'Failed to fetch walkthrough analytics summary' });
   }
 });
@@ -673,7 +661,6 @@ app.post('/api/analytics/crawl-bedrock', async (req, res) => {
       message: 'Crawl Bedrock query analytics logged successfully'
     });
   } catch (error) {
-    console.error('Error logging crawl Bedrock query analytics:', error);
     res.status(500).json({ error: 'Failed to log crawl Bedrock query analytics' });
   }
 });
@@ -726,7 +713,6 @@ app.post('/api/analytics/search-bedrock', async (req, res) => {
       message: 'Search Bedrock query analytics logged successfully'
     });
   } catch (error) {
-    console.error('Error logging search Bedrock query analytics:', error);
     res.status(500).json({ error: 'Failed to log search Bedrock query analytics' });
   }
 });
@@ -773,7 +759,6 @@ app.get('/api/analytics/crawl-bedrock', async (req, res) => {
       count: analytics.length
     });
   } catch (error) {
-    console.error('Error fetching crawl Bedrock query analytics:', error);
     res.status(500).json({ error: 'Failed to fetch crawl Bedrock query analytics' });
   }
 });
@@ -822,7 +807,6 @@ app.get('/api/analytics/search-bedrock', async (req, res) => {
       count: analytics.length
     });
   } catch (error) {
-    console.error('Error fetching search Bedrock query analytics:', error);
     res.status(500).json({ error: 'Failed to fetch search Bedrock query analytics' });
   }
 });
@@ -830,7 +814,6 @@ app.get('/api/analytics/search-bedrock', async (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
 });
 

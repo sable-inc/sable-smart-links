@@ -701,7 +701,9 @@ export class TextAgentEngine {
         return this._findElement(step.targetElement.selector);
       }
     } catch (error) {
-      console.error('[SableTextAgent] Error handling target element:', error);
+      if (this.config.debug) {
+        console.error('[SableTextAgent] Error handling target element:', error);
+      }
       return null;
     }
   }

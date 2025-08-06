@@ -39,27 +39,15 @@ export class SimplePopupManager {
     }
 
     handleClose = () => {
-        if (this.config.debug) {
-            console.log('Close clicked');
-        }
         // Remove the popup from the DOM
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
         }
         // Notify global popup manager that popup is closed
-        if (this.config.debug) {
-            console.log('[SimplePopupManager] Calling globalPopupManager.closeActivePopup() in handleClose - this will affect hasActivePopup state');
-        }
         globalPopupManager.closeActivePopup();
-        if (this.config.debug) {
-            console.log('[handleClose] hasActivePopup changed');
-        }
     }
 
     render() {
-        if (this.config.debug) {
-            console.log('Rendering SimplePopupManager');
-        }
         this.container.innerHTML = '';
 
         // Render full popup
@@ -97,13 +85,7 @@ export class SimplePopupManager {
     unmount() {
         this.container.remove();
         // Notify global popup manager that popup is closed
-        if (this.config.debug) {
-            console.log('[SimplePopupManager] Calling globalPopupManager.closeActivePopup() in unmount - this will affect hasActivePopup state');
-        }
         globalPopupManager.closeActivePopup();
-        if (this.config.debug) {
-            console.log('[unmount] hasActivePopup changed');
-        }
     }
     
     /**

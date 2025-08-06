@@ -33,10 +33,6 @@ interface ApiKeysResponse {
  * @returns Promise with the Bedrock API key
  */
 const fetchBedrockApiKey = async (sableApiKey: string): Promise<string> => {
-  console.log('[SableTavilyServer] Starting fetchBedrockApiKey process...');
-  console.log('[SableTavilyServer] Sable API Key length:', sableApiKey?.length || 0);
-  console.log('[SableTavilyServer] Sable API Key (first 10 chars):', sableApiKey?.substring(0, 10) + '...');
-  
   if (!sableApiKey) {
     console.error('[SableTavilyServer] Error: Sable API key is required');
     throw new Error('Sable API key is required');
@@ -44,12 +40,8 @@ const fetchBedrockApiKey = async (sableApiKey: string): Promise<string> => {
   
   // Use localhost in development, Vercel deployment in production
   const apiUrl = `https://sable-smart-links.vercel.app/api/keys/${sableApiKey}`;
-  console.log('[SableTavilyServer] Attempting to fetch from URL:', apiUrl);
   
   try {
-    console.log('[SableTavilyServer] Initiating fetch request...');
-    const startTime = Date.now();
-    
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
@@ -58,39 +50,23 @@ const fetchBedrockApiKey = async (sableApiKey: string): Promise<string> => {
       }
     });
     
-    const endTime = Date.now();
-    console.log('[SableTavilyServer] Fetch completed in', endTime - startTime, 'ms');
-    console.log('[SableTavilyServer] Response status:', response.status);
-    console.log('[SableTavilyServer] Response status text:', response.statusText);
-    console.log('[SableTavilyServer] Response headers:', Object.fromEntries(response.headers.entries()));
-    
     if (!response.ok) {
-      console.error('[SableTavilyServer] Response not OK. Status:', response.status);
       let errorBody = '';
       try {
         errorBody = await response.text();
-        console.error('[SableTavilyServer] Error response body:', errorBody);
       } catch (textError) {
         console.error('[SableTavilyServer] Could not read error response body:', textError);
       }
       throw new Error(`Failed to fetch API keys: ${response.status} ${response.statusText}\nResponse body: ${errorBody}`);
     }
     
-    console.log('[SableTavilyServer] Parsing response as JSON...');
     const data: ApiKeysResponse = await response.json();
-    console.log('[SableTavilyServer] Response data structure:', {
-      hasData: !!data.data,
-      hasInternalKeys: !!data.data?.internalKeys,
-      hasBedrock: !!data.data?.internalKeys?.bedrock,
-      bedrockKeyLength: data.data?.internalKeys?.bedrock?.length || 0
-    });
     
     if (!data.data?.internalKeys?.bedrock) {
       console.error('[SableTavilyServer] Bedrock API key not found in response. Full response:', JSON.stringify(data, null, 2));
       throw new Error('Bedrock API key not found in response');
     }
     
-    console.log('[SableTavilyServer] Successfully retrieved Bedrock API key. Length:', data.data.internalKeys.bedrock.length);
     return data.data.internalKeys.bedrock;
   } catch (error) {
     console.error('[SableTavilyServer] fetchBedrockApiKey error details:', {
@@ -120,18 +96,13 @@ export const getOptimalCrawlParameters = async (
   instructions: string, 
   sableApiKey: string
 ): Promise<CrawlParameters> => {
-  console.log('[SableTavilyServer] getOptimalCrawlParameters called with URL:', url);
-  console.log('[SableTavilyServer] Instructions length:', instructions?.length || 0);
-  
   const startTime = Date.now();
   let duration: number;
   let outputs: CrawlParameters | null = null;
   let error: string | null = null;
   
   try {
-    console.log('[SableTavilyServer] Fetching Bedrock API key...');
     const bedrockApiKey = await fetchBedrockApiKey(sableApiKey);
-    console.log('[SableTavilyServer] Successfully fetched Bedrock API key, proceeding with Bedrock client setup...');
   
     const [accessKeyId, secretAccessKey] = bedrockApiKey.split(':');
     if (!accessKeyId || !secretAccessKey) throw new Error('API key must be in ACCESS_KEY:SECRET_KEY format');
@@ -235,18 +206,13 @@ export const getOptimalSearchParameters = async (
   query: string, 
   sableApiKey: string
 ): Promise<SearchParameters> => {
-  console.log('[SableTavilyServer] getOptimalSearchParameters called with query:', query);
-  console.log('[SableTavilyServer] Query length:', query?.length || 0);
-  
   const startTime = Date.now();
   let duration: number;
   let outputs: SearchParameters | null = null;
   let error: string | null = null;
   
   try {
-    console.log('[SableTavilyServer] Fetching Bedrock API key...');
     const bedrockApiKey = await fetchBedrockApiKey(sableApiKey);
-    console.log('[SableTavilyServer] Successfully fetched Bedrock API key, proceeding with Bedrock client setup...');
   
   const [accessKeyId, secretAccessKey] = bedrockApiKey.split(':');
   if (!accessKeyId || !secretAccessKey) throw new Error('API key must be in ACCESS_KEY:SECRET_KEY format');

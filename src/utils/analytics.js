@@ -60,7 +60,6 @@ const getOrCreateUserId = () => {
 // Log text agent analytics event
 export const logTextAgentEvent = async (eventData) => {
   if (!isBrowser) {
-    console.warn('[SableAnalytics] Cannot log analytics in non-browser environment');
     return;
   }
   
@@ -77,7 +76,6 @@ export const logTextAgentEvent = async (eventData) => {
     
     // Validate required fields
     if (!event || !agentId || stepId === undefined) {
-      console.error('[SableAnalytics] Missing required fields for analytics event:', eventData);
       return;
     }
     
@@ -100,8 +98,6 @@ export const logTextAgentEvent = async (eventData) => {
     };
     
     const apiUrl = `${getApiBaseUrl()}/api/analytics/text-agent`;
-    console.log('[SableAnalytics] Attempting to log event:', event, 'to:', apiUrl);
-    console.log('[SableAnalytics] DEBUG: Full analytics payload:', analyticsPayload);
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -122,21 +118,11 @@ export const logTextAgentEvent = async (eventData) => {
     const result = await response.json();
     
     if (result.success) {
-      console.log('[SableAnalytics] Event logged successfully:', event);
       return result.id; // Return the MongoDB ID for potential updates
     } else {
-      console.error('[SableAnalytics] Failed to log event:', result);
       return null;
     }
   } catch (error) {
-    console.error('[SableAnalytics] Error logging analytics event:', error);
-    console.error('[SableAnalytics] Error details:', {
-      message: error.message,
-      stack: error.stack,
-      url: window.location.href,
-      apiUrl: getApiBaseUrl()
-    });
-    // Don't throw - analytics failures shouldn't break the app
     return null;
   }
 };
@@ -144,18 +130,15 @@ export const logTextAgentEvent = async (eventData) => {
 // Update text agent analytics event with step duration
 export const updateTextAgentEventDuration = async (analyticsId, stepDuration) => {
   if (!isBrowser) {
-    console.warn('[SableAnalytics] Cannot update analytics in non-browser environment');
     return;
   }
   
   if (!analyticsId || stepDuration === null || stepDuration === undefined) {
-    console.warn('[SableAnalytics] Missing analytics ID or step duration for update');
     return;
   }
   
   try {
     const apiUrl = `${getApiBaseUrl()}/api/analytics/text-agent/${analyticsId}`;
-    console.log('[SableAnalytics] Attempting to update event duration:', analyticsId, 'duration:', stepDuration);
     
     const response = await fetch(apiUrl, {
       method: 'PATCH',
@@ -176,19 +159,12 @@ export const updateTextAgentEventDuration = async (analyticsId, stepDuration) =>
     const result = await response.json();
     
     if (result.success) {
-      console.log('[SableAnalytics] Event duration updated successfully:', analyticsId);
+      return;
     } else {
-      console.error('[SableAnalytics] Failed to update event duration:', result);
+      return;
     }
   } catch (error) {
-    console.error('[SableAnalytics] Error updating analytics event duration:', error);
-    console.error('[SableAnalytics] Error details:', {
-      message: error.message,
-      stack: error.stack,
-      url: window.location.href,
-      apiUrl: getApiBaseUrl()
-    });
-    // Don't throw - analytics failures shouldn't break the app
+    return;
   }
 };
 
@@ -230,13 +206,6 @@ export const logTextAgentPrevious = (agentId, stepId, instanceId = null, metadat
 };
 
 export const logTextAgentEnd = (agentId, stepId, instanceId = null, metadata = {}, agentDuration = null) => {
-  console.log(`[SableAnalytics] DEBUG: logTextAgentEnd called with:`, {
-    agentId,
-    stepId,
-    instanceId,
-    metadata,
-    agentDuration
-  });
   return logTextAgentEvent({
     event: 'end',
     agentId,
@@ -272,7 +241,6 @@ export const logTextAgentStepRendered = (agentId, stepId, instanceId = null, met
 // Log walkthrough analytics event
 export const logWalkthroughEvent = async (eventData) => {
   if (!isBrowser) {
-    console.warn('[SableAnalytics] Cannot log analytics in non-browser environment');
     return;
   }
   
@@ -291,7 +259,6 @@ export const logWalkthroughEvent = async (eventData) => {
     
     // Validate required fields
     if (!event || !walkthroughId || stepIndex === undefined || !stepId) {
-      console.error('[SableAnalytics] Missing required fields for walkthrough analytics event:', eventData);
       return;
     }
     
@@ -317,8 +284,6 @@ export const logWalkthroughEvent = async (eventData) => {
     };
     
     const apiUrl = `${getApiBaseUrl()}/api/analytics/walkthrough`;
-    console.log('[SableAnalytics] Attempting to log walkthrough event:', event, 'to:', apiUrl);
-    console.log('[SableAnalytics] DEBUG: Full walkthrough analytics payload:', analyticsPayload);
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -339,21 +304,11 @@ export const logWalkthroughEvent = async (eventData) => {
     const result = await response.json();
     
     if (result.success) {
-      console.log('[SableAnalytics] Walkthrough event logged successfully:', event);
       return result.id; // Return the MongoDB ID for potential updates
     } else {
-      console.error('[SableAnalytics] Failed to log walkthrough event:', result);
       return null;
     }
   } catch (error) {
-    console.error('[SableAnalytics] Error logging walkthrough analytics event:', error);
-    console.error('[SableAnalytics] Error details:', {
-      message: error.message,
-      stack: error.stack,
-      url: window.location.href,
-      apiUrl: getApiBaseUrl()
-    });
-    // Don't throw - analytics failures shouldn't break the app
     return null;
   }
 };
@@ -361,18 +316,15 @@ export const logWalkthroughEvent = async (eventData) => {
 // Update walkthrough analytics event with step duration
 export const updateWalkthroughEventDuration = async (analyticsId, stepDuration) => {
   if (!isBrowser) {
-    console.warn('[SableAnalytics] Cannot update analytics in non-browser environment');
     return;
   }
   
   if (!analyticsId || stepDuration === null || stepDuration === undefined) {
-    console.warn('[SableAnalytics] Missing analytics ID or step duration for update');
     return;
   }
   
   try {
     const apiUrl = `${getApiBaseUrl()}/api/analytics/walkthrough/${analyticsId}`;
-    console.log('[SableAnalytics] Attempting to update walkthrough event duration:', analyticsId, 'duration:', stepDuration);
     
     const response = await fetch(apiUrl, {
       method: 'PATCH',
@@ -393,19 +345,12 @@ export const updateWalkthroughEventDuration = async (analyticsId, stepDuration) 
     const result = await response.json();
     
     if (result.success) {
-      console.log('[SableAnalytics] Walkthrough event duration updated successfully:', analyticsId);
+      return;
     } else {
-      console.error('[SableAnalytics] Failed to update walkthrough event duration:', result);
+      return;
     }
   } catch (error) {
-    console.error('[SableAnalytics] Error updating walkthrough analytics event duration:', error);
-    console.error('[SableAnalytics] Error details:', {
-      message: error.message,
-      stack: error.stack,
-      url: window.location.href,
-      apiUrl: getApiBaseUrl()
-    });
-    // Don't throw - analytics failures shouldn't break the app
+    return;
   }
 };
 
@@ -499,7 +444,7 @@ export const resetUserId = () => {
 // Log crawl Bedrock query analytics event
 export const logCrawlBedrockQuery = async (eventData) => {
   if (!isBrowser) {
-    console.log('[SableAnalytics] Logging crawl Bedrock query in non-browser environment');
+    return;
   }
   
   try {
@@ -513,7 +458,6 @@ export const logCrawlBedrockQuery = async (eventData) => {
     
     // Validate required fields
     if (!url || !instructions || duration === undefined || duration === null) {
-      console.error('[SableAnalytics] Missing required fields for crawl Bedrock analytics event:', eventData);
       return;
     }
     
@@ -531,8 +475,6 @@ export const logCrawlBedrockQuery = async (eventData) => {
     };
     
     const apiUrl = `${getApiBaseUrl()}/api/analytics/crawl-bedrock`;
-    console.log('[SableAnalytics] Attempting to log crawl Bedrock query to:', apiUrl);
-    console.log('[SableAnalytics] DEBUG: Full crawl Bedrock analytics payload:', analyticsPayload);
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -553,21 +495,11 @@ export const logCrawlBedrockQuery = async (eventData) => {
     const result = await response.json();
     
     if (result.success) {
-      console.log('[SableAnalytics] Crawl Bedrock query logged successfully');
       return result.id; // Return the MongoDB ID for potential updates
     } else {
-      console.error('[SableAnalytics] Failed to log crawl Bedrock query:', result);
       return null;
     }
   } catch (error) {
-    console.error('[SableAnalytics] Error logging crawl Bedrock analytics event:', error);
-    console.error('[SableAnalytics] Error details:', {
-      message: error.message,
-      stack: error.stack,
-      url: window.location.href,
-      apiUrl: getApiBaseUrl()
-    });
-    // Don't throw - analytics failures shouldn't break the app
     return null;
   }
 };
@@ -575,7 +507,7 @@ export const logCrawlBedrockQuery = async (eventData) => {
 // Log search Bedrock query analytics event
 export const logSearchBedrockQuery = async (eventData) => {
   if (!isBrowser) {
-    console.log('[SableAnalytics] Logging search Bedrock query in non-browser environment');
+    return;
   }
   
   try {
@@ -588,7 +520,6 @@ export const logSearchBedrockQuery = async (eventData) => {
     
     // Validate required fields
     if (!query || duration === undefined || duration === null) {
-      console.error('[SableAnalytics] Missing required fields for search Bedrock analytics event:', eventData);
       return;
     }
     
@@ -605,8 +536,6 @@ export const logSearchBedrockQuery = async (eventData) => {
     };
     
     const apiUrl = `${getApiBaseUrl()}/api/analytics/search-bedrock`;
-    console.log('[SableAnalytics] Attempting to log search Bedrock query to:', apiUrl);
-    console.log('[SableAnalytics] DEBUG: Full search Bedrock analytics payload:', analyticsPayload);
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -627,21 +556,11 @@ export const logSearchBedrockQuery = async (eventData) => {
     const result = await response.json();
     
     if (result.success) {
-      console.log('[SableAnalytics] Search Bedrock query logged successfully');
       return result.id; // Return the MongoDB ID for potential updates
     } else {
-      console.error('[SableAnalytics] Failed to log search Bedrock query:', result);
       return null;
     }
   } catch (error) {
-    console.error('[SableAnalytics] Error logging search Bedrock analytics event:', error);
-    console.error('[SableAnalytics] Error details:', {
-      message: error.message,
-      stack: error.stack,
-      url: window.location.href,
-      apiUrl: getApiBaseUrl()
-    });
-    // Don't throw - analytics failures shouldn't break the app
     return null;
   }
 }; 
