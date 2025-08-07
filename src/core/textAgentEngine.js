@@ -756,46 +756,39 @@ export class TextAgentEngine {
     const margin = 10;
 
     let newPosition = {};
-    let transform = '';
 
     switch (position) {
       case 'top':
         newPosition = {
           top: elementRect.top - popupRect.height - margin,
-          left: elementRect.left + (elementRect.width / 2)
+          left: elementRect.left + (elementRect.width / 2) - (popupRect.width / 2)
         };
-        transform = 'translateX(-50%)';
         break;
       case 'right':
         newPosition = {
-          top: elementRect.top + (elementRect.height / 2),
+          top: elementRect.top + (elementRect.height / 2) - (popupRect.height / 2),
           left: elementRect.right + margin
         };
-        transform = 'translateY(-50%)';
         break;
       case 'bottom':
         newPosition = {
           top: elementRect.bottom + margin,
-          left: elementRect.left + (elementRect.width / 2)
+          left: elementRect.left + (elementRect.width / 2) - (popupRect.width / 2)
         };
-        transform = 'translateX(-50%)';
         break;
       case 'left':
         newPosition = {
-          top: elementRect.top + (elementRect.height / 2),
-          left: elementRect.left - margin
+          top: elementRect.top + (elementRect.height / 2) - (popupRect.height / 2),
+          left: elementRect.left - popupRect.width - margin
         };
-        transform = 'translate(-100%, -50%)';
         break;
       default:
         newPosition = {
-          top: elementRect.top + (elementRect.height / 2),
-          left: elementRect.left + (elementRect.width / 2)
+          top: elementRect.top + (elementRect.height / 2) - (popupRect.height / 2),
+          left: elementRect.left + (elementRect.width / 2) - (popupRect.width / 2)
         };
-        transform = 'translate(-50%, -50%)';
     }
 
-    popupManager.container.style.transform = transform;
     popupManager.updatePosition(newPosition);
   }
 

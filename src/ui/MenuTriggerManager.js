@@ -1,6 +1,6 @@
 // MenuTriggerManager.js
 import globalPopupManager from './GlobalPopupManager.js';
-import { PopupStateManager } from './PopupStateManager.js';
+import { Popup } from './Popup.js';
 import { isBrowser, safeDocument, safeWindow } from '../utils/browserAPI.js';
 import { waitForElement } from '../utils/elementSelector.js';
 import { MenuTrigger } from './components/MenuTrigger.js';
@@ -394,7 +394,7 @@ export class MenuTriggerManager {
 
     // Use globalPopupManager to enforce singleton
     this._menuPopupManager = globalPopupManager.showStatefulPopup(
-      (opts) => new PopupStateManager(opts),
+      (opts) => new Popup({ ...opts, stateful: true, buttonType: 'none' }),
       {
         platform: 'Sable',
         primaryColor: '#FFFFFF',
