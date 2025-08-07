@@ -319,8 +319,6 @@ export class ElementInteractor {
     // Dispatch the event on the window object
     if (typeof window !== 'undefined') {
       window.dispatchEvent(startEvent);
-    } else {
-      console.warn('[ElementInteractor] Window object not available. Only localStorage key was removed.');
     }
   }
 
@@ -338,8 +336,6 @@ export class ElementInteractor {
     // Dispatch the event on the window object
     if (typeof window !== 'undefined') {
       window.dispatchEvent(endEvent);
-    } else {
-      console.warn('[ElementInteractor] Window object not available for endAgent.');
     }
   }
 }

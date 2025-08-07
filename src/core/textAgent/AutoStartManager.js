@@ -67,9 +67,6 @@ export class AutoStartManager {
       // If agent is running, end if selector is gone
       if (state.isRunning) {
         if (!requiredSelectorPresent) {
-          if (this.config.debug) {
-            console.log(`[SableTextAgent] Ending agent "${agentId}" - required selector no longer present`);
-          }
           this.onAgentEnd(agentId);
         }
         continue;
@@ -86,16 +83,10 @@ export class AutoStartManager {
             continue; // Already auto-started once, skip
           }
         } catch (e) {
-          if (this.config.debug) {
-            console.log(`[SableTextAgent] localStorage not available for agent "${agentId}", assuming autoStartOnce has already happened`);
-          }
           continue;
         }
       }
       // Start the agent
-      if (this.config.debug) {
-        console.log(`[SableTextAgent] Starting agent "${agentId}" (auto-start)`);
-      }
       this.onAgentStart(agentId, null, false, true);
     }
   }
@@ -115,13 +106,8 @@ export class AutoStartManager {
     const localStorageKey = `SableTextAgent_autoStartedOnce_${agentId}`;
     try {
       window.localStorage.setItem(localStorageKey, 'true');
-      if (this.config.debug) {
-        console.log(`[SableTextAgent] Set autoStartOnce localStorage key for agent "${agentId}": ${localStorageKey}`);
-      }
     } catch (e) {
-      if (this.config.debug) {
-        console.log(`[SableTextAgent] localStorage not available, cannot set autoStartOnce key for agent "${agentId}"`);
-      }
+      // localStorage not available
     }
   }
 

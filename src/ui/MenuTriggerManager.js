@@ -223,7 +223,7 @@ export class MenuTriggerManager {
             this._attachButtonToElement(targetElement, targetConfig);
           }
         } catch (error) {
-          console.error(`[MenuTriggerManager] Failed to wait for target element: ${error.message}`);
+          // Failed to wait for target element
         }
       } else {
         // Use MutationObserver to watch for the target element to appear
@@ -322,9 +322,9 @@ export class MenuTriggerManager {
         targetElement.appendChild(this.triggerButtonElement);
       }
 
-    } catch (error) {
-      console.error(`[MenuTriggerManager] Failed to attach trigger button to target: ${error.message}`);
-    }
+          } catch (error) {
+        // Failed to attach trigger button to target
+      }
   }
 
   /**

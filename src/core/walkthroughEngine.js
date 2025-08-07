@@ -139,7 +139,6 @@ export class WalkthroughEngine {
    */
   register(id, steps) {
     if (!Array.isArray(steps) || steps.length === 0) {
-      console.error(`Walkthrough "${id}" must have at least one step`);
       return;
     }
 
@@ -147,7 +146,6 @@ export class WalkthroughEngine {
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
       if (!step.stepId) {
-        console.error(`Walkthrough "${id}" step ${i} is missing required stepId field`);
         return;
       }
     }
@@ -162,7 +160,6 @@ export class WalkthroughEngine {
    */
   start(walkthroughId) {
     if (!this.walkthroughs[walkthroughId]) {
-      console.error(`Walkthrough "${walkthroughId}" not found`);
       return false;
     }
 
@@ -334,7 +331,6 @@ export class WalkthroughEngine {
           this.processStep(step, element);
         })
         .catch(error => {
-          console.error('Error executing walkthrough step:', error);
 
           // Log analytics for step error
           logWalkthroughStepError(
@@ -627,10 +623,6 @@ export class WalkthroughEngine {
    */
   end() {
     if (!this.isRunning) return;
-
-    if (this.config.debug) {
-      console.log('[SableSmartLinks] Ending walkthrough');
-    }
 
     // Get current step info before cleanup for analytics
     const steps = this.walkthroughs[this.currentWalkthrough];

@@ -152,7 +152,7 @@ class SableSmartLinks {
         console.log('[SableSmartLinks] Menu initialization complete');
       }
     } catch (error) {
-      console.error('[SableSmartLinks] Failed to initialize menu:', error);
+      // Failed to initialize menu
     }
   }
 
@@ -232,7 +232,6 @@ class SableSmartLinks {
    */
   showPopup(options) {
     if (!this.textAgentEngine) {
-      console.error('[SableSmartLinks] TextAgentEngine not initialized');
       return null;
     }
 
@@ -320,7 +319,6 @@ class SableSmartLinks {
    */
   registerTextAgent(id, steps, autoStart = false, autoStartOnce = true, beforeStart, requiredSelector) {
     if (!this.textAgentEngine) {
-      console.error('[SableSmartLinks] TextAgentEngine not initialized');
       return this;
     }
     this.textAgentEngine.register(id, steps, {
@@ -341,7 +339,6 @@ class SableSmartLinks {
    */
   async startTextAgent(agentId, stepId = null, skipTrigger = false) {
     if (!this.textAgentEngine) {
-      console.error('[SableSmartLinks] TextAgentEngine not initialized');
       return false;
     }
     return await this.textAgentEngine.start(agentId, stepId, skipTrigger);
@@ -353,7 +350,6 @@ class SableSmartLinks {
    */
   nextTextAgentStep() {
     if (!this.textAgentEngine) {
-      console.error('[SableSmartLinks] TextAgentEngine not initialized');
       return this;
     }
 
@@ -367,7 +363,6 @@ class SableSmartLinks {
    */
   previousTextAgentStep() {
     if (!this.textAgentEngine) {
-      console.error('[SableSmartLinks] TextAgentEngine not initialized');
       return this;
     }
 
@@ -381,7 +376,6 @@ class SableSmartLinks {
    */
   endTextAgent() {
     if (!this.textAgentEngine) {
-      console.error('[SableSmartLinks] TextAgentEngine not initialized');
       return this;
     }
 
@@ -404,7 +398,6 @@ class SableSmartLinks {
     useSessionStorage: false,
   }) {
     if (!this.textAgentEngine) {
-      console.error('[SableSmartLinks] TextAgentEngine not initialized');
       return this;
     }
 
@@ -428,8 +421,6 @@ class SableSmartLinks {
     // Dispatch the event on the window object
     if (typeof window !== 'undefined') {
       window.dispatchEvent(startEvent);
-    } else {
-      console.warn('[SableSmartLinks] Window object not available. Only localStorage key was removed.');
     }
 
     return this;
@@ -493,9 +484,7 @@ class SableSmartLinks {
    * Cleanup and destroy the instance
    */
   destroy() {
-    if (this.config.debug) {
-      console.log('[SableSmartLinks] Destroy called');
-    }
+
 
 
 
@@ -517,17 +506,7 @@ class SableSmartLinks {
     }
 
     // Close all popups
-    if (this.config.debug) {
-      console.log('[SableSmartLinks] Calling globalPopupManager.closeActivePopup() in destroy - this will affect hasActivePopup state');
-    }
     globalPopupManager.closeActivePopup();
-    if (this.config.debug) {
-      console.log('[destroy] hasActivePopup changed');
-    }
-
-    if (this.config.debug) {
-      console.log('[SableSmartLinks] Destroy complete');
-    }
   }
 }
 

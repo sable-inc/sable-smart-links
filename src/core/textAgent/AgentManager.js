@@ -14,9 +14,6 @@ export class AgentManager {
    * Register an agent
    */
   register(agentId, steps, config = {}) {
-    if (this.config.debug) {
-      console.log(`[SableTextAgent] Registering agent "${agentId}" with ${steps.length} steps`);
-    }
 
     // Create immutable steps with IDs
     const stepsWithIds = steps.map((step, index) => ({

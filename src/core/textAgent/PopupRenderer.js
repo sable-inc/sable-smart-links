@@ -16,9 +16,6 @@ export class PopupRenderer {
    * Render popup for a step
    */
   async renderStep(agentId, step, agentInfo) {
-    if (this.config.debug) {
-      console.log(`[SableTextAgent] Rendering step ${step.id} for agent "${agentId}"`);
-    }
 
     // Check conditional rendering
     if (typeof step.showIf === 'function' && !step.showIf()) {
@@ -60,9 +57,6 @@ export class PopupRenderer {
         return this._findElement(step.targetElement.selector);
       }
     } catch (error) {
-      if (this.config.debug) {
-        console.error('[SableTextAgent] Error handling target element:', error);
-      }
       return null;
     }
   }

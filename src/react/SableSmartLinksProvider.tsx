@@ -160,7 +160,6 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
               return value !== undefined ? String(value) : match;
             });
           } catch (e) {
-            console.error('Error processing text template:', e);
             return originalText;
           }
         };
@@ -185,9 +184,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
       if (processedStep.sections == null) { processedStep.sections = []; }
 
       // Handle sections property
-      if (config.debug) {
-        console.log('[processTextAgentSteps] Before processing sections:', processedStep.sections);
-      }
+
       if (Array.isArray(processedStep.sections)) {
         // If sections is an array, convert it to a function that can access step data
         const originalSections = processedStep.sections;
@@ -273,9 +270,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
         ...config,
         menu: menu || config.menu
       };
-      if (config.debug) {
-        console.log('[SableSmartLinksProvider] Merged config:', mergedConfig);
-      }
+
       sableInstance.current = new SableSmartLinks(mergedConfig);
       isMounted.current = true;
       // Register walkthroughs on mount
@@ -307,7 +302,6 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
             startAgent(agentId, { stepId, skipTrigger });
         }, 1500);
       } catch (error) {
-        console.error('Error parsing sable start agent data:', error);
         sessionStorage.removeItem('sable_start_agent');
       }
     }
@@ -495,13 +489,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     },
     
     closeAllPopups: () => {
-      if (config.debug) {
-        console.log('[SableSmartLinksProvider] Calling globalPopupManager.closeActivePopup() in closeAllPopups - this will affect hasActivePopup state');
-      }
       globalPopupManager.closeActivePopup();
-      if (config.debug) {
-        console.log('[closeAllPopups] hasActivePopup changed');
-      }
     },
 
     // Step data methods

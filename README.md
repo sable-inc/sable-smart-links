@@ -227,9 +227,9 @@ const sable = new SableSmartLinks({
             { text: "Action 1", data: { action: "action1" } },
             { text: "Action 2", data: { action: "action2" } },
           ],
-          onSelect: (item) => {
-            console.log("Selected:", item);
-          },
+                  onSelect: (item) => {
+          // Selected: item
+        },
         },
       ],
     },
@@ -267,7 +267,7 @@ function App() {
             {
               title: "Actions",
               items: [{ text: "Do Something", data: { action: "something" } }],
-              onSelect: (item) => console.log(item),
+              onSelect: (item) => { /* item selected */ },
             },
           ],
         },
@@ -300,16 +300,16 @@ const popup = globalPopupManager.showPopup({
   text: "This is a popup message",
   boxWidth: 300,
   buttonType: "arrow",
-  onProceed: () => console.log("Proceed clicked"),
+        onProceed: () => { /* proceed clicked */ },
 });
 
 // Check popup state
 const state = globalPopupManager.getState();
-console.log("Has active popup:", state.hasActivePopup);
+// Has active popup: state.hasActivePopup
 
 // Listen for state changes
 globalPopupManager.addListener((state) => {
-  console.log("Popup state changed:", state);
+  // Popup state changed: state
 });
 
 // Close all popups
@@ -448,7 +448,7 @@ try {
     bedrockApiKey
   );
 
-  console.log("Crawl Parameters:", params);
+  // Crawl Parameters: params
   // {
   //   extractDepth: "advanced",
   //   categories: ["Documentation", "Blogs"],
@@ -465,7 +465,7 @@ try {
     categories: params.categories,
   };
 } catch (error) {
-  console.error("Error:", error);
+  // Error occurred
 }
 ```
 
@@ -484,7 +484,7 @@ try {
     bedrockApiKey
   );
 
-  console.log("Search Parameters:", params);
+  // Search Parameters: params
   // {
   //   searchTopic: "news",
   //   searchDepth: "advanced",
@@ -506,7 +506,7 @@ try {
     includeAnswer: params.includeAnswer,
   };
 } catch (error) {
-  console.error("Error:", error);
+  // Error occurred
 }
 ```
 
@@ -588,7 +588,6 @@ export default async function handler(req, res) {
         .json({ error: 'Type must be either "crawl" or "search"' });
     }
   } catch (error) {
-    console.error("Error:", error);
     return res.status(500).json({
       error: "Failed to process optimization",
       details: error instanceof Error ? error.message : "Unknown error",

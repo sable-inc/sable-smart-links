@@ -555,10 +555,6 @@ export class TextAgentEngine {
 
     // Remove instance tracking
     this.agentManager.removeInstance(agentId);
-
-    if (this.config.debug) {
-      console.log(`[SableTextAgent] Agent "${agentId}" ended`);
-    }
   }
 
   /**

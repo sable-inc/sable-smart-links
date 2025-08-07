@@ -273,8 +273,6 @@ export const getOptimalSearchParameters = async (
     duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-    console.error('[SableTavilyServer] Error in getOptimalSearchParameters:', error);
-
     // Log error analytics
     await logSearchBedrockQuery({
       query,
@@ -369,7 +367,6 @@ export const createSableTavilyHandler = (sableApiKey: string) => {
           return res.status(404).json({ error: 'Endpoint not found' });
       }
     } catch (error) {
-      console.error('[SableTavilyServer] Error:', error);
       return res.status(500).json({
         error: 'Failed to process request',
         details: error instanceof Error ? error.message : 'Unknown error'

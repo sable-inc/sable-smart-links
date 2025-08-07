@@ -81,8 +81,6 @@ export const getOptimalCrawlParameters = async (
     duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-    console.error('[SableTavilyClient] Error in getOptimalCrawlParameters:', error);
-
     // Log error analytics
     await logCrawlBedrockQuery({
       url,
@@ -161,8 +159,6 @@ export const getOptimalSearchParameters = async (
   } catch (error) {
     duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-    console.error('[SableTavilyClient] Error in getOptimalSearchParameters:', error);
 
     // Log error analytics
     await logSearchBedrockQuery({
