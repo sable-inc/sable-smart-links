@@ -39,31 +39,6 @@ class GlobalPopupManager {
         }
     }
 
-    showStatefulPopup(createPopupFn, options) {
-        if (this._isDestroyed) return null;
-        this.closeActivePopup();
-        try {
-            const popupManager = createPopupFn(options);
-            if (typeof popupManager.mount !== 'function' || typeof popupManager.unmount !== 'function') throw new Error();
-            this.activePopup = popupManager;
-            popupManager.mount(document.body);
-            this.broadcastStateChange();
-            return {
-                popup: popupManager,
-                unmount: () => {
-                    if (this.activePopup === popupManager) {
-                        popupManager.unmount();
-                        this.activePopup = null;
-                        this.broadcastStateChange();
-                    }
-                },
-                mount: (newParent) => popupManager.mount(newParent)
-            };
-        } catch (error) {
-            return null;
-        }
-    }
-
     createPopupManager(config) {
         const popupConfig = {
             text: config.text || '',
@@ -79,7 +54,6 @@ class GlobalPopupManager {
             animateText: config.animateText !== undefined ? config.animateText : true,
             markdown: config.markdown !== undefined ? config.markdown : true,
             width: config.width || 380,
-            stateful: config.stateful || false,
             onClose: () => this.closeActivePopup(),
         };
         const popup = new Popup(popupConfig);
@@ -114,9 +88,10 @@ class GlobalPopupManager {
             try {
                 this.activePopup.unmount();
             } catch (error) {
-                this.activePopup = null;
-                this.broadcastStateChange();
+                // ignore
             }
+            this.activePopup = null;
+            this.broadcastStateChange();
         }
     }
 

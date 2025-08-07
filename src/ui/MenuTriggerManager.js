@@ -28,7 +28,7 @@ export class MenuTriggerManager {
     this.triggerButtonElement = null;
     this.isInitialized = false;
     this.popupStateListener = null;
-    this._menuPopupManager = null; // Store reference to the menu popup manager
+    // Removed: this._menuPopupManager = null;
   }
 
   /**
@@ -67,7 +67,6 @@ export class MenuTriggerManager {
 
     // Set up popup state listener
     this.setupPopupStateListener();
-
     this.isInitialized = true;
   }
 
@@ -334,7 +333,6 @@ export class MenuTriggerManager {
    */
   _addUrlChangeListener() {
     if (!this.triggerButtonElement) return;
-
     // Function to update button visibility
     const updateButtonVisibility = () => {
       if (this._shouldShowTriggerButton()) {
@@ -343,7 +341,6 @@ export class MenuTriggerManager {
         this.triggerButtonElement.style.display = 'none';
       }
     };
-
     // Listen for popstate events (browser back/forward)
     window.addEventListener('popstate', updateButtonVisibility);
   }
@@ -391,20 +388,12 @@ export class MenuTriggerManager {
   showMenuPopup() {
     // Get sections from configuration
     const sections = this.config.popupConfig?.sections || [];
-
     // Use globalPopupManager to enforce singleton
-    this._menuPopupManager = globalPopupManager.showStatefulPopup(
-      (opts) => new Popup({ ...opts, stateful: true, buttonType: 'none' }),
-      {
-        platform: 'Sable',
-        primaryColor: '#FFFFFF',
-        width: 380,
-        sections: sections,
-        onClose: () => {
-          this._menuPopupManager = null;
-        }
-      }
-    );
+    globalPopupManager.showPopup({
+      sections: sections,
+      buttonType: 'none',
+      width: 300,
+    });
   }
 
   /**
@@ -415,19 +404,13 @@ export class MenuTriggerManager {
       globalPopupManager.removeListener(this.popupStateListener);
       this.popupStateListener = null;
     }
-
     // Clean up menu popup if it exists
-    if (this._menuPopupManager) {
-      this._menuPopupManager.unmount();
-      this._menuPopupManager = null;
-    }
-
+    // Removed: if (this._menuPopupManager) { ... }
     // Remove trigger button if it exists
     if (this.triggerButtonElement && this.triggerButtonElement.parentNode) {
       this.triggerButtonElement.parentNode.removeChild(this.triggerButtonElement);
       this.triggerButtonElement = null;
     }
-
     this.isInitialized = false;
   }
 } 

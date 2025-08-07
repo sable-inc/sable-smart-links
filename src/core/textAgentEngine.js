@@ -4,7 +4,7 @@
  */
 
 import { waitForElement } from '../utils/elementSelector.js';
-import { isBrowser, safeDocument } from '../utils/browserAPI.js';
+import { safeDocument } from '../utils/browserAPI.js';
 import globalPopupManager from '../ui/GlobalPopupManager.js';
 import { addEvent, debounce } from '../utils/events.js';
 import {
@@ -166,10 +166,10 @@ export class TextAgentEngine {
 
     // Listen for sable:textAgentEnd events
     this._textAgentEndHandler = (event) => {
-      const { agentId, stepId, instanceId, reason } = event.detail || {};
+      const { agentId } = event.detail || {};
 
       if (this.config.debug) {
-        console.log('[SableTextAgent] DEBUG: Received sable:textAgentEnd event:', { agentId, stepId, instanceId, reason });
+        console.log('[SableTextAgent] DEBUG: Received sable:textAgentEnd event:', { agentId });
       }
 
       if (agentId && this.agents.has(agentId)) {
@@ -641,7 +641,7 @@ export class TextAgentEngine {
 
       // Handle auto-actions
       setTimeout(() => {
-        this._performStepActions(step, targetElement);
+        this._performStepActions(step, targetElement, agentId);
       }, this.config.stepDelay);
     });
   }
@@ -796,7 +796,7 @@ export class TextAgentEngine {
    * Perform step actions
    * @private
    */
-  _performStepActions(step, element) {
+  _performStepActions(step, element, agentId) {
     if (!step.action || !element) {
       return;
     }
@@ -810,7 +810,7 @@ export class TextAgentEngine {
           break;
         case 'input':
           if (typeEffect) {
-            this._typeText(element, value, typeDelay, autoAdvance);
+            this._typeText(element, value, typeDelay, autoAdvance, agentId);
           } else {
             element.value = value;
             element.dispatchEvent(new Event('input', { bubbles: true }));
@@ -841,7 +841,7 @@ export class TextAgentEngine {
    * Type text character by character
    * @private
    */
-  _typeText(element, text, charDelay, autoAdvance) {
+  _typeText(element, text, charDelay, autoAdvance, agentId) {
     element.value = '';
     element.dispatchEvent(new Event('input', { bubbles: true }));
 
@@ -1124,30 +1124,6 @@ export class TextAgentEngine {
 
     // Start again
     await this.start(agentId, stepId, skipTrigger);
-  }
-
-  /**
-   * Show a simple popup
-   */
-  showPopup(options) {
-    if (!isBrowser) {
-      if (this.config.debug) {
-        console.warn('[SableTextAgent] Popup can only be shown in browser environment');
-      }
-      return null;
-    }
-
-    const defaultOptions = {
-      text: '',
-      boxWidth: this.config.defaultBoxWidth,
-      buttonType: 'arrow',
-      primaryColor: this.config.primaryColor,
-      parent: safeDocument?.body || document.body,
-      fontSize: '15px',
-      sections: []
-    };
-
-    return globalPopupManager.showPopup({ ...defaultOptions, ...options });
   }
 
   /**

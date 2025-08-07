@@ -33,9 +33,8 @@ export class Popup {
       animateText: config.animateText !== undefined ? config.animateText : true,
       markdown: config.markdown !== undefined ? config.markdown : true,
       width: config.width || 380,
-      stateful: config.stateful || false,
     };
-    this.position = config.position || { top: window.innerHeight / 2, left: window.innerWidth / 2 };
+    this.position = config.position || { top: 200, left: window.innerWidth / 2 };
     this.container = this.createContainer();
     this._initDragging();
     if (this.config.animateText && this.config.text) {
@@ -81,11 +80,11 @@ export class Popup {
       top: `${this.position.top}px`,
       left: `${this.position.left}px`,
       zIndex: 2147483647,
-      width: this.config.stateful ? `${this.config.width}px` : 'fit-content',
+      width: this.config.width ? `${this.config.width}px` : 'fit-content',
       display: 'flex',
       flexDirection: 'column',
       background: `radial-gradient(circle at center, rgba(60, 60, 60, 0.5) 0%, rgba(60, 60, 60, 0.65) 100%)`,
-      padding: this.config.stateful ? '16px' : '12px',
+      padding: this.config.padding ? `${this.config.padding}px` : '12px',
       borderRadius: '16px',
       border: '1px solid rgba(255, 255, 255, 0.2)',
       boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
@@ -94,7 +93,7 @@ export class Popup {
       color: this.config.primaryColor,
       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       userSelect: 'none',
-      maxHeight: this.config.stateful ? '400px' : '',
+      maxHeight: this.config.maxHeight ? `${this.config.maxHeight}px` : '',
       opacity: 1,
       transform: 'scale(1)',
       transformOrigin: 'bottom center',
@@ -149,7 +148,7 @@ export class Popup {
       gap: '10px',
       padding: '0 4px',
       marginTop: '4px',
-      width: 'fit-content',
+      width: this.config.width ? '100%' : 'fit-content',
     });
     const row = document.createElement('div');
     Object.assign(row.style, {
@@ -157,7 +156,7 @@ export class Popup {
       flexDirection: 'row',
       alignItems: 'center',
       gap: '4px',
-      width: 'fit-content',
+      width: this.config.width ? '100%' : 'fit-content',
     });
     const textDiv = document.createElement('div');
     Object.assign(textDiv.style, {
@@ -265,11 +264,7 @@ export class Popup {
   }
 
   close() {
-    if (this.config.debug) console.log('Close clicked');
     if (this.config.onClose) this.config.onClose();
-    if (this.config.agentInfo && this.config.debug) {
-      console.log(`[Popup] DEBUG: Manual close detected for agent "${this.config.agentInfo.agentId}", step "${this.config.agentInfo.stepId}", instance "${this.config.agentInfo.instanceId}"`);
-    }
     if (this.container.parentNode) this.container.parentNode.removeChild(this.container);
   }
 

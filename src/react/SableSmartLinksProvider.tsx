@@ -2,6 +2,7 @@ import React, { useEffect, useRef, createContext, useContext, useState } from 'r
 import { SableSmartLinks, SableSmartLinksConfig, WalkthroughStep, TextAgentStep } from '../index';
 import { isBrowser } from '../utils/browserAPI';
 import globalPopupManager from '../ui/GlobalPopupManager.js';
+console.log('[DEBUG] SableSmartLinksProvider sees globalPopupManager instance ID:', globalPopupManager._debugInstanceId);
 import { startAgent } from '../interactor';
 
 interface SableSmartLinksContextType {
