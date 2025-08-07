@@ -323,6 +323,25 @@ export class ElementInteractor {
       console.warn('[ElementInteractor] Window object not available. Only localStorage key was removed.');
     }
   }
+
+  /**
+   * Ends an agent by dispatching the 'sable:textAgentEnd' event.
+   * @param agentId - The ID of the agent to end
+   */
+  static endAgent(agentId: string): void {
+    const endEvent = new CustomEvent('sable:textAgentEnd', {
+      detail: {
+        agentId: agentId
+      }
+    });
+
+    // Dispatch the event on the window object
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(endEvent);
+    } else {
+      console.warn('[ElementInteractor] Window object not available for endAgent.');
+    }
+  }
 }
 
 // Export individual functions for convenience
@@ -339,5 +358,6 @@ export const isElementVisible = ElementInteractor.isElementVisible.bind(ElementI
 export const highlightElement = ElementInteractor.highlightElement.bind(ElementInteractor);
 export const restoreElementStyle = ElementInteractor.restoreElementStyle.bind(ElementInteractor);
 export const startAgent = ElementInteractor.startAgent.bind(ElementInteractor);
+export const endAgent = ElementInteractor.endAgent.bind(ElementInteractor);
 
 export default ElementInteractor; 

@@ -4,7 +4,7 @@
  */
 
 import { WalkthroughEngine } from './core/walkthroughEngine.js';
-import { TextAgentEngine } from './core/textAgentEngine.js';
+import { TextAgentEngine } from './core/textAgent/TextAgentEngine.js';
 import globalPopupManager from './ui/GlobalPopupManager.js';
 import { MenuTriggerManager } from './ui/MenuTriggerManager.js';
 import { addEvent, debounce } from './utils/events.js';
@@ -316,10 +316,9 @@ class SableSmartLinks {
    * @param {boolean} [autoStartOnce=true] - Whether to only auto-start once
    * @param {Function} [beforeStart] - Optional async function to run before starting
    * @param {string} [requiredSelector] - Optional CSS selector that must be present for the agent to run
-   * @param {boolean} [endWithoutSelector=false] - Whether to end the agent immediately when the required selector disappears
    * @returns {SableSmartLinks} - This instance for chaining
    */
-  registerTextAgent(id, steps, autoStart = false, autoStartOnce = true, beforeStart, requiredSelector, endWithoutSelector = false) {
+  registerTextAgent(id, steps, autoStart = false, autoStartOnce = true, beforeStart, requiredSelector) {
     if (!this.textAgentEngine) {
       console.error('[SableSmartLinks] TextAgentEngine not initialized');
       return this;
@@ -328,8 +327,7 @@ class SableSmartLinks {
       autoStart,
       autoStartOnce,
       beforeStart,
-      requiredSelector,
-      endWithoutSelector
+      requiredSelector
     });
     return this;
   }

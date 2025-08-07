@@ -2,7 +2,6 @@ import React, { useEffect, useRef, createContext, useContext, useState } from 'r
 import { SableSmartLinks, SableSmartLinksConfig, WalkthroughStep, TextAgentStep } from '../index';
 import { isBrowser } from '../utils/browserAPI';
 import globalPopupManager from '../ui/GlobalPopupManager.js';
-console.log('[DEBUG] SableSmartLinksProvider sees globalPopupManager instance ID:', globalPopupManager._debugInstanceId);
 import { startAgent } from '../interactor';
 
 interface SableSmartLinksContextType {
@@ -14,7 +13,7 @@ interface SableSmartLinksContextType {
   endWalkthrough: () => void;
   
   // Text Agent methods
-  registerTextAgent: (id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>, requiredSelector?: string, endWithoutSelector?: boolean) => SableSmartLinksContextType;
+  registerTextAgent: (id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>, requiredSelector?: string) => SableSmartLinksContextType;
   startTextAgent: (agentId?: string, stepId?: string | null, skipTrigger?: boolean) => Promise<boolean>;
   nextTextAgentStep: () => SableSmartLinksContextType;
   previousTextAgentStep: () => SableSmartLinksContextType;
@@ -51,7 +50,6 @@ export interface TextAgentAgentConfig {
   autoStartOnce?: boolean;
   beforeStart?: () => void | Promise<void>;
   requiredSelector?: string;
-  endWithoutSelector?: boolean;
 }
 
 export interface SableSmartLinksProviderProps {
@@ -319,13 +317,13 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
   useEffect(() => {
     if (!isBrowser || !sableInstance.current) return;
     Object.entries(textAgents).forEach(([id, agentConfig]) => {
-      const { steps, autoStart, autoStartOnce, beforeStart, requiredSelector, endWithoutSelector } = agentConfig;
+      const { steps, autoStart, autoStartOnce, beforeStart, requiredSelector } = agentConfig;
       const processedSteps = processTextAgentSteps(id, steps);
       // Hash both steps and config
-      const stepHash = hashSteps([processedSteps, autoStart, autoStartOnce, beforeStart?.toString?.(), requiredSelector, endWithoutSelector]);
+      const stepHash = hashSteps([processedSteps, autoStart, autoStartOnce, beforeStart?.toString?.(), requiredSelector]);
       if (registeredTextAgents.current[id] !== stepHash) {
         if (sableInstance.current) {
-          sableInstance.current.registerTextAgent(id, processedSteps, autoStart, autoStartOnce, beforeStart, requiredSelector, endWithoutSelector);
+          sableInstance.current.registerTextAgent(id, processedSteps, autoStart, autoStartOnce, beforeStart, requiredSelector);
         }
         registeredTextAgents.current[id] = stepHash;
       }
@@ -427,10 +425,10 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     },
     
     // Text Agent methods
-    registerTextAgent: (id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>, requiredSelector?: string, endWithoutSelector?: boolean) => {
+    registerTextAgent: (id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>, requiredSelector?: string) => {
       if (sableInstance.current) {
         const processedSteps = processTextAgentSteps(id, steps);
-        sableInstance.current.registerTextAgent(id, processedSteps, autoStart, autoStartOnce, beforeStart, requiredSelector, endWithoutSelector);
+        sableInstance.current.registerTextAgent(id, processedSteps, autoStart, autoStartOnce, beforeStart, requiredSelector);
       }
       return contextValue;
     },

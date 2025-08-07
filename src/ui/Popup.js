@@ -34,7 +34,7 @@ export class Popup {
       markdown: config.markdown !== undefined ? config.markdown : true,
       width: config.width || 380,
     };
-    this.position = config.position || { top: 200, left: window.innerWidth / 2 };
+    this.position = config.position || { top: 200, left: (window.innerWidth - (config.width ?? 300)) / 2 };
     this.container = this.createContainer();
     this._initDragging();
     if (this.config.animateText && this.config.text) {

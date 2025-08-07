@@ -384,39 +384,7 @@ sable.registerTextAgent(
   autoStart, // Whether to start automatically (default: false)
   autoStartOnce, // Only auto-start once per session (default: true)
   beforeStart, // Optional function to run before starting
-  requiredSelector, // CSS selector that must exist for agent to run
-  endWithoutSelector // End immediately when selector disappears (default: false)
-);
-```
-
-### endWithoutSelector Feature
-
-The `endWithoutSelector` parameter allows you to control when a text agent should end when its required selector is removed from the DOM:
-
-- **`endWithoutSelector: false` (default)**: The agent will only end if the required selector disappears AND no steps have been rendered yet
-- **`endWithoutSelector: true`**: The agent will end immediately when the required selector disappears, even if steps have been rendered
-
-```javascript
-// Agent that ends immediately when target element is removed
-sable.registerTextAgent(
-  "temporary-guide",
-  steps,
-  false,
-  false,
-  null,
-  "#temp-container",
-  true
-);
-
-// Agent that continues running even after target is removed (if steps were rendered)
-sable.registerTextAgent(
-  "persistent-guide",
-  steps,
-  false,
-  false,
-  null,
-  "#persistent-container",
-  false
+  requiredSelector // CSS selector that must exist for agent to run
 );
 ```
 
@@ -678,7 +646,7 @@ interface SearchParameters {
 - `start(walkthroughId)`: Start a walkthrough by ID
 - `next()`: Go to the next step in the current walkthrough
 - `end()`: End the current walkthrough
-- `registerTextAgent(id, steps, autoStart, autoStartOnce, beforeStart, requiredSelector, endWithoutSelector)`: Register a text agent
+- `registerTextAgent(id, steps, autoStart, autoStartOnce, beforeStart, requiredSelector)`: Register a text agent
 - `startTextAgent(agentId, stepId, skipTrigger)`: Start a text agent
 - `nextTextAgentStep()`: Go to next step in current text agent
 - `previousTextAgentStep()`: Go to previous step in current text agent

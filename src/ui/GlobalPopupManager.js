@@ -54,7 +54,12 @@ class GlobalPopupManager {
             animateText: config.animateText !== undefined ? config.animateText : true,
             markdown: config.markdown !== undefined ? config.markdown : true,
             width: config.width || 380,
-            onClose: () => this.closeActivePopup(),
+            onClose: () => {
+                if (config.onClose) {
+                    config.onClose();
+                }
+                this.closeActivePopup();
+            }
         };
         const popup = new Popup(popupConfig);
         const popupElement = popup.render();

@@ -269,7 +269,7 @@ export class SableSmartLinks {
   endWalkthrough(): void;
 
   /* ----- text-agent API ----------- */
-  registerTextAgent(id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>, requiredSelector?: string, endWithoutSelector?: boolean): void;
+  registerTextAgent(id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>, requiredSelector?: string): void;
   /**
    * Start a text agent with the given ID
    * @param agentId Optional ID of the text agent to start
@@ -473,6 +473,4 @@ export interface TextAgentAgentConfig {
   autoStart?: boolean;
   autoStartOnce?: boolean;
   beforeStart?: () => void | Promise<void>;
-  /** Whether to end the text agent immediately when the required selector is no longer present in the DOM (default: false) */
-  endWithoutSelector?: boolean;
 }
