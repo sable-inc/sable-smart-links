@@ -100,6 +100,7 @@ export class ArrowButton {
         if (this.isLoading === isLoading) return; // No change needed
 
         this.isLoading = isLoading;
+        this.button.disabled = isLoading;
 
         // Update button appearance
         if (isLoading) {
