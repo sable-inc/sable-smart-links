@@ -84,7 +84,7 @@ export class ShortcutsAndRecents {
                 itemElement.style.backgroundColor = 'transparent';
                 itemElement.style.color = 'rgba(255, 255, 255, 0.5)';
             });
-            
+
             // Use the provided handler function
             itemElement.addEventListener('click', () => {
                 // Check if this item has a restartFromStep property
@@ -101,7 +101,7 @@ export class ShortcutsAndRecents {
                 fontSize: '12px',
                 color: 'rgba(255, 255, 255, 0.75)',
             });
-            
+
             // Use the item's icon if present, otherwise the section icon
             iconElement.textContent = (item && item.icon) ? item.icon : icon;
 

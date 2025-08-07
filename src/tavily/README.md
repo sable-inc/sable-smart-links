@@ -103,10 +103,9 @@ Once set up, the following endpoints will be available:
   "data": {
     "explanation": "I've set the following parameters:<br> **Extract Depth is advanced** — Complex documentation site.<br> **Categories include Documentation** — Technical content focus.",
     "otherCrawls": [
-      {
-        "url": "https://example.com/docs",
-        "instructions": "Extract all API documentation and code examples"
-      }
+      "Extract all API documentation and code examples",
+      "Extract all pricing information",
+      "Extract all pricing information"
     ],
     "crawlParams": {
       "extractDepth": "advanced",
@@ -183,7 +182,7 @@ interface CrawlParameters {
     | "People"
   )[];
   explanation: string;
-  otherCrawls: { url: string; instructions: string }[];
+  otherCrawls: string[];
 }
 
 interface SearchParameters {

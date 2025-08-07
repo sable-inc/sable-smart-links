@@ -67,7 +67,7 @@
     "lint": "eslint src/**/*.js",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit",
-    "update": "npm run build && npm pack && rm -rf ../tavily-platform-deployment/sable-smart-links-1.5.8.tgz && mv sable-smart-links-1.5.8.tgz ../tavily-platform-deployment"
+    "update": "npm run build && npm pack && rm -rf ../tavily-platform-deployment/sable-smart-links-1.5.9.tgz && mv sable-smart-links-1.5.9.tgz ../tavily-platform-deployment"
   },
   "devDependencies": {
     "@babel/core": "^7.22.5",
@@ -88,6 +88,7 @@
     "eslint": "^8.43.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
+    "next": "^15.4.6",
     "rollup": "^3.25.1",
     "rollup-plugin-dts": "^6.0.2",
     "tslib": "^2.6.2",
@@ -105,8 +106,8 @@
     "@emotion/styled": "^11.14.0",
     "framer-motion": "^12.16.0",
     "openai": "^5.1.1",
-    "zod": "^3.25.53",
-    "socket.io-client": "^4.7.2"
+    "socket.io-client": "^4.0.0",
+    "zod": "^3.25.53"
   },
   "peerDependencies": {
     "socket.io-client": "^4.0.0"

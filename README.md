@@ -219,7 +219,6 @@ const sable = new SableSmartLinks({
       boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
     },
     popupConfig: {
-      enableChat: true,
       sections: [
         {
           title: "Quick Actions",
@@ -264,7 +263,6 @@ function App() {
           boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
         },
         popupConfig: {
-          enableChat: true,
           sections: [
             {
               title: "Actions",

@@ -2,7 +2,7 @@
  * Tooltip functionality for displaying messages
  */
 
-import { isBrowser, safeWindow, safeDocument } from '../utils/browserApi.js';
+import { isBrowser, safeWindow, safeDocument } from '../utils/browserAPI.js';
 import { getElementPosition, createPositionObserver, removePositionObserver, applyPositionWithDelay } from '../utils/positioning.js';
 
 const TOOLTIP_CLASS = 'sable-tooltip';
@@ -19,12 +19,12 @@ let activeTooltipDelayedTaskId = null;
 function injectTooltipStyles() {
   // Only run in browser environment
   if (!isBrowser) return;
-  
+
   // Check if styles are already injected
   if (safeDocument.getElementById('sable-tooltip-styles')) {
     return;
   }
-  
+
   const styleElement = safeDocument.createElement('style');
   styleElement.id = 'sable-tooltip-styles';
   styleElement.textContent = `
@@ -129,9 +129,9 @@ function injectTooltipStyles() {
 function getTooltipContainer() {
   // Only run in browser environment
   if (!isBrowser) return null;
-  
+
   let container = safeDocument.getElementById(TOOLTIP_CONTAINER_ID);
-  
+
   if (!container) {
     container = safeDocument.createElement('div');
     container.id = TOOLTIP_CONTAINER_ID;
@@ -145,7 +145,7 @@ function getTooltipContainer() {
     container.style.zIndex = '99999';
     safeDocument.appendChild(safeDocument.body, container);
   }
-  
+
   return container;
 }
 
@@ -170,25 +170,25 @@ function calculateTooltipPosition(targetElement, tooltipElement, position = 'bot
       }
     };
   }
-  
+
   // Get target and tooltip dimensions
   const targetRect = targetElement.getBoundingClientRect();
   const tooltipRect = tooltipElement.getBoundingClientRect();
   const { left: scrollLeft, top: scrollTop } = safeWindow.getScrollPosition();
-  
+
   // Get manual offsets
   const offsetX = options.offsetX || 0;
   const offsetY = options.offsetY || 0;
-  
+
   // Spacing between target and tooltip
   const spacing = 12;
-  
+
   // Default to bottom if no position specified
   const preferredPosition = position || 'bottom';
-  
+
   // Get viewport dimensions safely
   const { width: viewportWidth, height: viewportHeight } = safeWindow.getViewportDimensions();
-  
+
   // Calculate positions for each direction
   const positions = {
     top: {
@@ -208,10 +208,10 @@ function calculateTooltipPosition(targetElement, tooltipElement, position = 'bot
       left: targetRect.left + scrollLeft - tooltipRect.width - 10 + offsetX
     }
   };
-  
+
   // Check if the preferred position fits in the viewport
   let chosenPosition = preferredPosition;
-  
+
   // Check if the tooltip would be outside the viewport in the preferred position
   const preferred = positions[preferredPosition];
   const isOutsideViewport = {
@@ -220,12 +220,12 @@ function calculateTooltipPosition(targetElement, tooltipElement, position = 'bot
     bottom: preferred.top + tooltipRect.height > viewportHeight,
     left: preferred.left < 0
   };
-  
+
   // If the preferred position doesn't fit, try alternatives
   if (isOutsideViewport[preferredPosition]) {
     // Try positions in this order
     const alternatives = ['bottom', 'right', 'top', 'left'];
-    
+
     for (const alt of alternatives) {
       if (alt !== preferredPosition && !isOutsideViewport[alt]) {
         chosenPosition = alt;
@@ -233,17 +233,17 @@ function calculateTooltipPosition(targetElement, tooltipElement, position = 'bot
       }
     }
   }
-  
+
   // Use the chosen position
   const chosen = positions[chosenPosition];
-  
+
   // Adjust horizontal position if needed to keep tooltip in viewport
   if (chosen.left < 0) {
     chosen.left = 10;
   } else if (chosen.left + tooltipRect.width > viewportWidth) {
     chosen.left = viewportWidth - tooltipRect.width - 10;
   }
-  
+
   return {
     tooltipClass: `${TOOLTIP_CLASS}-${chosenPosition}`,
     tooltipStyle: {
@@ -271,37 +271,37 @@ function calculateTooltipPosition(targetElement, tooltipElement, position = 'bot
 export function showTooltip(targetElement, content, options = {}) {
   // Hide any existing tooltip
   hideTooltip();
-  
+
   // Inject styles if not already done
   injectTooltipStyles();
-  
+
   // Get container
   const container = getTooltipContainer();
-  
+
   // Create tooltip element
   // Only run in browser environment
   if (!isBrowser) return null;
-  
+
   const tooltipEl = safeDocument.createElement('div');
   tooltipEl.className = TOOLTIP_CLASS;
   tooltipEl.style.pointerEvents = 'auto';
-  
+
   // Parse content
-  const tooltipContent = typeof content === 'string' 
-    ? { content } 
+  const tooltipContent = typeof content === 'string'
+    ? { content }
     : content;
-  
+
   // Create tooltip HTML
   let tooltipHTML = '';
-  
+
   if (tooltipContent.title) {
     tooltipHTML += `<div class="${TOOLTIP_CLASS}-title">${tooltipContent.title}</div>`;
   }
-  
+
   tooltipHTML += `<div class="${TOOLTIP_CLASS}-content">${tooltipContent.content}</div>`;
-  
+
   tooltipHTML += `<div class="${TOOLTIP_CLASS}-buttons">`;
-  
+
   if (tooltipContent.skipButton) {
     tooltipHTML += `
       <button class="${TOOLTIP_CLASS}-button ${TOOLTIP_CLASS}-button-secondary ${TOOLTIP_CLASS}-skip-button">
@@ -309,25 +309,25 @@ export function showTooltip(targetElement, content, options = {}) {
       </button>
     `;
   }
-  
+
   tooltipHTML += `
     <button class="${TOOLTIP_CLASS}-button ${TOOLTIP_CLASS}-button-primary ${TOOLTIP_CLASS}-next-button">
       ${tooltipContent.nextButton || 'Next'}
     </button>
   </div>`;
-  
+
   // Set content
   tooltipEl.innerHTML += tooltipHTML;
-  
+
   // Add to DOM
   container.appendChild(tooltipEl);
-  
+
   // Create a position observer to keep the tooltip aligned with the element
   const updateTooltipPosition = (targetElement, tooltipElement) => {
     const { tooltipClass, tooltipStyle, chosenPosition } = calculateTooltipPosition(
-      targetElement, 
-      tooltipElement, 
-      options.position, 
+      targetElement,
+      tooltipElement,
+      options.position,
       {
         offsetX: tooltipContent.offsetX || 0,
         offsetY: tooltipContent.offsetY || 0
@@ -337,21 +337,21 @@ export function showTooltip(targetElement, content, options = {}) {
     tooltipElement.classList.add(tooltipClass);
     Object.assign(tooltipElement.style, tooltipStyle);
   };
-  
+
   // Clean up any existing observer and delayed task
   if (activeTooltipObserverId) {
     removePositionObserver(activeTooltipObserverId);
   }
-  
+
   // Apply delayed positioning for better accuracy
   if (activeTooltipDelayedTaskId) {
     clearTimeout(activeTooltipDelayedTaskId);
   }
   activeTooltipDelayedTaskId = applyPositionWithDelay(targetElement, tooltipEl, updateTooltipPosition, 100);
-  
+
   // Create new observer for continuous tracking
   activeTooltipObserverId = createPositionObserver(targetElement, tooltipEl, updateTooltipPosition);
-  
+
   // Add event listeners
   const nextButton = tooltipEl.querySelector(`.${TOOLTIP_CLASS}-next-button`);
   if (nextButton) {
@@ -361,7 +361,7 @@ export function showTooltip(targetElement, content, options = {}) {
       }
     });
   }
-  
+
   const skipButton = tooltipEl.querySelector(`.${TOOLTIP_CLASS}-skip-button`);
   if (skipButton) {
     skipButton.addEventListener('click', () => {
@@ -372,10 +372,10 @@ export function showTooltip(targetElement, content, options = {}) {
       }
     });
   }
-  
+
   // Store reference to active tooltip
   activeTooltip = tooltipEl;
-  
+
   return tooltipEl;
 }
 
@@ -386,13 +386,13 @@ export function hideTooltip() {
   if (activeTooltip && activeTooltip.parentNode) {
     activeTooltip.parentNode.removeChild(activeTooltip);
     activeTooltip = null;
-    
+
     // Clean up any active position observer
     if (activeTooltipObserverId) {
       removePositionObserver(activeTooltipObserverId);
       activeTooltipObserverId = null;
     }
-    
+
     // Clear any delayed positioning task
     if (activeTooltipDelayedTaskId) {
       clearTimeout(activeTooltipDelayedTaskId);

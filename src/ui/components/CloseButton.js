@@ -41,7 +41,7 @@ export class CloseButton {
                 <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
         `;
-        
+
         button.addEventListener('click', (e) => {
             e.stopPropagation();
             onClose();

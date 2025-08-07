@@ -3,7 +3,6 @@
  * This module creates a spotlight effect that darkens everything except the highlighted element
  */
 
-import { isBrowser, safeDocument } from '../utils/browserApi.js';
 import { getElementPosition, isElementInViewport, createPositionObserver, removePositionObserver, applyPositionWithDelay } from '../utils/positioning.js';
 
 const SPOTLIGHT_CLASS = 'sable-spotlight';
@@ -22,7 +21,7 @@ function injectSpotlightStyles() {
   if (document.getElementById('sable-spotlight-styles')) {
     return;
   }
-  
+
   const styleElement = document.createElement('style');
   styleElement.id = 'sable-spotlight-styles';
   styleElement.textContent = `
@@ -45,7 +44,7 @@ function injectSpotlightStyles() {
  */
 function getSpotlightContainer() {
   let container = document.getElementById(SPOTLIGHT_CONTAINER_ID);
-  
+
   if (!container) {
     container = document.createElement('div');
     container.id = SPOTLIGHT_CONTAINER_ID;
@@ -59,7 +58,7 @@ function getSpotlightContainer() {
     container.style.zIndex = '99997';
     document.body.appendChild(container);
   }
-  
+
   return container;
 }
 
@@ -80,13 +79,13 @@ function getSpotlightContainer() {
 export function createSpotlight(element, options = {}) {
   // Ensure we have a valid element
   if (!element) return null;
-  
+
   // Remove any existing spotlights
   removeSpotlights();
-  
+
   // Inject styles if not already done
   injectSpotlightStyles();
-  
+
   // Default options
   const {
     animate = true,
@@ -95,34 +94,34 @@ export function createSpotlight(element, options = {}) {
     closeOnClick = false,
     onClose = null
   } = options;
-  
+
   // Get element position and dimensions using unified positioning utility
   const position = getElementPosition(element, padding);
-  
+
   // Create the spotlight element
   const spotlightEl = document.createElement('div');
   spotlightEl.className = SPOTLIGHT_CLASS;
   if (animate) {
     spotlightEl.classList.add(`${SPOTLIGHT_CLASS}-animation`);
   }
-  
+
   // Position and size the spotlight
   spotlightEl.style.left = `${position.left}px`;
   spotlightEl.style.top = `${position.top}px`;
   spotlightEl.style.width = `${position.width}px`;
   spotlightEl.style.height = `${position.height}px`;
-  
+
   // Add to DOM using the container
   const container = getSpotlightContainer();
   container.appendChild(spotlightEl);
-  
+
   // Track this spotlight
   activeSpotlights.push(spotlightEl);
-  
+
   // Create a position observer to keep the spotlight aligned with the element
   const updateSpotlightPosition = (targetElement, uiElement) => {
     const newPosition = getElementPosition(targetElement, padding, {
-      offsetX: options.offsetX || 0, 
+      offsetX: options.offsetX || 0,
       offsetY: options.offsetY || 0
     });
     uiElement.style.left = `${newPosition.left}px`;
@@ -130,19 +129,19 @@ export function createSpotlight(element, options = {}) {
     uiElement.style.width = `${newPosition.width}px`;
     uiElement.style.height = `${newPosition.height}px`;
   };
-  
+
   // Apply delayed positioning for better accuracy
   const delayedTaskId = applyPositionWithDelay(element, spotlightEl, updateSpotlightPosition, 100);
   if (delayedTaskId) {
     activeDelayedTasks.push(delayedTaskId);
   }
-  
+
   // Create position observer for continuous tracking
   const observerId = createPositionObserver(element, spotlightEl, updateSpotlightPosition);
   if (observerId) {
     activeObserverIds.push(observerId);
   }
-  
+
   // Add click handler to the document if needed
   if (closeOnClick) {
     const clickHandler = (e) => {
@@ -155,13 +154,13 @@ export function createSpotlight(element, options = {}) {
         }
       }
     };
-    
+
     // Add with a delay to avoid immediate triggering
     setTimeout(() => {
       document.addEventListener('click', clickHandler);
     }, 100);
   }
-  
+
   // Scroll element into view if needed
   if (!isElementInViewport(element)) {
     element.scrollIntoView({
@@ -169,7 +168,7 @@ export function createSpotlight(element, options = {}) {
       block: 'center'
     });
   }
-  
+
   return spotlightEl;
 }
 
@@ -183,12 +182,12 @@ export function removeSpotlights() {
       spotlight.parentNode.removeChild(spotlight);
     }
   });
-  
+
   // Remove all position observers
   activeObserverIds.forEach(id => {
     removePositionObserver(id);
   });
-  
+
   // Clear the arrays
   activeSpotlights.length = 0;
   activeObserverIds.length = 0;

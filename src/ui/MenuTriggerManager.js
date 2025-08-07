@@ -3,7 +3,6 @@ import globalPopupManager from './GlobalPopupManager.js';
 import { PopupStateManager } from './PopupStateManager.js';
 import { isBrowser, safeDocument, safeWindow } from '../utils/browserAPI.js';
 import { waitForElement } from '../utils/elementSelector.js';
-import { debounce } from '../utils/events.js';
 import { MenuTrigger } from './components/MenuTrigger.js';
 
 /**
@@ -20,7 +19,6 @@ export class MenuTriggerManager {
       targetElement: null, // Element to attach the button to
       urlPaths: [], // Array of URL paths where the button should be shown
       popupConfig: {
-        enableChat: false,
         sections: []
       },
       debug: false,
@@ -56,7 +54,7 @@ export class MenuTriggerManager {
    * @private
    */
   async _initAfterPageLoad() {
-    
+
     // Check if trigger button already exists in DOM
     const existingButton = document.querySelector('.sable-menu-trigger');
     if (existingButton) {
@@ -85,13 +83,13 @@ export class MenuTriggerManager {
     if (!this._shouldShowTriggerButton()) {
       return;
     }
-    
+
     // Check if button already exists in DOM
     if (document.querySelector('.sable-menu-trigger')) {
       return;
     }
 
-    
+
     // Create button using MenuTrigger component
     const menuTrigger = new MenuTrigger({
       text: this.config.text,
@@ -101,24 +99,24 @@ export class MenuTriggerManager {
       primaryColor: '#FFFFFF',
       className: 'sable-menu-trigger'
     });
-    
+
     // Get the button element from the component
     const button = menuTrigger.render();
-    
+
     // Apply positioning styles
     Object.assign(button.style, {
       position: 'fixed',
       zIndex: '9999'
     });
-    
+
     // Position the button if no target selector is provided
     if (!this.config.targetElement) {
       this._positionTriggerButton(button);
     }
-    
+
     // Store reference to the button
     this.triggerButtonElement = button;
-    
+
     // If there's a target selector, wait for the element and append the button
     if (this.config.targetElement) {
       this._attachButtonToTarget();
@@ -126,7 +124,7 @@ export class MenuTriggerManager {
       // Otherwise, append to body
       safeDocument.body.appendChild(button);
     }
-    
+
     // Add URL change listener to show/hide the trigger button
     this._addUrlChangeListener();
   }
@@ -141,22 +139,22 @@ export class MenuTriggerManager {
     if (!this.config.urlPaths || this.config.urlPaths.length === 0) {
       return true;
     }
-    
+
     const currentPath = safeWindow.location.pathname;
-    
+
     // Check if current path matches any of the specified paths
     return this.config.urlPaths.some(path => {
       // Support exact match
       if (path === currentPath) {
         return true;
       }
-      
+
       // Support wildcard match (e.g., '/products/*')
       if (path.endsWith('*')) {
         const basePath = path.slice(0, -1);
         return currentPath.startsWith(basePath);
       }
-      
+
       return false;
     });
   }
@@ -168,7 +166,7 @@ export class MenuTriggerManager {
    */
   _positionTriggerButton(button) {
     const position = this.config.position || 'bottom-right';
-    
+
     switch (position) {
       case 'bottom-right':
         Object.assign(button.style, {
@@ -211,12 +209,12 @@ export class MenuTriggerManager {
     if (!this.config.targetElement || !this.triggerButtonElement) {
       return;
     }
-    
+
     const targetConfig = this.config.targetElement;
-    
+
     // Try to find the target element immediately
     let targetElement = document.querySelector(targetConfig.selector);
-    
+
     if (targetElement) {
       this._attachButtonToElement(targetElement, targetConfig);
     } else {
@@ -245,7 +243,7 @@ export class MenuTriggerManager {
    * @param {Object} targetConfig - The target configuration
    */
   _watchForTargetElement(targetConfig) {
-    
+
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         if (mutation.type === 'childList') {
@@ -257,7 +255,7 @@ export class MenuTriggerManager {
                 observer.disconnect();
                 return;
               }
-              
+
               // Check if any child of the added node matches our selector
               const matchingChild = node.querySelector && node.querySelector(targetConfig.selector);
               if (matchingChild) {
@@ -270,13 +268,13 @@ export class MenuTriggerManager {
         }
       }
     });
-    
+
     // Start observing the document body for changes
     observer.observe(document.body, {
       childList: true,
       subtree: true
     });
-    
+
     // Set a timeout to stop observing after a reasonable time
     setTimeout(() => {
       observer.disconnect();
@@ -293,7 +291,7 @@ export class MenuTriggerManager {
     if (!this.triggerButtonElement) {
       return;
     }
-    
+
     try {
       // Reset position styles when attaching to a target
       Object.assign(this.triggerButtonElement.style, {
@@ -303,11 +301,11 @@ export class MenuTriggerManager {
         bottom: 'auto',
         left: 'auto'
       });
-      
+
       // If position is specified, use it to position the button relative to the target
       if (targetConfig.position) {
         const position = targetConfig.position;
-        
+
         switch (position) {
           case 'top':
             targetElement.insertAdjacentElement('beforebegin', this.triggerButtonElement);
@@ -329,7 +327,7 @@ export class MenuTriggerManager {
         // Default behavior - append inside the target
         targetElement.appendChild(this.triggerButtonElement);
       }
-      
+
     } catch (error) {
       console.error(`[MenuTriggerManager] Failed to attach trigger button to target: ${error.message}`);
     }
@@ -341,16 +339,16 @@ export class MenuTriggerManager {
    */
   _addUrlChangeListener() {
     if (!this.triggerButtonElement) return;
-    
+
     // Function to update button visibility
-    const updateButtonVisibility = () => { 
+    const updateButtonVisibility = () => {
       if (this._shouldShowTriggerButton()) {
         this.triggerButtonElement.style.display = 'flex';
       } else {
         this.triggerButtonElement.style.display = 'none';
       }
     };
-    
+
     // Listen for popstate events (browser back/forward)
     window.addEventListener('popstate', updateButtonVisibility);
   }
@@ -360,7 +358,7 @@ export class MenuTriggerManager {
    * @private
    */
   setupPopupStateListener() {
-    
+
     this.popupStateListener = (state) => {
       this.updateTriggerVisibility(state.hasActivePopup);
     };
@@ -382,7 +380,7 @@ export class MenuTriggerManager {
     if (!this.triggerButtonElement) {
       return;
     }
-    
+
     if (hasActivePopup) {
       // Hide button when popup is active
       this.triggerButtonElement.style.display = 'none';
@@ -403,21 +401,20 @@ export class MenuTriggerManager {
 
     // Get sections from configuration
     const sections = this.config.popupConfig?.sections || [];
-    
+
     // Use globalPopupManager to enforce singleton
     this._menuPopupManager = globalPopupManager.showStatefulPopup(
-        (opts) => new PopupStateManager(opts),
-        {
-            platform: 'Sable',
-            primaryColor: '#FFFFFF',
-            width: 380,
-            sections: sections,
-            enableChat: this.config.popupConfig.enableChat,
-            onClose: () => {
-                this.updateTriggerVisibility(false);
-                this._menuPopupManager = null;
-            }
+      (opts) => new PopupStateManager(opts),
+      {
+        platform: 'Sable',
+        primaryColor: '#FFFFFF',
+        width: 380,
+        sections: sections,
+        onClose: () => {
+          this.updateTriggerVisibility(false);
+          this._menuPopupManager = null;
         }
+      }
     );
   }
 

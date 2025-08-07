@@ -2,7 +2,6 @@
  * Element highlighting functionality
  */
 
-import { isBrowser } from '../utils/browserAPI.js';
 import { getElementPosition, isElementInViewport, createPositionObserver, removePositionObserver, applyPositionWithDelay } from '../utils/positioning.js';
 
 const HIGHLIGHT_CLASS = 'sable-highlight';
@@ -21,7 +20,7 @@ function injectHighlightStyles() {
   if (document.getElementById('sable-highlight-styles')) {
     return;
   }
-  
+
   const styleElement = document.createElement('style');
   styleElement.id = 'sable-highlight-styles';
   styleElement.textContent = `
@@ -67,48 +66,48 @@ function injectHighlightStyles() {
  */
 export function highlightElement(element, options = {}) {
   if (!element) return null;
-  
+
   // Inject styles if not already done
   injectHighlightStyles();
-  
+
   // Default options
   const {
     animate = true,
     padding = 5,
     color = '#3498db'
   } = options;
-  
+
   // Remove any existing highlight
   removeHighlight();
-  
+
   // Get element position and dimensions using unified positioning utility
   const position = getElementPosition(element, padding);
-  
+
   // Create highlight element
   const highlightEl = document.createElement('div');
   highlightEl.className = HIGHLIGHT_CLASS;
   if (animate) {
     highlightEl.classList.add(HIGHLIGHT_ANIMATION_CLASS);
   }
-  
+
   // Position and size the highlight
   highlightEl.style.left = `${position.left}px`;
   highlightEl.style.top = `${position.top}px`;
   highlightEl.style.width = `${position.width}px`;
   highlightEl.style.height = `${position.height}px`;
-  
+
   // Apply custom color if provided
   if (color !== '#3498db') {
     highlightEl.style.borderColor = color;
     highlightEl.style.backgroundColor = `${color}19`; // 10% opacity
   }
-  
+
   // Add to DOM
   document.body.appendChild(highlightEl);
-  
+
   // Store reference to active highlight
   activeHighlight = highlightEl;
-  
+
   // Create a position observer to keep the highlight aligned with the element
   const updateHighlightPosition = (targetElement, uiElement) => {
     const newPosition = getElementPosition(targetElement, padding, {
@@ -120,21 +119,21 @@ export function highlightElement(element, options = {}) {
     uiElement.style.width = `${newPosition.width}px`;
     uiElement.style.height = `${newPosition.height}px`;
   };
-  
+
   // Clean up any existing observer and delayed task
   if (activeHighlightObserverId) {
     removePositionObserver(activeHighlightObserverId);
   }
-  
+
   // Apply delayed positioning for better accuracy
   if (activeHighlightDelayedTaskId) {
     clearTimeout(activeHighlightDelayedTaskId);
   }
   activeHighlightDelayedTaskId = applyPositionWithDelay(element, highlightEl, updateHighlightPosition, 100);
-  
+
   // Create new observer for continuous tracking
   activeHighlightObserverId = createPositionObserver(element, highlightEl, updateHighlightPosition);
-  
+
   // Scroll element into view if needed
   if (!isElementInViewport(element)) {
     element.scrollIntoView({
@@ -142,7 +141,7 @@ export function highlightElement(element, options = {}) {
       block: 'center'
     });
   }
-  
+
   return highlightEl;
 }
 
@@ -153,13 +152,13 @@ export function removeHighlight() {
   if (activeHighlight && activeHighlight.parentNode) {
     activeHighlight.parentNode.removeChild(activeHighlight);
     activeHighlight = null;
-    
+
     // Clean up any active position observer
     if (activeHighlightObserverId) {
       removePositionObserver(activeHighlightObserverId);
       activeHighlightObserverId = null;
     }
-    
+
     // Clear any delayed positioning task
     if (activeHighlightDelayedTaskId) {
       clearTimeout(activeHighlightDelayedTaskId);

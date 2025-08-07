@@ -8,22 +8,22 @@ import { logTextAgentEnd } from '../../utils/analytics.js';
 // Simple markdown parser for basic formatting
 function parseMarkdown(text) {
     if (!text) return '';
-    
+
     // Process bold text (** or __)
     text = text.replace(/\*\*(.*?)\*\*|__(.*?)__/g, '<strong>$1$2</strong>');
-    
+
     // Process italic text (* or _)
     text = text.replace(/\*(.*?)\*|_(.*?)_/g, '<em>$1$2</em>');
-    
+
     // Process code snippets (`code`)
     text = text.replace(/`(.*?)`/g, '<code style="background-color:rgba(0,0,0,0.2);padding:2px 4px;border-radius:3px;">$1</code>');
-    
+
     // Process links [text](url)
     text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;">$1</a>');
-    
+
     // Process line breaks
     text = text.replace(/\n/g, '<br>');
-    
+
     return text;
 }
 
@@ -33,11 +33,11 @@ export class SimplePopup {
             text: config.text || '',
             boxWidth: config.boxWidth || 200,
             buttonType: config.buttonType || 'arrow', // 'arrow' or 'yes-no'
-            onProceed: config.onProceed || (() => {}),
-            onYesNo: config.onYesNo || (() => {}),
+            onProceed: config.onProceed || (() => { }),
+            onYesNo: config.onYesNo || (() => { }),
             primaryColor: config.primaryColor || '#FFFFFF',
-            onClose: config.onClose || (() => {}),
-            onPositionChange: config.onPositionChange || (() => {}),
+            onClose: config.onClose || (() => { }),
+            onPositionChange: config.onPositionChange || (() => { }),
             includeTextBox: config.includeTextBox || false,
             fontSize: config.fontSize || '15px',
             sections: config.sections || [],
@@ -183,7 +183,7 @@ export class SimplePopup {
             textRendering: 'optimizeLegibility',
             fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         });
-        
+
         // Store a direct reference to the text container
         this.textContainer = textContainer;
 
@@ -194,7 +194,7 @@ export class SimplePopup {
             transform: 'scale(0.9)',
             transition: 'all 0.8s ease',
         });
-        
+
         // Store a direct reference to the button container
         this.buttonContainer = buttonContainer;
 
@@ -204,8 +204,8 @@ export class SimplePopup {
             const arrowButton = new ArrowButton(() => {
                 const textInput = this.inputBox ? this.inputBox.value : '';
                 if (this.config.debug) {
-                  console.debug('[SimplePopup] Input box exists:', !!this.inputBox);
-                  console.debug('[SimplePopup] Raw input box value:', textInput);
+                    console.debug('[SimplePopup] Input box exists:', !!this.inputBox);
+                    console.debug('[SimplePopup] Raw input box value:', textInput);
                 }
                 // Pass the string value directly
                 if (typeof this.config.onProceed === 'function') {
@@ -219,7 +219,9 @@ export class SimplePopup {
                         if (result instanceof Promise) {
                             result
                                 .catch(err => {
-                                    console.error('Error in onProceed:', err);
+                                    if (this.config.debug) {
+                                        console.error('Error in onProceed:', err);
+                                    }
                                     // Don't rethrow to prevent unhandled promise rejection
                                 })
                                 .finally(() => {
@@ -235,12 +237,14 @@ export class SimplePopup {
                         }
                     } catch (error) {
                         // Handle any synchronous errors
-                        console.error('Error in arrow button onProceed:', error);
+                        if (this.config.debug) {
+                            console.error('Error in arrow button onProceed:', error);
+                        }
                         arrowButton.setLoading(false);
                     }
                 }
             });
-            
+
             // Store reference to the arrow button
             this.arrowButton = arrowButton;
             buttonContainer.appendChild(arrowButton.render());
@@ -257,7 +261,7 @@ export class SimplePopup {
 
         // Add text and button to the row container
         rowContainer.appendChild(textContainer);
-        
+
         // For arrow button, add it to the row. For yes-no buttons, add them below the text
         if (this.config.buttonType === 'arrow') {
             rowContainer.appendChild(buttonContainer);
@@ -268,7 +272,6 @@ export class SimplePopup {
         }
 
         if (Array.isArray(this.config.sections) && this.config.sections.length > 0) {
-            if (this.config.debug) console.debug('[SimplePopup][createContent] Rendering sections:', this.config.sections);
             const shortcutsAndRecents = new ShortcutsAndRecents({
                 sections: this.config.sections
             });
@@ -291,28 +294,28 @@ export class SimplePopup {
                 fontSize: this.config.fontSize || '15px', // Match the text font size
                 color: '#222',
             });
-            
+
             // Add enter key handler
             inputBox.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     const textInput = inputBox.value;
                     if (typeof this.config.onProceed === 'function') {
                         inputBox.disabled = true;
-                        
+
                         // Call the onProceed function
                         if (this.config.debug) console.debug('function called input box');
-                        
+
                         // If we have an arrow button, set it to loading state too
                         if (this.arrowButton) {
                             this.arrowButton.setLoading(true);
                         }
-                        
+
                         try {
                             // Disable the input box immediately
                             inputBox.disabled = true;
-                            
+
                             const result = this.config.onProceed(textInput);
-                            
+
                             // Handle both synchronous and asynchronous results
                             // Check if result is promise-like (has a then method)
                             if (result && typeof result.then === 'function') {
@@ -320,14 +323,16 @@ export class SimplePopup {
                                 // For promises, wait for completion before resetting state
                                 return Promise.resolve(result)
                                     .catch(err => {
-                                        console.error('Error in onProceed:', err);
+                                        if (this.config.debug) {
+                                            console.error('Error in onProceed:', err);
+                                        }
                                         throw err; // Re-throw to propagate the error
                                     })
                                     .finally(() => {
                                         if (this.config.debug) console.log('[SimplePopup] Input box: Async operation completed, resetting state');
                                         // Restore the input box state when done
                                         inputBox.disabled = false;
-                                        
+
                                         // Reset arrow button if it exists
                                         if (this.arrowButton) {
                                             this.arrowButton.setLoading(false);
@@ -347,21 +352,23 @@ export class SimplePopup {
                             }
                         } catch (error) {
                             // Handle any synchronous errors
-                            console.error('Error in onProceed:', error);
-                            
+                            if (this.config.debug) {
+                                console.error('Error in onProceed:', error);
+                            }
+
                             // Reset states
                             inputBox.disabled = false;
                             if (this.arrowButton) {
                                 this.arrowButton.setLoading(false);
                             }
-                            
+
                             // Re-throw the error
                             throw error;
                         }
                     }
                 }
             });
-            
+
             mainContainer.appendChild(inputBox);
             this.inputBox = inputBox;
         }
@@ -377,23 +384,23 @@ export class SimplePopup {
 
         // Parse the markdown text first
         const parsedText = parseMarkdown(this.config.text);
-        
+
         // For animation, we need to work with the raw text
         const rawText = this.config.text;
         const charDelay = 800 / rawText.length;
-        
+
         // Animate text character by character
         for (let i = 0; i <= rawText.length; i++) {
             setTimeout(() => {
                 // For the animation, use the raw text sliced to current position
                 const currentText = rawText.slice(0, i);
-                
+
                 // Parse the current slice of text with markdown
                 const currentParsedText = parseMarkdown(currentText);
-                
+
                 // Set the HTML content
                 this.textContainer.innerHTML = currentParsedText;
-                
+
                 // Add the blinking cursor if not at the end
                 if (i < rawText.length) {
                     const cursor = document.createElement('span');
@@ -420,10 +427,10 @@ export class SimplePopup {
             if (e.target.closest('.close-button') || e.target.closest('.action-button')) {
                 return; // Don't start dragging when clicking buttons
             }
-            
+
             this.isDragging = true;
             this.element.style.cursor = 'grabbing';
-            
+
             // Calculate the offset of the mouse pointer from the top-left of the element
             this.dragStart.x = e.clientX - this.position.left;
             this.dragStart.y = e.clientY - this.position.top;
@@ -431,18 +438,18 @@ export class SimplePopup {
 
         const handleMouseMove = (e) => {
             if (!this.isDragging) return;
-            
+
             const newLeft = e.clientX - this.dragStart.x;
             const newTop = e.clientY - this.dragStart.y;
-            
+
             // Constrain to window boundaries
             this.position.left = Math.max(0, Math.min(newLeft, window.innerWidth - this.element.offsetWidth));
             this.position.top = Math.max(0, Math.min(newTop, window.innerHeight - this.element.offsetHeight));
-            
+
             // Update element position
             this.element.style.left = `${this.position.left}px`;
             this.element.style.top = `${this.position.top}px`;
-            
+
             // Notify parent of position change
             this.config.onPositionChange(this.position);
         };
@@ -451,7 +458,7 @@ export class SimplePopup {
             if (this.isDragging) {
                 this.isDragging = false;
                 this.element.style.cursor = 'grab';
-                
+
                 // Ensure final position is reported when drag ends
                 this.config.onPositionChange(this.position);
             }
@@ -470,9 +477,12 @@ export class SimplePopup {
         };
     }
 
+    /**
+     * Close the popup
+     */
     close() {
         if (this.config.debug) console.log('Close clicked');
-        if (this.config.debug) console.trace('[SimplePopup.close] Stack trace for close');
+
         // Call the onClose callback if provided in config
         if (this.config.onClose) {
             this.config.onClose();
@@ -487,7 +497,7 @@ export class SimplePopup {
             const currentTime = Date.now();
             const agentStartTime = this.config.agentInfo.agentStartTime;
             const agentDuration = agentStartTime ? currentTime - agentStartTime : null;
-            
+
             logTextAgentEnd(
                 this.config.agentInfo.agentId,
                 this.config.agentInfo.stepId,
@@ -503,17 +513,16 @@ export class SimplePopup {
             }
         }
 
-        // Remove the popup from the DOM
-        if (this.element && this.element.parentNode) {
-            this.element.parentNode.removeChild(this.element);
-        }
-
         // Clean up event listeners
         if (this.cleanupDragging) {
             this.cleanupDragging();
         }
     }
 
+    /**
+     * Render the popup element
+     * @returns {HTMLElement} The popup element
+     */
     render() {
         return this.element;
     }

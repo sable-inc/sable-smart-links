@@ -18,22 +18,22 @@ export class ElementInteractor {
   static setInputValue(element: HTMLInputElement | HTMLTextAreaElement, value: string): void {
     // Focus the element first
     element.focus();
-    
+
     // Use React's native setter for more reliable state updates
     const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-      element instanceof HTMLTextAreaElement ? 
-        window.HTMLTextAreaElement.prototype : 
-        window.HTMLInputElement.prototype, 
+      element instanceof HTMLTextAreaElement ?
+        window.HTMLTextAreaElement.prototype :
+        window.HTMLInputElement.prototype,
       'value'
     )?.set;
-    
+
     if (nativeInputValueSetter) {
       // Set value using React's native setter
       nativeInputValueSetter.call(element, value);
-      
+
       // Dispatch input event to trigger React re-render
       element.dispatchEvent(new Event('input', { bubbles: true }));
-      
+
       // Final change event
       element.dispatchEvent(new Event('change', { bubbles: true }));
     } else {
@@ -53,7 +53,7 @@ export class ElementInteractor {
     if (delay > 0) {
       await new Promise(resolve => setTimeout(resolve, delay));
     }
-    
+
     if (element instanceof HTMLElement) {
       element.click();
     } else {
@@ -76,7 +76,7 @@ export class ElementInteractor {
     };
 
     element.scrollIntoView(defaultOptions);
-    
+
     // Wait a bit for the scroll to complete
     await new Promise(resolve => setTimeout(resolve, 400));
   }
@@ -90,10 +90,10 @@ export class ElementInteractor {
   static async waitForElement(selector: string, timeout: number = 5000): Promise<Element> {
     return new Promise((resolve, reject) => {
       const startTime = Date.now();
-      
+
       const checkElement = () => {
         let element: Element | null = null;
-        
+
         // Check if it's an XPath selector
         if (selector.startsWith('//') || selector.startsWith('./')) {
           const result = document.evaluate(
@@ -108,22 +108,22 @@ export class ElementInteractor {
           // CSS selector
           element = document.querySelector(selector);
         }
-        
+
         if (element) {
           resolve(element);
           return;
         }
-        
+
         // Check timeout
         if (Date.now() - startTime > timeout) {
           reject(new Error(`Element with selector "${selector}" not found within ${timeout}ms`));
           return;
         }
-        
+
         // Continue checking
         requestAnimationFrame(checkElement);
       };
-      
+
       checkElement();
     });
   }
@@ -180,7 +180,7 @@ export class ElementInteractor {
         XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
         null
       );
-      
+
       const elements: Element[] = [];
       for (let i = 0; i < result.snapshotLength; i++) {
         const node = result.snapshotItem(i);
@@ -223,11 +223,11 @@ export class ElementInteractor {
   static isElementVisible(element: Element): boolean {
     const styles = window.getComputedStyle(element);
     const htmlElement = element as HTMLElement;
-    return styles.display !== 'none' && 
-           styles.visibility !== 'hidden' && 
-           styles.opacity !== '0' &&
-           htmlElement.offsetWidth > 0 && 
-           htmlElement.offsetHeight > 0;
+    return styles.display !== 'none' &&
+      styles.visibility !== 'hidden' &&
+      styles.opacity !== '0' &&
+      htmlElement.offsetWidth > 0 &&
+      htmlElement.offsetHeight > 0;
   }
 
   /**
@@ -237,7 +237,7 @@ export class ElementInteractor {
    */
   static highlightElement(element: Element): { originalStyle: string, styleTag: HTMLStyleElement } {
     const originalStyle = element.getAttribute('style') || '';
-    
+
     // Use a darker grey for the outline and box-shadow
     const highlightStyle = `
       ${originalStyle}; 
@@ -247,7 +247,7 @@ export class ElementInteractor {
       transition: all 0.5s ease-in-out; 
       animation: pulse-border 1.2s infinite alternate;
     `;
-    
+
     // Add a CSS animation for a more prominent pulsing effect
     const styleTag = document.createElement('style');
     styleTag.textContent = `
@@ -257,10 +257,10 @@ export class ElementInteractor {
       }
     `;
     document.head.appendChild(styleTag);
-    
+
     // Apply the enhanced highlight style
     element.setAttribute('style', highlightStyle);
-    
+
     // Store both the original style and the created style element for later removal
     return { originalStyle, styleTag };
   }
@@ -289,11 +289,11 @@ export class ElementInteractor {
    *   @property {boolean} [useSessionStorage] - If true, sets sessionStorage key instead of dispatching event (default: false)
    *
    */
-  static startAgent(agentId: string, options: { 
-      stepId?: string;
-      skipTrigger?: boolean;
-      useSessionStorage?: boolean;
-    } = {
+  static startAgent(agentId: string, options: {
+    stepId?: string;
+    skipTrigger?: boolean;
+    useSessionStorage?: boolean;
+  } = {
       stepId: undefined,
       skipTrigger: false,
       useSessionStorage: false,
@@ -309,13 +309,13 @@ export class ElementInteractor {
       return;
     }
     const startEvent = new CustomEvent('sable:textAgentStart', {
-      detail: { 
-        stepId: options.stepId ?? undefined, 
+      detail: {
+        stepId: options.stepId ?? undefined,
         skipTrigger: options.skipTrigger ?? false,
         agentId: agentId // Include agentId in case it's needed
       }
     });
-    
+
     // Dispatch the event on the window object
     if (typeof window !== 'undefined') {
       window.dispatchEvent(startEvent);

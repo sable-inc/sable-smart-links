@@ -9,6 +9,7 @@ class GlobalPopupManager {
     constructor() {
         this.activePopup = null;
         this.listeners = new Set();
+        this._isDestroyed = false;
     }
 
     /**
@@ -17,30 +18,38 @@ class GlobalPopupManager {
      * @returns {Object|null} Popup manager instance or null if failed
      */
     showPopup(options) {
+        if (this._isDestroyed) {
+            console.error('[GlobalPopupManager] Cannot show popup - manager is destroyed');
+            return null;
+        }
+
         // Close any existing popup first
         this.closeActivePopup();
 
         try {
             // Create new popup manager directly to avoid circular dependency
             const popupManager = this.createPopupManager(options);
-            
+
             // Store reference to active popup
             this.activePopup = popupManager;
-            
+
             // Mount the popup
             const parent = options.parent || document.body;
             popupManager.mount(parent);
-            
+
             // Notify listeners
             this.notifyListeners();
-            
+
             // Return the popup manager with wrapped methods
             const result = {
                 container: popupManager.container, // Expose container for positioning
+                popup: popupManager.popup, // Expose popup instance for direct access
                 unmount: () => {
-                    popupManager.unmount();
-                    this.activePopup = null;
-                    this.notifyListeners();
+                    if (this.activePopup === popupManager) {
+                        popupManager.unmount();
+                        this.activePopup = null;
+                        this.notifyListeners();
+                    }
                 },
                 mount: (newParent) => {
                     popupManager.mount(newParent);
@@ -49,7 +58,7 @@ class GlobalPopupManager {
                     popupManager.updatePosition(position);
                 }
             };
-            
+
             return result;
         } catch (error) {
             console.error('[GlobalPopupManager] Error creating popup:', error);
@@ -64,21 +73,35 @@ class GlobalPopupManager {
      * @returns {Object|null} Popup manager instance or null if failed
      */
     showStatefulPopup(createPopupFn, options) {
+        if (this._isDestroyed) {
+            console.error('[GlobalPopupManager] Cannot show stateful popup - manager is destroyed');
+            return null;
+        }
+
         this.closeActivePopup();
         try {
             const popupManager = createPopupFn(options);
-            this.activePopup = popupManager;
-            if (typeof popupManager.mount === 'function') {
-                popupManager.mount(document.body);
+
+            // Ensure the popup has required methods
+            if (typeof popupManager.mount !== 'function' || typeof popupManager.unmount !== 'function') {
+                throw new Error('Stateful popup must have mount() and unmount() methods');
             }
+
+            this.activePopup = popupManager;
+            popupManager.mount(document.body);
             this.notifyListeners();
+
             return {
+                popup: popupManager, // Expose the popup instance for direct access
                 unmount: () => {
-                    if (typeof popupManager.unmount === 'function') {
+                    if (this.activePopup === popupManager) {
                         popupManager.unmount();
+                        this.activePopup = null;
+                        this.notifyListeners();
                     }
-                    this.activePopup = null;
-                    this.notifyListeners();
+                },
+                mount: (newParent) => {
+                    popupManager.mount(newParent);
                 }
             };
         } catch (error) {
@@ -97,8 +120,8 @@ class GlobalPopupManager {
             text: config.text || '',
             boxWidth: config.boxWidth || 200,
             buttonType: config.buttonType || 'arrow',
-            onProceed: config.onProceed || (() => {}),
-            onYesNo: config.onYesNo || (() => {}),
+            onProceed: config.onProceed || (() => { }),
+            onYesNo: config.onYesNo || (() => { }),
             primaryColor: config.primaryColor || '#FFFFFF',
             includeTextBox: config.includeTextBox || false,
             fontSize: config.fontSize || '15px',
@@ -128,10 +151,14 @@ class GlobalPopupManager {
             container: popupElement,
             popup,
             mount: (parentElement) => {
-                parentElement.appendChild(popupElement);
+                if (parentElement && !parentElement.contains(popupElement)) {
+                    parentElement.appendChild(popupElement);
+                }
             },
             unmount: () => {
-                popupElement.remove();
+                if (popupElement.parentNode) {
+                    popupElement.parentNode.removeChild(popupElement);
+                }
                 // Update global state when popup is unmounted
                 if (this.activePopup === popupManager) {
                     this.activePopup = null;
@@ -177,8 +204,6 @@ class GlobalPopupManager {
         return result;
     }
 
-
-
     /**
      * Add a listener for popup state changes
      * @param {Function} listener - Function to call when state changes
@@ -218,6 +243,15 @@ class GlobalPopupManager {
         return {
             hasActivePopup: this.hasActivePopup()
         };
+    }
+
+    /**
+     * Destroy the global popup manager
+     */
+    destroy() {
+        this.closeActivePopup();
+        this.listeners.clear();
+        this._isDestroyed = true;
     }
 }
 

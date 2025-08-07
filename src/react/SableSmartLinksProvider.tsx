@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, createContext, useContext, useState } from 'react';
-import { SableSmartLinks, SableSmartLinksConfig, WalkthroughStep, TextAgentStep, VoiceToolConfig } from '../index';
+import { SableSmartLinks, SableSmartLinksConfig, WalkthroughStep, TextAgentStep } from '../index';
 import { isBrowser } from '../utils/browserAPI';
 import globalPopupManager from '../ui/GlobalPopupManager.js';
 import { startAgent } from '../interactor';
@@ -32,10 +32,6 @@ interface SableSmartLinksContextType {
   }) => { unmount: () => void; mount: (newParent: HTMLElement) => void; } | null;
   closeAllPopups: () => void;
   
-  // Voice Agent methods
-  toggleVoiceChat: () => Promise<void>;
-  isVoiceChatActive: () => boolean;
-
   // Popup state
   hasActivePopup: boolean;
 
@@ -63,24 +59,7 @@ export interface SableSmartLinksProviderProps {
   autoInit?: boolean;
   walkthroughs?: Record<string, WalkthroughStep[]>;
   textAgents?: Record<string, TextAgentAgentConfig>;
-  voice?: {
-    enabled?: boolean;
-    engine?: 'nova';
-    serverUrl?: string;
-    systemPrompt?: string;
-    tools?: VoiceToolConfig[];
-    ui?: {
-      position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
-      buttonText?: {
-        start?: string;
-        stop?: string;
-      };
-      theme?: {
-        primaryColor?: string;
-        backgroundColor?: string;
-      };
-    };
-  };
+
   menu?: {
     enabled?: boolean;
     text?: string;
@@ -102,7 +81,6 @@ export interface SableSmartLinksProviderProps {
       [key: string]: string | undefined;
     };
     popupConfig: {
-      enableChat?: boolean;
       sections?: Array<{
         title: string;
         icon?: string;
@@ -125,7 +103,6 @@ export interface SableSmartLinksProviderProps {
  */
 export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = ({
   config = {},
-  voice = {},
   menu,
   children,
   autoInit = true,
@@ -275,10 +252,6 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     if (!sableInstance.current) {
       const mergedConfig = {
         ...config,
-        voice: {
-          ...config.voice,
-          ...voice
-        },
         menu: menu || config.menu
       };
       if (config.debug) {
@@ -510,20 +483,6 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
       if (config.debug) {
         console.log('[closeAllPopups] hasActivePopup changed');
       }
-    },
-    
-    // Voice methods
-    toggleVoiceChat: async () => {
-      if (sableInstance.current) {
-        await sableInstance.current.toggleVoiceChat();
-      }
-    },
-    
-    isVoiceChatActive: () => {
-      if (sableInstance.current) {
-        return sableInstance.current.isVoiceChatActive();
-      }
-      return false;
     },
 
     // Step data methods
