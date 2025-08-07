@@ -12,11 +12,11 @@
  */
 export function addEvent(target, eventType, handler, options = {}) {
   if (!target || !eventType || typeof handler !== 'function') {
-    return () => {};
+    return () => { };
   }
-  
+
   target.addEventListener(eventType, handler, options);
-  
+
   return () => {
     target.removeEventListener(eventType, handler, options);
   };
@@ -32,11 +32,11 @@ export function addEvent(target, eventType, handler, options = {}) {
  */
 export function addEvents(target, eventTypes, handler, options = {}) {
   if (!target || !Array.isArray(eventTypes) || typeof handler !== 'function') {
-    return () => {};
+    return () => { };
   }
-  
+
   const removers = eventTypes.map(type => addEvent(target, type, handler, options));
-  
+
   return () => {
     removers.forEach(remove => remove());
   };
@@ -50,12 +50,12 @@ export function addEvents(target, eventTypes, handler, options = {}) {
  */
 export function debounce(func, wait = 100) {
   let timeout;
-  
-  return function(...args) {
+
+  return function (...args) {
     const context = this;
-    
+
     clearTimeout(timeout);
-    
+
     timeout = setTimeout(() => {
       func.apply(context, args);
     }, wait);
@@ -70,14 +70,14 @@ export function debounce(func, wait = 100) {
  */
 export function throttle(func, limit = 100) {
   let inThrottle;
-  
-  return function(...args) {
+
+  return function (...args) {
     const context = this;
-    
+
     if (!inThrottle) {
       func.apply(context, args);
       inThrottle = true;
-      
+
       setTimeout(() => {
         inThrottle = false;
       }, limit);
@@ -96,12 +96,12 @@ export function triggerEvent(target, eventName, detail = {}) {
   if (!target || !eventName) {
     return false;
   }
-  
+
   const event = new CustomEvent(eventName, {
     bubbles: true,
     cancelable: true,
     detail
   });
-  
+
   return target.dispatchEvent(event);
 }

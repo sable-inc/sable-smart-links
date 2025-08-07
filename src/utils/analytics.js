@@ -5,36 +5,17 @@
 
 import { isBrowser } from './browserAPI.js';
 
-// Analytics API configuration
-const ANALYTICS_CONFIG = {
-  dev: {
-    baseUrl: 'http://localhost:3001'
-  },
-  prod: {
-    baseUrl: 'https://sable-smart-links.vercel.app'
-  }
-};
+
 
 // Get the appropriate API base URL based on environment
-const getApiBaseUrl = () => {
-  if (typeof window === 'undefined') {
-    return ANALYTICS_CONFIG.dev.baseUrl;
-  }
-  
-  const hostname = window.location.hostname;
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return ANALYTICS_CONFIG.dev.baseUrl;
-  }
-  
-  return ANALYTICS_CONFIG.prod.baseUrl;
-};
+const getApiBaseUrl = () => 'https://sable-smart-links.vercel.app';
 
 // Generate or retrieve session ID from sessionStorage
 const getOrCreateSessionId = () => {
   if (!isBrowser) {
     return `session_${Math.random().toString(36).substr(2, 9)}_${Date.now()}`;
   }
-  
+
   let sessionId = sessionStorage.getItem('sable_analytics_session_id');
   if (!sessionId) {
     sessionId = `session_${Math.random().toString(36).substr(2, 9)}_${Date.now()}`;
@@ -48,7 +29,7 @@ const getOrCreateUserId = () => {
   if (!isBrowser) {
     return `user_${Math.random().toString(36).substr(2, 9)}_${Date.now()}`;
   }
-  
+
   let userId = localStorage.getItem('sable_analytics_user_id');
   if (!userId) {
     userId = `user_${Math.random().toString(36).substr(2, 9)}_${Date.now()}`;
@@ -62,7 +43,7 @@ export const logTextAgentEvent = async (eventData) => {
   if (!isBrowser) {
     return;
   }
-  
+
   try {
     const {
       event,
@@ -73,12 +54,12 @@ export const logTextAgentEvent = async (eventData) => {
       agentDuration = null,
       metadata = {}
     } = eventData;
-    
+
     // Validate required fields
     if (!event || !agentId || stepId === undefined) {
       return;
     }
-    
+
     const analyticsPayload = {
       event,
       agentId,
@@ -96,9 +77,9 @@ export const logTextAgentEvent = async (eventData) => {
       },
       timestamp: new Date().toISOString()
     };
-    
+
     const apiUrl = `${getApiBaseUrl()}/api/analytics/text-agent`;
-    
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -109,14 +90,14 @@ export const logTextAgentEvent = async (eventData) => {
       credentials: 'omit',
       body: JSON.stringify(analyticsPayload)
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Analytics API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
-    
+
     const result = await response.json();
-    
+
     if (result.success) {
       return result.id; // Return the MongoDB ID for potential updates
     } else {
@@ -132,14 +113,14 @@ export const updateTextAgentEventDuration = async (analyticsId, stepDuration) =>
   if (!isBrowser) {
     return;
   }
-  
+
   if (!analyticsId || stepDuration === null || stepDuration === undefined) {
     return;
   }
-  
+
   try {
     const apiUrl = `${getApiBaseUrl()}/api/analytics/text-agent/${analyticsId}`;
-    
+
     const response = await fetch(apiUrl, {
       method: 'PATCH',
       headers: {
@@ -150,14 +131,14 @@ export const updateTextAgentEventDuration = async (analyticsId, stepDuration) =>
       credentials: 'omit',
       body: JSON.stringify({ stepDuration })
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Analytics API update error: ${response.status} ${response.statusText} - ${errorText}`);
     }
-    
+
     const result = await response.json();
-    
+
     if (result.success) {
       return;
     } else {
@@ -243,7 +224,7 @@ export const logWalkthroughEvent = async (eventData) => {
   if (!isBrowser) {
     return;
   }
-  
+
   try {
     const {
       event,
@@ -256,12 +237,12 @@ export const logWalkthroughEvent = async (eventData) => {
       agentDuration = null,
       metadata = {}
     } = eventData;
-    
+
     // Validate required fields
     if (!event || !walkthroughId || stepIndex === undefined || !stepId) {
       return;
     }
-    
+
     const analyticsPayload = {
       event,
       walkthroughId,
@@ -282,9 +263,9 @@ export const logWalkthroughEvent = async (eventData) => {
       },
       timestamp: new Date().toISOString()
     };
-    
+
     const apiUrl = `${getApiBaseUrl()}/api/analytics/walkthrough`;
-    
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -295,14 +276,14 @@ export const logWalkthroughEvent = async (eventData) => {
       credentials: 'omit',
       body: JSON.stringify(analyticsPayload)
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Walkthrough Analytics API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
-    
+
     const result = await response.json();
-    
+
     if (result.success) {
       return result.id; // Return the MongoDB ID for potential updates
     } else {
@@ -318,14 +299,14 @@ export const updateWalkthroughEventDuration = async (analyticsId, stepDuration) 
   if (!isBrowser) {
     return;
   }
-  
+
   if (!analyticsId || stepDuration === null || stepDuration === undefined) {
     return;
   }
-  
+
   try {
     const apiUrl = `${getApiBaseUrl()}/api/analytics/walkthrough/${analyticsId}`;
-    
+
     const response = await fetch(apiUrl, {
       method: 'PATCH',
       headers: {
@@ -336,14 +317,14 @@ export const updateWalkthroughEventDuration = async (analyticsId, stepDuration) 
       credentials: 'omit',
       body: JSON.stringify({ stepDuration })
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Walkthrough Analytics API update error: ${response.status} ${response.statusText} - ${errorText}`);
     }
-    
+
     const result = await response.json();
-    
+
     if (result.success) {
       return;
     } else {
@@ -446,7 +427,7 @@ export const logCrawlBedrockQuery = async (eventData) => {
   if (!isBrowser) {
     return;
   }
-  
+
   try {
     const {
       url,
@@ -455,12 +436,12 @@ export const logCrawlBedrockQuery = async (eventData) => {
       duration,
       error = null
     } = eventData;
-    
+
     // Validate required fields
     if (!url || !instructions || duration === undefined || duration === null) {
       return;
     }
-    
+
     const analyticsPayload = {
       input: {
         url,
@@ -473,9 +454,9 @@ export const logCrawlBedrockQuery = async (eventData) => {
       userId: isBrowser ? getOrCreateUserId() : null,
       timestamp: new Date().toISOString()
     };
-    
+
     const apiUrl = `${getApiBaseUrl()}/api/analytics/crawl-bedrock`;
-    
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -486,14 +467,14 @@ export const logCrawlBedrockQuery = async (eventData) => {
       credentials: 'omit',
       body: JSON.stringify(analyticsPayload)
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Crawl Bedrock Analytics API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
-    
+
     const result = await response.json();
-    
+
     if (result.success) {
       return result.id; // Return the MongoDB ID for potential updates
     } else {
@@ -509,7 +490,7 @@ export const logSearchBedrockQuery = async (eventData) => {
   if (!isBrowser) {
     return;
   }
-  
+
   try {
     const {
       query,
@@ -517,12 +498,12 @@ export const logSearchBedrockQuery = async (eventData) => {
       duration,
       error = null
     } = eventData;
-    
+
     // Validate required fields
     if (!query || duration === undefined || duration === null) {
       return;
     }
-    
+
     const analyticsPayload = {
       input: {
         query
@@ -534,9 +515,9 @@ export const logSearchBedrockQuery = async (eventData) => {
       userId: isBrowser ? getOrCreateUserId() : null,
       timestamp: new Date().toISOString()
     };
-    
+
     const apiUrl = `${getApiBaseUrl()}/api/analytics/search-bedrock`;
-    
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -547,14 +528,14 @@ export const logSearchBedrockQuery = async (eventData) => {
       credentials: 'omit',
       body: JSON.stringify(analyticsPayload)
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Search Bedrock Analytics API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
-    
+
     const result = await response.json();
-    
+
     if (result.success) {
       return result.id; // Return the MongoDB ID for potential updates
     } else {

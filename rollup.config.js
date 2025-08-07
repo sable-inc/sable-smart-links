@@ -114,39 +114,6 @@ export default [
     ]
   },
 
-  // Tavily features (ESM)
-  {
-    input: 'src/features/tavily/index.ts',
-    external,
-    output: {
-      dir: 'dist/features/tavily',
-      format: 'esm',
-      sourcemap: true,
-      preserveModules: true,
-      preserveModulesRoot: 'src'
-    },
-    plugins: [
-      ...commonPlugins,
-      typescript({
-        tsconfig: './tsconfig.json',
-        outDir: 'dist/features/tavily',
-        declarationDir: 'dist/features/tavily',
-        declaration: true,
-        rootDir: 'src'
-      }),
-      babel({
-        babelHelpers: 'bundled',
-        exclude: 'node_modules/**',
-        extensions: ['.js', '.jsx', '.ts', '.tsx'],
-        presets: [
-          ['@babel/preset-env', { targets: { esmodules: true } }],
-          '@babel/preset-typescript',
-          '@babel/preset-react'
-        ]
-      })
-    ]
-  },
-
   // Tavily helper functions (ESM)
   {
     input: 'src/tavily/index.ts',
@@ -181,16 +148,6 @@ export default [
     input: 'src/index.d.ts',
     output: {
       file: 'dist/index.d.ts',
-      format: 'es'
-    },
-    plugins: [dts()]
-  },
-
-  // Type definitions for Tavily features
-  {
-    input: 'src/features/tavily/index.ts',
-    output: {
-      dir: 'dist/features/tavily',
       format: 'es'
     },
     plugins: [dts()]

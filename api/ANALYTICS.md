@@ -76,7 +76,7 @@ Each collection stores events with timestamps and anonymous session IDs to track
     extractDepth: String,  // "basic" | "advanced"
     categories: Array,     // Array of category strings
     explanation: String,   // Explanation of parameter choices
-    otherCrawls: Array     // Array of {url: string, instructions: string}
+    otherCrawls: Array     // Array of string
   },
   duration: Number,        // Required: Query duration in milliseconds
   error: String,           // Optional: Error message (null if successful)

@@ -3,7 +3,7 @@ export class ArrowButton {
     constructor(onClick) {
         this.onClick = onClick;
         this.isLoading = false;
-        
+
         // Create the button element
         this.button = document.createElement('button');
         Object.assign(this.button.style, {
@@ -22,7 +22,7 @@ export class ArrowButton {
             boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
             position: 'relative'
         });
-        
+
         // Add event listeners
         this.button.addEventListener('mouseover', () => {
             if (!this.isLoading) {
@@ -31,7 +31,7 @@ export class ArrowButton {
                 this.button.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
             }
         });
-        
+
         this.button.addEventListener('mouseout', () => {
             if (!this.isLoading) {
                 this.button.style.transform = 'scale(1)';
@@ -39,18 +39,17 @@ export class ArrowButton {
                 this.button.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
             }
         });
-        
+
         this.button.addEventListener('click', () => {
             if (!this.isLoading) {
-                console.log('[ArrowButton] Calling onClick directly');
                 this.onClick();
             }
         });
-        
+
         // Add arrow icon
         this.updateButtonContent();
     }
-    
+
     updateButtonContent() {
         if (this.isLoading) {
             // Show spinner
@@ -96,12 +95,13 @@ export class ArrowButton {
             `;
         }
     }
-    
+
     setLoading(isLoading) {
         if (this.isLoading === isLoading) return; // No change needed
-        
+
         this.isLoading = isLoading;
-        
+        this.button.disabled = isLoading;
+
         // Update button appearance
         if (isLoading) {
             this.button.style.cursor = 'not-allowed';
@@ -113,11 +113,11 @@ export class ArrowButton {
             this.button.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
             this.button.style.opacity = '1';
         }
-        
+
         // Update content (arrow or spinner)
         this.updateButtonContent();
     }
-    
+
     render() {
         return this.button;
     }

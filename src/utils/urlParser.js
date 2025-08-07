@@ -2,7 +2,7 @@
  * URL parameter parsing utilities
  */
 
-import { isBrowser, safeWindow } from './browserApi.js';
+import { safeWindow } from './browserAPI.js';
 
 /**
  * Parse URL query parameters from the current window location
@@ -11,16 +11,16 @@ import { isBrowser, safeWindow } from './browserApi.js';
 export function parseUrlParameters() {
   const params = {};
   const queryString = safeWindow.location.search.substring(1);
-  
+
   if (queryString) {
     const pairs = queryString.split('&');
-    
+
     for (const pair of pairs) {
       const [key, value] = pair.split('=');
       params[decodeURIComponent(key)] = decodeURIComponent(value || '');
     }
   }
-  
+
   return params;
 }
 
@@ -42,7 +42,7 @@ export function hasUrlParameter(paramName) {
  */
 export function getUrlParameter(paramName, defaultValue = null) {
   const params = parseUrlParameters();
-  return Object.prototype.hasOwnProperty.call(params, paramName) 
-    ? params[paramName] 
+  return Object.prototype.hasOwnProperty.call(params, paramName)
+    ? params[paramName]
     : defaultValue;
 }

@@ -1,5 +1,5 @@
 // GlobalPopupManager.js
-import { SimplePopup } from './components/SimplePopup.js';
+import { Popup } from './Popup.js';
 
 /**
  * Global popup manager that ensures only one popup is active at a time
@@ -9,133 +9,71 @@ class GlobalPopupManager {
     constructor() {
         this.activePopup = null;
         this.listeners = new Set();
+        this._isDestroyed = false;
     }
 
-    /**
-     * Show a popup, ensuring any existing popup is closed first
-     * @param {Object} options - Popup configuration options
-     * @returns {Object|null} Popup manager instance or null if failed
-     */
     showPopup(options) {
-        // Close any existing popup first
+        if (this._isDestroyed) return null;
         this.closeActivePopup();
-
         try {
-            // Create new popup manager directly to avoid circular dependency
             const popupManager = this.createPopupManager(options);
-            
-            // Store reference to active popup
             this.activePopup = popupManager;
-            
-            // Mount the popup
             const parent = options.parent || document.body;
             popupManager.mount(parent);
-            
-            // Notify listeners
-            this.notifyListeners();
-            
-            // Return the popup manager with wrapped methods
-            const result = {
-                container: popupManager.container, // Expose container for positioning
-                unmount: () => {
-                    popupManager.unmount();
-                    this.activePopup = null;
-                    this.notifyListeners();
-                },
-                mount: (newParent) => {
-                    popupManager.mount(newParent);
-                },
-                updatePosition: (position) => {
-                    popupManager.updatePosition(position);
-                }
-            };
-            
-            return result;
-        } catch (error) {
-            console.error('[GlobalPopupManager] Error creating popup:', error);
-            return null;
-        }
-    }
-
-    /**
-     * Show a stateful popup (e.g., PopupStateManager) and enforce singleton
-     * @param {Function} createPopupFn - Function that returns a popup instance (must have mount/unmount)
-     * @param {Object} options - Options to pass to the popup constructor
-     * @returns {Object|null} Popup manager instance or null if failed
-     */
-    showStatefulPopup(createPopupFn, options) {
-        this.closeActivePopup();
-        try {
-            const popupManager = createPopupFn(options);
-            this.activePopup = popupManager;
-            if (typeof popupManager.mount === 'function') {
-                popupManager.mount(document.body);
-            }
-            this.notifyListeners();
+            this.broadcastStateChange();
             return {
+                container: popupManager.container,
+                popup: popupManager.popup,
                 unmount: () => {
-                    if (typeof popupManager.unmount === 'function') {
+                    if (this.activePopup === popupManager) {
                         popupManager.unmount();
+                        this.activePopup = null;
+                        this.broadcastStateChange();
                     }
-                    this.activePopup = null;
-                    this.notifyListeners();
-                }
+                },
+                mount: (newParent) => popupManager.mount(newParent),
+                updatePosition: (position) => popupManager.updatePosition(position)
             };
         } catch (error) {
-            console.error('[GlobalPopupManager] Error creating stateful popup:', error);
             return null;
         }
     }
 
-    /**
-     * Create a popup manager instance
-     * @param {Object} config - Configuration options
-     * @returns {Object} Popup manager instance
-     */
     createPopupManager(config) {
         const popupConfig = {
             text: config.text || '',
             boxWidth: config.boxWidth || 200,
             buttonType: config.buttonType || 'arrow',
-            onProceed: config.onProceed || (() => {}),
-            onYesNo: config.onYesNo || (() => {}),
+            onProceed: config.onProceed || (() => { }),
+            onYesNo: config.onYesNo || (() => { }),
             primaryColor: config.primaryColor || '#FFFFFF',
-            includeTextBox: config.includeTextBox || false,
             fontSize: config.fontSize || '15px',
             sections: config.sections || [],
-            // Add agentInfo for analytics logging
             agentInfo: config.agentInfo || null,
-            debug: config.debug || false
-        };
-
-        // Create popup instance
-        const popup = new SimplePopup({
-            ...popupConfig,
+            debug: config.debug || false,
+            animateText: config.animateText !== undefined ? config.animateText : true,
+            markdown: config.markdown !== undefined ? config.markdown : true,
+            width: config.width || 380,
             onClose: () => {
-                // Close the popup and update state
+                if (config.onClose) {
+                    config.onClose();
+                }
                 this.closeActivePopup();
-            },
-            onPositionChange: (position) => {
-                // Handle position changes if needed
             }
-        });
-
-        // Use the popup's own element as the container
+        };
+        const popup = new Popup(popupConfig);
         const popupElement = popup.render();
-
-        // Create the popup manager object
         const popupManager = {
             container: popupElement,
             popup,
             mount: (parentElement) => {
-                parentElement.appendChild(popupElement);
+                if (parentElement && !parentElement.contains(popupElement)) parentElement.appendChild(popupElement);
             },
             unmount: () => {
-                popupElement.remove();
-                // Update global state when popup is unmounted
+                if (popupElement.parentNode) popupElement.parentNode.removeChild(popupElement);
                 if (this.activePopup === popupManager) {
                     this.activePopup = null;
-                    this.notifyListeners();
+                    this.broadcastStateChange();
                 }
             },
             updatePosition: (newPosition) => {
@@ -147,81 +85,43 @@ class GlobalPopupManager {
                 }
             }
         };
-
         return popupManager;
     }
 
-    /**
-     * Close the currently active popup
-     */
     closeActivePopup() {
         if (this.activePopup) {
             try {
                 this.activePopup.unmount();
-                // Note: The unmount method already handles setting activePopup to null and notifying listeners
             } catch (error) {
-                console.error('[GlobalPopupManager] Error closing popup:', error);
-                // If unmount failed, manually clear the state
-                this.activePopup = null;
-                this.notifyListeners();
+                // ignore
             }
+            this.activePopup = null;
+            this.broadcastStateChange();
         }
     }
 
-    /**
-     * Check if a popup is currently active
-     * @returns {boolean} True if a popup is active
-     */
     hasActivePopup() {
-        const result = this.activePopup !== null;
-        return result;
+        return this.activePopup !== null;
     }
 
+    addListener(listener) { this.listeners.add(listener); }
+    removeListener(listener) { this.listeners.delete(listener); }
 
-
-    /**
-     * Add a listener for popup state changes
-     * @param {Function} listener - Function to call when state changes
-     */
-    addListener(listener) {
-        this.listeners.add(listener);
+    broadcastStateChange() {
+        const state = { hasActivePopup: this.hasActivePopup() };
+        this.listeners.forEach(listener => { try { listener(state); } catch { } });
+        if (typeof window !== 'undefined') {
+            const stateEvent = new CustomEvent('sable:popupStateChange', { detail: state });
+            window.dispatchEvent(stateEvent);
+        }
     }
 
-    /**
-     * Remove a listener
-     * @param {Function} listener - Function to remove
-     */
-    removeListener(listener) {
-        this.listeners.delete(listener);
-    }
-
-    /**
-     * Notify all listeners of state changes
-     */
-    notifyListeners() {
-        this.listeners.forEach(listener => {
-            try {
-                listener({
-                    hasActivePopup: this.hasActivePopup()
-                });
-            } catch (error) {
-                console.error('[GlobalPopupManager] Error in listener:', error);
-            }
-        });
-    }
-
-    /**
-     * Get current popup state
-     * @returns {Object} Current state
-     */
-    getState() {
-        return {
-            hasActivePopup: this.hasActivePopup()
-        };
+    getState() { return { hasActivePopup: this.hasActivePopup() }; }
+    destroy() {
+        this.closeActivePopup();
+        this.listeners.clear();
+        this._isDestroyed = true;
     }
 }
-
-// Create singleton instance
 const globalPopupManager = new GlobalPopupManager();
-
 export default globalPopupManager; 

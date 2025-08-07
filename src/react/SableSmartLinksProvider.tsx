@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, createContext, useContext, useState } from 'react';
-import { SableSmartLinks, SableSmartLinksConfig, WalkthroughStep, TextAgentStep, VoiceToolConfig } from '../index';
+import { SableSmartLinks, SableSmartLinksConfig, WalkthroughStep, TextAgentStep } from '../index';
 import { isBrowser } from '../utils/browserAPI';
 import globalPopupManager from '../ui/GlobalPopupManager.js';
 import { startAgent } from '../interactor';
@@ -13,7 +13,7 @@ interface SableSmartLinksContextType {
   endWalkthrough: () => void;
   
   // Text Agent methods
-  registerTextAgent: (id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>, requiredSelector?: string, endWithoutSelector?: boolean) => SableSmartLinksContextType;
+  registerTextAgent: (id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>, requiredSelector?: string) => SableSmartLinksContextType;
   startTextAgent: (agentId?: string, stepId?: string | null, skipTrigger?: boolean) => Promise<boolean>;
   nextTextAgentStep: () => SableSmartLinksContextType;
   previousTextAgentStep: () => SableSmartLinksContextType;
@@ -32,10 +32,6 @@ interface SableSmartLinksContextType {
   }) => { unmount: () => void; mount: (newParent: HTMLElement) => void; } | null;
   closeAllPopups: () => void;
   
-  // Voice Agent methods
-  toggleVoiceChat: () => Promise<void>;
-  isVoiceChatActive: () => boolean;
-
   // Popup state
   hasActivePopup: boolean;
 
@@ -54,7 +50,6 @@ export interface TextAgentAgentConfig {
   autoStartOnce?: boolean;
   beforeStart?: () => void | Promise<void>;
   requiredSelector?: string;
-  endWithoutSelector?: boolean;
 }
 
 export interface SableSmartLinksProviderProps {
@@ -63,24 +58,7 @@ export interface SableSmartLinksProviderProps {
   autoInit?: boolean;
   walkthroughs?: Record<string, WalkthroughStep[]>;
   textAgents?: Record<string, TextAgentAgentConfig>;
-  voice?: {
-    enabled?: boolean;
-    engine?: 'nova';
-    serverUrl?: string;
-    systemPrompt?: string;
-    tools?: VoiceToolConfig[];
-    ui?: {
-      position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
-      buttonText?: {
-        start?: string;
-        stop?: string;
-      };
-      theme?: {
-        primaryColor?: string;
-        backgroundColor?: string;
-      };
-    };
-  };
+
   menu?: {
     enabled?: boolean;
     text?: string;
@@ -102,14 +80,11 @@ export interface SableSmartLinksProviderProps {
       [key: string]: string | undefined;
     };
     popupConfig: {
-      enableChat?: boolean;
       sections?: Array<{
         title: string;
         icon?: string;
-        restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
         items: Array<{
           text: string;
-          restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
           data?: any;
         }>;
         onSelect: (item: any) => void;
@@ -125,7 +100,6 @@ export interface SableSmartLinksProviderProps {
  */
 export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = ({
   config = {},
-  voice = {},
   menu,
   children,
   autoInit = true,
@@ -186,7 +160,6 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
               return value !== undefined ? String(value) : match;
             });
           } catch (e) {
-            console.error('Error processing text template:', e);
             return originalText;
           }
         };
@@ -211,9 +184,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
       if (processedStep.sections == null) { processedStep.sections = []; }
 
       // Handle sections property
-      if (config.debug) {
-        console.log('[processTextAgentSteps] Before processing sections:', processedStep.sections);
-      }
+
       if (Array.isArray(processedStep.sections)) {
         // If sections is an array, convert it to a function that can access step data
         const originalSections = processedStep.sections;
@@ -253,6 +224,28 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
         };
       }
       
+      // Wrap onYesNo to provide access to step data
+      if (processedStep.onYesNo) {
+        const originalOnYesNo = processedStep.onYesNo;
+        processedStep.onYesNo = async (isYes: boolean) => {
+          // Create fresh dataUtils with current ref data each time the function is called
+          const freshDataUtils = {
+            setStepData,
+            getStepData: (key: string) => {
+              const value = stepDataRef.current[key];
+              return value;
+            },
+            getAllStepData: () => {
+              return stepDataRef.current;
+            },
+            clearStepData
+          };
+          
+          // Provide the fresh step data methods to the original onYesNo
+          return originalOnYesNo(isYes, freshDataUtils);
+        };
+      }
+      
       return processedStep;
     });
   };
@@ -275,15 +268,9 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     if (!sableInstance.current) {
       const mergedConfig = {
         ...config,
-        voice: {
-          ...config.voice,
-          ...voice
-        },
         menu: menu || config.menu
       };
-      if (config.debug) {
-        console.log('[SableSmartLinksProvider] Merged config:', mergedConfig);
-      }
+
       sableInstance.current = new SableSmartLinks(mergedConfig);
       isMounted.current = true;
       // Register walkthroughs on mount
@@ -315,7 +302,6 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
             startAgent(agentId, { stepId, skipTrigger });
         }, 1500);
       } catch (error) {
-        console.error('Error parsing sable start agent data:', error);
         sessionStorage.removeItem('sable_start_agent');
       }
     }
@@ -325,13 +311,13 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
   useEffect(() => {
     if (!isBrowser || !sableInstance.current) return;
     Object.entries(textAgents).forEach(([id, agentConfig]) => {
-      const { steps, autoStart, autoStartOnce, beforeStart, requiredSelector, endWithoutSelector } = agentConfig;
+      const { steps, autoStart, autoStartOnce, beforeStart, requiredSelector } = agentConfig;
       const processedSteps = processTextAgentSteps(id, steps);
       // Hash both steps and config
-      const stepHash = hashSteps([processedSteps, autoStart, autoStartOnce, beforeStart?.toString?.(), requiredSelector, endWithoutSelector]);
+      const stepHash = hashSteps([processedSteps, autoStart, autoStartOnce, beforeStart?.toString?.(), requiredSelector]);
       if (registeredTextAgents.current[id] !== stepHash) {
         if (sableInstance.current) {
-          sableInstance.current.registerTextAgent(id, processedSteps, autoStart, autoStartOnce, beforeStart, requiredSelector, endWithoutSelector);
+          sableInstance.current.registerTextAgent(id, processedSteps, autoStart, autoStartOnce, beforeStart, requiredSelector);
         }
         registeredTextAgents.current[id] = stepHash;
       }
@@ -433,10 +419,10 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     },
     
     // Text Agent methods
-    registerTextAgent: (id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>, requiredSelector?: string, endWithoutSelector?: boolean) => {
+    registerTextAgent: (id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>, requiredSelector?: string) => {
       if (sableInstance.current) {
         const processedSteps = processTextAgentSteps(id, steps);
-        sableInstance.current.registerTextAgent(id, processedSteps, autoStart, autoStartOnce, beforeStart, requiredSelector, endWithoutSelector);
+        sableInstance.current.registerTextAgent(id, processedSteps, autoStart, autoStartOnce, beforeStart, requiredSelector);
       }
       return contextValue;
     },
@@ -503,27 +489,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     },
     
     closeAllPopups: () => {
-      if (config.debug) {
-        console.log('[SableSmartLinksProvider] Calling globalPopupManager.closeActivePopup() in closeAllPopups - this will affect hasActivePopup state');
-      }
       globalPopupManager.closeActivePopup();
-      if (config.debug) {
-        console.log('[closeAllPopups] hasActivePopup changed');
-      }
-    },
-    
-    // Voice methods
-    toggleVoiceChat: async () => {
-      if (sableInstance.current) {
-        await sableInstance.current.toggleVoiceChat();
-      }
-    },
-    
-    isVoiceChatActive: () => {
-      if (sableInstance.current) {
-        return sableInstance.current.isVoiceChatActive();
-      }
-      return false;
     },
 
     // Step data methods

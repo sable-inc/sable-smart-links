@@ -5,7 +5,7 @@
 export interface SableSmartLinksConfig {
   /** Enable debug logging (default: false) */
   debug?: boolean;
-  
+
   /** Configuration for the walkthrough engine */
   walkthrough?: {
     /** URL parameter name to trigger walkthroughs (default: 'walkthrough') */
@@ -22,8 +22,6 @@ export interface SableSmartLinksConfig {
   textAgent?: {
     /** Automatically start text agent if parameter is found (default: true) */
     autoStart?: boolean;
-    /** Default state of the text agent (default: 'collapsed') */
-    defaultState?: 'expanded' | 'collapsed';
     /** Position of the text agent (default: 'right') */
     position?: 'top' | 'right' | 'bottom' | 'left';
     /** Whether to persist state across page reloads (default: true) */
@@ -32,45 +30,6 @@ export interface SableSmartLinksConfig {
     primaryColor?: string;
     /** Default box width for popups (default: 300) */
     defaultBoxWidth?: number;
-    /** Whether to enable chat input in text agent (default: false) */
-    enableChatInput?: boolean;
-    /** Configuration for the final popup shown at the end of a text agent session */
-    finalPopupConfig?: {
-      /** Whether to enable chat input (default: true) */
-      enableChat?: boolean;
-      /** 
-       * Custom sections to display in the final popup
-       * Each section can have its own title, items, and behavior
-       */
-      sections?: Array<{
-        /** Title of the section */
-        title: string;
-        /** Icon to display next to items (emoji or URL) */
-        icon?: string;
-        /** Optional step ID to restart the text agent from when an item in this section is selected
-         * If provided, the text agent will restart from this step when any item in this section is selected
-         * If null or undefined (default), no restart will occur
-         * @property {boolean} skipTrigger - When true, any triggers (like triggerOnTyping) for the step will be ignored
-         *                                  and the popup will be displayed immediately
-         */
-        restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
-        /** Items to display in this section */
-        items: Array<{
-          /** Display text for the item */
-          text: string;
-          /** Optional step ID to restart the text agent from when this specific item is selected
-           * This overrides the section-level restartFromStep if provided
-           * @property {boolean} skipTrigger - When true, any triggers (like triggerOnTyping) for the step will be ignored
-           *                                  and the popup will be displayed immediately
-           */
-          restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
-          /** Additional data needed for the handler */
-          data?: any;
-        }>;
-        /** Handler function to execute when an item in this section is selected */
-        onSelect: (item: any) => void;
-      }>;
-    };
     /** Configuration for the trigger button */
     triggerButton?: {
       /** Enable the trigger button (default: false) */
@@ -152,8 +111,6 @@ export interface SableSmartLinksConfig {
     };
     /** Configuration for the menu popup that appears when trigger elements are clicked */
     popupConfig: {
-      /** Whether to enable chat input (default: true) */
-      enableChat?: boolean;
       /** 
        * Custom sections to display in the menu popup
        * Each section can have its own title, items, and behavior
@@ -163,23 +120,12 @@ export interface SableSmartLinksConfig {
         title: string;
         /** Icon to display next to items (emoji or URL) */
         icon?: string;
-        /** Optional step ID to restart the text agent from when an item in this section is selected
-         * If provided, the text agent will restart from this step when any item in this section is selected
-         * If null or undefined (default), no restart will occur
-         * @property {boolean} skipTrigger - When true, any triggers (like triggerOnTyping) for the step will be ignored
-         *                                  and the popup will be displayed immediately
-         */
-        restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+
         /** Items to display in this section */
         items: Array<{
           /** Display text for the item */
           text: string;
-          /** Optional step ID to restart the text agent from when this specific item is selected
-           * This overrides the section-level restartFromStep if provided
-           * @property {boolean} skipTrigger - When true, any triggers (like triggerOnTyping) for the step will be ignored
-           *                                  and the popup will be displayed immediately
-           */
-          restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+
           /** Additional data needed for the handler */
           data?: any;
         }>;
@@ -188,70 +134,22 @@ export interface SableSmartLinksConfig {
       }>;
     };
   };
-  
-    /* --------------------------------------------------------------------- */
-    /* ----------------------  NEW  VOICE-AGENT BLOCK  --------------------- */
-    /* --------------------------------------------------------------------- */
-  
-  voice?: {
-    /** Turn the voice popup on (default: false) */
+
+  /** Configuration for analytics */
+  analytics?: {
+    /** Enable analytics (default: true) */
     enabled?: boolean;
-
-    /** Low-level engine to use */
-    engine?: 'nova' | 'openai' | 'custom';
-
-    /** WebSocket endpoint, e.g. `ws://localhost:3001` */
-    serverUrl?: string;
-
-    /** System prompt sent at `promptStart` */
-    systemPrompt?: string;
-
-    /** Function calls/tools configuration */
-    tools?: VoiceToolConfig[];
-
-    /** Speaking speed multiplier (default: 1.1) */
-    speakingSpeed?: number;
-
-    /** Popup look-and-feel */
-    ui?: {
-      /** Screen corner for the widget (default: bottom-right) */
-      position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
-
-      buttonText?: {
-        start?: string;   // text before session starts   (default: "Start Voice Chat")
-        stop?: string;    // text while session is active (default: "End Chat")
-      };
-
-      theme?: {
-        /** Primary colour for buttons / accents */
-        primaryColor?: string;
-        /** Background colour of the popup */
-        backgroundColor?: string;
-      };
-    };
+    /** Log events to console (default: true) */
+    logEvents?: boolean;
+    /** Use session storage for session tracking (default: true) */
+    sessionStorage?: boolean;
+    /** Use local storage for user tracking (default: true) */
+    localStorage?: boolean;
   };
 
   /** Per-agent text agent configuration */
   textAgents?: Record<string, TextAgentAgentConfig>;
 }
-
-
-/** Configuration for voice tools/function calls */
-export interface VoiceToolConfig {
-  /** Name of the tool */
-  name: string;
-  /** Description of what the tool does */
-  description: string;
-  /** JSON schema for the tool parameters */
-  parameters: {
-    type: "object";
-    properties: Record<string, any>;
-    required?: string[];
-  };
-  /** Handler function that gets called when the tool is used */
-  handler: (parameters: any) => Promise<any> | any;
-}
-
 
 /**
  * Type definitions for Smart Link walkthroughs
@@ -353,7 +251,7 @@ export class WalkthroughEngine {
   next(): void;
   end(): void;
   destroy(): void;
-  
+
   // Internal methods for state persistence
   _saveState(): void;
   _loadState(): WalkthroughState | null;
@@ -361,7 +259,6 @@ export class WalkthroughEngine {
   _setupNavigationHandling(): void;
   _restoreWalkthrough(): Promise<void>;
 }
-
 
 export class SableSmartLinks {
   constructor(config?: SableSmartLinksConfig);
@@ -377,7 +274,7 @@ export class SableSmartLinks {
   endWalkthrough(): void;
 
   /* ----- text-agent API ----------- */
-  registerTextAgent(id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>, requiredSelector?: string, endWithoutSelector?: boolean): void;
+  registerTextAgent(id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>, requiredSelector?: string): SableSmartLinks;
   /**
    * Start a text agent with the given ID
    * @param agentId Optional ID of the text agent to start
@@ -386,31 +283,31 @@ export class SableSmartLinks {
    * @returns Promise<boolean> - Success status
    */
   startTextAgent(agentId?: string, stepId?: string | null, skipTrigger?: boolean): Promise<boolean>;
-  nextTextAgentStep(): void;
-  previousTextAgentStep(): void;
-  toggleTextAgentExpand(): void;
-  sendTextAgentMessage(message: string): void;
-  endTextAgent(): void;
+  nextTextAgentStep(): SableSmartLinks;
+  previousTextAgentStep(): SableSmartLinks;
+  endTextAgent(): SableSmartLinks;
   /**
    * Restart the text agent from a specific step or with options.
+   * @param agentId The ID of the text agent to restart
    * @param options Options for restarting the text agent
    * @param options.stepId Optional step ID to restart from
    * @param options.skipTrigger Whether to skip trigger checks
-   * @param options.beforeRestartCallback Optional callback before restart
+   * @param options.useSessionStorage If true, use sessionStorage to trigger agent start
    */
-  restartTextAgent(options?: { stepId?: string | null; skipTrigger?: boolean; beforeRestartCallback?: (() => void) | null }): void;
-
-  /* ----- voice-agent (minimal) ------ */
-  /** Start/stop voice chat */
-  toggleVoiceChat(): Promise<void>;
-  
-  /** Check if voice is active */
-  isVoiceChatActive(): boolean;
+  startTextAgent(agentId: string, options?: { stepId?: string | null; skipTrigger?: boolean; useSessionStorage?: boolean }): SableSmartLinks;
 
   /* ----- popup helpers ------------ */
   showPopup(options: PopupOptions): { unmount: () => void; mount: (parent: HTMLElement) => void } | null;
-  showComplexPopup(options: PopupOptions): { unmount: () => void; mount: (parent: HTMLElement) => void } | null;
-  closeAllPopups(): void;
+  closeAllPopups(exceptIds?: string[]): void;
+
+  /* ----- analytics API ------------ */
+  getAnalyticsSessionId(): string | null;
+  getAnalyticsUserId(): string | null;
+  resetAnalyticsSession(): void;
+  resetAnalyticsUser(): void;
+
+  /* ----- cleanup ------------- */
+  destroy(): void;
 }
 
 declare const instance: SableSmartLinks;
@@ -426,8 +323,8 @@ export default instance;
 export interface PopupOptions {
   /** XPath or CSS selector that must exist for this popup to be shown */
   requiredSelector?: string;
-  
-  id?: string; 
+
+  id?: string;
   /** The text to display in the popup */
   text: string;
   /** Width of the popup in pixels (default: 300) */
@@ -444,6 +341,29 @@ export interface PopupOptions {
   primaryColor?: string;
   /** Parent element to mount the popup to (default: document.body) */
   parent?: HTMLElement;
+  /** Secondary text content (displayed in a different style) */
+  secondaryText?: string;
+  /** Custom sections to display in the popup */
+  sections?: Array<{
+    title: string;
+    icon?: string;
+    items: Array<{
+      text: string;
+      data?: any;
+    }>;
+    onSelect: (item: any) => void;
+  }>;
+  /** Agent information for the popup */
+  agentInfo?: any;
+  /** Trigger configuration for typing events */
+  triggerOnTyping?: {
+    /** CSS selector for the input element */
+    selector: string;
+    /** When to trigger the popup: 'start' (when typing begins), 'stop' (when typing stops), or 'change' (on any value change) */
+    on?: 'start' | 'stop' | 'change';
+    /** Delay in ms before showing popup when on='stop' (default: 1000) */
+    stopDelay?: number;
+  };
 }
 
 /**
@@ -458,7 +378,7 @@ export interface TextAgentStep {
 
   /** Font size for the popup text (default: '15px') */
   fontSize?: string;
-  
+
   /** Main text content to display in the popup */
   text: string | ((dataUtils?: {
     setStepData: (key: string, value: any) => void;
@@ -470,10 +390,8 @@ export interface TextAgentStep {
   sections?: Array<{
     title: string;
     icon?: string;
-    restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
     items: Array<{
       text: string;
-      restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
       data?: any;
     }>;
     onSelect: (item: any) => void;
@@ -485,24 +403,22 @@ export interface TextAgentStep {
   }) => Array<{
     title: string;
     icon?: string;
-    restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
     items: Array<{
       text: string;
-      restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
       data?: any;
     }>;
     onSelect: (item: any) => void;
   }>);
-  
+
   /** Secondary text content (displayed in a different style) */
   secondaryText?: string | (() => string);
-  
+
   /** Width of the popup box in pixels */
   boxWidth?: number;
-  
+
   /** Type of button to show in the popup */
   buttonType?: 'arrow' | 'yes-no';
-  
+
   /** Callback function when proceed/continue button is clicked */
   onProceed?: ((textInput?: string, dataUtils?: {
     setStepData: (key: string, value: any) => void;
@@ -510,15 +426,18 @@ export interface TextAgentStep {
     getAllStepData: () => Record<string, any>;
     clearStepData: () => void;
   }) => void | Promise<void>);
-  
-  /** Callback function for yes/no buttons (receives boolean indicating 'yes' selection) */
-  onYesNo?: (isYes: boolean) => void;
-  
+
+  /** Callback function for yes/no buttons (receives boolean indicating 'yes' selection and dataUtils for step data access) */
+  onYesNo?: ((isYes: boolean, dataUtils?: {
+    setStepData: (key: string, value: any) => void;
+    getStepData: (key: string) => any;
+    getAllStepData: () => Record<string, any>;
+    clearStepData: () => void;
+  }) => void | Promise<void>);
+
   /** Primary color for styling the popup */
   primaryColor?: string;
-  
 
-  
   /** Element to highlight or focus during this step */
   targetElement?: {
     /** CSS selector for the target element */
@@ -530,13 +449,13 @@ export interface TextAgentStep {
     /** Position to render the popup relative to target element */
     position?: 'top' | 'right' | 'bottom' | 'left';
   };
-  
+
   /** Whether to automatically advance to next step */
   autoAdvance?: boolean;
-  
+
   /** Delay in milliseconds before auto-advancing */
   autoAdvanceDelay?: number;
-  
+
   /** Action to perform during this step */
   action?: {
     /** Type of action to perform */
@@ -554,12 +473,9 @@ export interface TextAgentStep {
     /** Custom handler function for 'custom' action type */
     handler?: (element: HTMLElement, engine: any) => void;
   };
-  
+
   /** Custom callback function called when step is executed */
   callback?: (element: HTMLElement | null, engine: any) => void;
-  
-  /** Whether to include a text input box in the popup (default: false) */
-  includeTextBox?: boolean;
 
   /** Trigger the step when typing occurs in an input field */
   triggerOnTyping?: {
@@ -570,7 +486,7 @@ export interface TextAgentStep {
     /** Delay in ms before showing popup when on='stop' (default: 1000) */
     stopDelay?: number;
   };
-  
+
   /** Trigger the step when a button is pressed */
   triggerOnButtonPress?: {
     /** CSS selector for the button element */
@@ -580,6 +496,9 @@ export interface TextAgentStep {
     /** Delay in ms before showing popup after the event (default: 0) */
     delay?: number;
   };
+
+  /** Conditional function to determine if step should be shown */
+  showIf?: () => boolean;
 }
 
 export interface TextAgentAgentConfig {
@@ -587,6 +506,293 @@ export interface TextAgentAgentConfig {
   autoStart?: boolean;
   autoStartOnce?: boolean;
   beforeStart?: () => void | Promise<void>;
-  /** Whether to end the text agent immediately when the required selector is no longer present in the DOM (default: false) */
-  endWithoutSelector?: boolean;
+  requiredSelector?: string;
 }
+
+/**
+ * Element Interactor - Utility class for common DOM element interactions
+ */
+export interface ScrollIntoViewOptions {
+  behavior?: ScrollBehavior;
+  block?: ScrollLogicalPosition;
+  inline?: ScrollLogicalPosition;
+}
+
+export class ElementInteractor {
+  /**
+   * Sets the value of an input or textarea element and triggers appropriate events
+   */
+  static setInputValue(element: HTMLInputElement | HTMLTextAreaElement, value: string): void;
+
+  /**
+   * Clicks an element with optional delay
+   */
+  static async clickElement(element: Element, delay?: number): Promise<void>;
+
+  /**
+   * Scrolls an element into view with specified options
+   */
+  static async scrollIntoView(element: Element, options?: ScrollIntoViewOptions): Promise<void>;
+
+  /**
+   * Waits for an element to appear in the DOM
+   */
+  static async waitForElement(selector: string, timeout?: number): Promise<Element>;
+
+  /**
+   * Checks if an element is currently visible in the viewport
+   */
+  static isElementInViewport(element: Element): boolean;
+
+  /**
+   * Gets an element by selector with support for both CSS and XPath
+   */
+  static getElement(selector: string): Element | null;
+
+  /**
+   * Gets multiple elements by selector with support for both CSS and XPath
+   */
+  static getElements(selector: string): Element[];
+
+  /**
+   * Checks if an element exists in the DOM
+   */
+  static elementExists(selector: string): boolean;
+
+  /**
+   * Gets the computed style of an element
+   */
+  static getComputedStyle(element: Element, property?: string): string | CSSStyleDeclaration;
+
+  /**
+   * Checks if an element is visible (not hidden by CSS)
+   */
+  static isElementVisible(element: Element): boolean;
+
+  /**
+   * Highlights an element with prominent visual effects
+   */
+  static highlightElement(element: Element): { originalStyle: string, styleTag: HTMLStyleElement };
+
+  /**
+   * Restores original element style and cleans up highlight effects
+   */
+  static restoreElementStyle(element: Element, styleInfo: { originalStyle: string, styleTag: HTMLStyleElement }): void;
+
+  /**
+   * Starts an agent by dispatching the 'sable:textAgentStart' event or setting sessionStorage
+   */
+  static startAgent(agentId: string, options?: {
+    stepId?: string;
+    skipTrigger?: boolean;
+    useSessionStorage?: boolean;
+  }): void;
+
+  /**
+   * Ends an agent by dispatching the 'sable:textAgentEnd' event
+   */
+  static endAgent(agentId: string): void;
+}
+
+// Export individual functions for convenience
+export const setInputValue: typeof ElementInteractor.setInputValue;
+export const clickElement: typeof ElementInteractor.clickElement;
+export const scrollIntoView: typeof ElementInteractor.scrollIntoView;
+export const waitForElement: typeof ElementInteractor.waitForElement;
+export const isElementInViewport: typeof ElementInteractor.isElementInViewport;
+export const getElement: typeof ElementInteractor.getElement;
+export const getElements: typeof ElementInteractor.getElements;
+export const elementExists: typeof ElementInteractor.elementExists;
+export const getComputedStyle: typeof ElementInteractor.getComputedStyle;
+export const isElementVisible: typeof ElementInteractor.isElementVisible;
+export const highlightElement: typeof ElementInteractor.highlightElement;
+export const restoreElementStyle: typeof ElementInteractor.restoreElementStyle;
+export const startAgent: typeof ElementInteractor.startAgent;
+export const endAgent: typeof ElementInteractor.endAgent;
+
+/**
+ * Analytics utilities
+ */
+export declare function logTextAgentEvent(eventData: {
+  event: string;
+  agentId: string;
+  stepId: string;
+  instanceId?: string | null;
+  stepDuration?: number | null;
+  agentDuration?: number | null;
+  metadata?: Record<string, any>;
+}): Promise<string | null>;
+
+export declare function updateTextAgentEventDuration(analyticsId: string, stepDuration: number): Promise<void>;
+
+export declare function logTextAgentStart(agentId: string, stepId: string, instanceId?: string | null, metadata?: Record<string, any>, agentDuration?: number | null): Promise<string | null>;
+export declare function logTextAgentNext(agentId: string, stepId: string, instanceId?: string | null, metadata?: Record<string, any>, agentDuration?: number | null): Promise<string | null>;
+export declare function logTextAgentPrevious(agentId: string, stepId: string, instanceId?: string | null, metadata?: Record<string, any>, agentDuration?: number | null): Promise<string | null>;
+export declare function logTextAgentEnd(agentId: string, stepId: string, instanceId?: string | null, metadata?: Record<string, any>, agentDuration?: number | null): Promise<string | null>;
+export declare function logTextAgentRestart(agentId: string, stepId: string, instanceId?: string | null, metadata?: Record<string, any>, agentDuration?: number | null): Promise<string | null>;
+export declare function logTextAgentStepRendered(agentId: string, stepId: string, instanceId?: string | null, metadata?: Record<string, any>, agentDuration?: number | null): Promise<string | null>;
+
+export declare function logWalkthroughEvent(eventData: {
+  event: string;
+  walkthroughId: string;
+  stepIndex: number;
+  stepId: string;
+  stepSelector?: string | null;
+  instanceId?: string | null;
+  stepDuration?: number | null;
+  agentDuration?: number | null;
+  metadata?: Record<string, any>;
+}): Promise<string | null>;
+
+export declare function updateWalkthroughEventDuration(analyticsId: string, stepDuration: number): Promise<void>;
+
+export declare function logWalkthroughStart(walkthroughId: string, stepIndex: number, stepId: string, instanceId?: string | null, metadata?: Record<string, any>, agentDuration?: number | null): Promise<string | null>;
+export declare function logWalkthroughNext(walkthroughId: string, stepIndex: number, stepId: string, instanceId?: string | null, metadata?: Record<string, any>, agentDuration?: number | null): Promise<string | null>;
+export declare function logWalkthroughEnd(walkthroughId: string, stepIndex: number, stepId: string, instanceId?: string | null, metadata?: Record<string, any>, agentDuration?: number | null): Promise<string | null>;
+export declare function logWalkthroughStepExecuted(walkthroughId: string, stepIndex: number, stepId: string, stepSelector: string, instanceId?: string | null, metadata?: Record<string, any>, agentDuration?: number | null): Promise<string | null>;
+export declare function logWalkthroughStepError(walkthroughId: string, stepIndex: number, stepId: string, stepSelector: string, instanceId?: string | null, metadata?: Record<string, any>, agentDuration?: number | null): Promise<string | null>;
+
+export declare function getCurrentSessionId(): string;
+export declare function getCurrentUserId(): string;
+export declare function resetSessionId(): void;
+export declare function resetUserId(): void;
+
+export declare function logCrawlBedrockQuery(eventData: {
+  url: string;
+  instructions: string;
+  output?: any;
+  duration: number;
+  error?: string | null;
+}): Promise<string | null>;
+
+export declare function logSearchBedrockQuery(eventData: {
+  query: string;
+  output?: any;
+  duration: number;
+  error?: string | null;
+}): Promise<string | null>;
+
+/**
+ * Tavily helper functions and types
+ */
+export interface CrawlParameters {
+  extractDepth: "basic" | "advanced";
+  categories: ("Documentation" | "Blogs" | "Community" | "About" | "Contact" | "Pricing" | "Enterprise" | "Careers" | "E-Commerce" | "Media" | "People")[];
+  explanation: string;
+  otherCrawls: string[];
+}
+
+export interface SearchParameters {
+  searchTopic: "general" | "news" | "finance";
+  searchDepth: "basic" | "advanced";
+  timeRange: "none" | "day" | "week" | "month" | "year";
+  includeAnswer: "none" | "basic" | "advanced";
+  explanation: string;
+  otherQueries: string[];
+}
+
+export interface CrawlBedrockEventData {
+  url: string;
+  instructions: string;
+  output: CrawlParameters | null;
+  duration: number;
+  error: string | null;
+}
+
+export interface SearchBedrockEventData {
+  query: string;
+  output: SearchParameters | null;
+  duration: number;
+  error: string | null;
+}
+
+export declare function getOptimalCrawlParameters(url: string, instructions: string): Promise<CrawlParameters>;
+export declare function getOptimalSearchParameters(query: string): Promise<SearchParameters>;
+export declare function getOptimalCrawlParametersServer(url: string, instructions: string): Promise<CrawlParameters>;
+export declare function getOptimalSearchParametersServer(query: string): Promise<SearchParameters>;
+export declare function createSableTavilyHandler(): any;
+
+/**
+ * React components and hooks
+ */
+export interface SableSmartLinksContextType {
+  // Walkthrough methods
+  registerWalkthrough: (id: string, steps: WalkthroughStep[]) => void;
+  restoreWalkthrough: () => void;
+  startWalkthrough: (walkthroughId: string) => boolean;
+  nextWalkthroughStep: () => void;
+  endWalkthrough: () => void;
+
+  // Text Agent methods
+  registerTextAgent: (id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>, requiredSelector?: string) => SableSmartLinksContextType;
+  startTextAgent: (agentId?: string, stepId?: string | null, skipTrigger?: boolean) => Promise<boolean>;
+  nextTextAgentStep: () => SableSmartLinksContextType;
+  previousTextAgentStep: () => SableSmartLinksContextType;
+  endTextAgent: () => SableSmartLinksContextType;
+  restartTextAgent: (agentId?: string, options?: { stepId?: string | null; skipTrigger?: boolean; beforeRestartCallback?: (() => void) | null }) => SableSmartLinksContextType;
+
+  // Popup methods
+  showPopup: (options: {
+    text: string;
+    boxWidth?: number;
+    buttonType?: 'arrow' | 'yes-no';
+    onProceed?: () => void;
+    onYesNo?: (isYes: boolean) => void;
+    primaryColor?: string;
+    parent?: HTMLElement;
+  }) => { unmount: () => void; mount: (newParent: HTMLElement) => void; } | null;
+  closeAllPopups: () => void;
+
+  // Popup state
+  hasActivePopup: boolean;
+
+  // Shared data methods for passing data between steps
+  setStepData: (key: string, value: any) => void;
+  getStepData: (key: string) => any;
+  getAllStepData: () => Record<string, any>;
+  clearStepData: () => void;
+}
+
+export interface SableSmartLinksProviderProps {
+  config?: SableSmartLinksConfig;
+  children: React.ReactNode;
+  autoInit?: boolean;
+  walkthroughs?: Record<string, WalkthroughStep[]>;
+  textAgents?: Record<string, TextAgentAgentConfig>;
+  menu?: {
+    enabled?: boolean;
+    text?: string;
+    position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+    targetElement?: {
+      selector: string;
+      waitForElement?: boolean;
+      waitTimeout?: number;
+      position?: 'top' | 'right' | 'bottom' | 'left';
+    };
+    urlPaths?: string[];
+    style?: {
+      backgroundColor?: string;
+      color?: string;
+      borderRadius?: string;
+      padding?: string;
+      fontSize?: string;
+      boxShadow?: string;
+      [key: string]: string | undefined;
+    };
+    popupConfig: {
+      sections?: Array<{
+        title: string;
+        icon?: string;
+        items: Array<{
+          text: string;
+          data?: any;
+        }>;
+        onSelect: (item: any) => void;
+      }>;
+    };
+  };
+  initialStepData?: Record<string, any>;
+}
+
+export declare const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps>;
+export declare const useSableSmartLinks: () => SableSmartLinksContextType;

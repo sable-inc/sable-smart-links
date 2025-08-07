@@ -2,7 +2,7 @@
  * Element selection utilities
  */
 
-import { isBrowser, safeDocument } from './browserApi.js';
+import { isBrowser, safeDocument } from './browserAPI.js';
 
 /**
  * Find an element in the DOM using various selector types
@@ -14,12 +14,12 @@ export function findElement(selector) {
   if (selector instanceof Element) {
     return selector;
   }
-  
+
   // If not in browser environment, return null
   if (!isBrowser) {
     return null;
   }
-  
+
   // If selector is a string, try different selection methods
   if (typeof selector === 'string') {
     // Try as CSS selector first
@@ -31,7 +31,7 @@ export function findElement(selector) {
     } catch (e) {
       // Invalid CSS selector, continue to other methods
     }
-    
+
     // Try as XPath if it starts with //
     if (selector.startsWith('//') || selector.startsWith('(//')) {
       try {
@@ -49,7 +49,7 @@ export function findElement(selector) {
         // Invalid XPath, continue to other methods
       }
     }
-    
+
     // Try as ID (without the # prefix)
     if (!selector.includes(' ') && !selector.startsWith('#')) {
       const element = safeDocument.getElementById(selector);
@@ -58,12 +58,12 @@ export function findElement(selector) {
       }
     }
   }
-  
+
   // If selector is an object with a custom finder function
   if (typeof selector === 'object' && typeof selector.find === 'function') {
     return selector.find();
   }
-  
+
   // Element not found
   return null;
 }

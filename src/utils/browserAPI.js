@@ -25,20 +25,20 @@ export const safeWindow = {
       return isBrowser ? window.location.pathname : '';
     }
   },
-  
+
   // Event listeners
   addEventListener: (event, handler, options) => {
     if (isBrowser) {
       window.addEventListener(event, handler, options);
     }
   },
-  
+
   removeEventListener: (event, handler, options) => {
     if (isBrowser) {
       window.removeEventListener(event, handler, options);
     }
   },
-  
+
   // Viewport and scrolling
   getViewportDimensions: () => {
     if (!isBrowser) return { width: 0, height: 0 };
@@ -47,7 +47,7 @@ export const safeWindow = {
       height: window.innerHeight || document.documentElement.clientHeight
     };
   },
-  
+
   getScrollPosition: () => {
     if (!isBrowser) return { left: 0, top: 0 };
     return {
@@ -55,7 +55,7 @@ export const safeWindow = {
       top: window.pageYOffset || document.documentElement.scrollTop
     };
   },
-  
+
   // History API
   history: {
     pushState: (data, unused, url) => {
@@ -80,60 +80,60 @@ export const safeDocument = {
     if (!isBrowser) return {};
     return document.createElement(tagName);
   },
-  
+
   // DOM element queries
   getElementById: (id) => {
     if (!isBrowser) return null;
     return document.getElementById(id);
   },
-  
+
   querySelector: (selector) => {
     if (!isBrowser) return null;
     return document.querySelector(selector);
   },
-  
+
   querySelectorAll: (selector) => {
     if (!isBrowser) return [];
     return document.querySelectorAll(selector);
   },
-  
+
   // DOM manipulation
   appendChild: (parent, child) => {
     if (isBrowser && parent && child) {
       parent.appendChild(child);
     }
   },
-  
+
   // Document state
   get readyState() {
     if (!isBrowser) return '';
     return document.readyState;
   },
-  
+
   // Event listeners
   addEventListener: (event, handler, options) => {
     if (isBrowser) {
       document.addEventListener(event, handler, options);
     }
   },
-  
+
   removeEventListener: (event, handler, options) => {
     if (isBrowser) {
       document.removeEventListener(event, handler, options);
     }
   },
-  
+
   // DOM properties
   get documentElement() {
     if (!isBrowser) return null;
     return document.documentElement;
   },
-  
+
   get body() {
     if (!isBrowser) return null;
     return document.body;
   },
-  
+
   get head() {
     if (!isBrowser) return null;
     return document.head;

@@ -1,15 +1,15 @@
-// Re-export types from both server and client modules
-export type { CrawlParameters, SearchParameters } from './server.js';
+// Re-export types from the types module
+export type { CrawlParameters, SearchParameters, CrawlBedrockEventData, SearchBedrockEventData } from './types';
 
 // Re-export server-side functions and handler
-export { 
+export {
   getOptimalCrawlParameters as getOptimalCrawlParametersServer,
   getOptimalSearchParameters as getOptimalSearchParametersServer,
   createSableTavilyHandler
 } from './server.js';
 
 // Re-export client-side functions (these are the main exports for client usage)
-export { 
+export {
   getOptimalCrawlParameters,
   getOptimalSearchParameters
 } from './client.js';

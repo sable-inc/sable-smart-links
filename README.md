@@ -219,7 +219,6 @@ const sable = new SableSmartLinks({
       boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
     },
     popupConfig: {
-      enableChat: true,
       sections: [
         {
           title: "Quick Actions",
@@ -228,9 +227,9 @@ const sable = new SableSmartLinks({
             { text: "Action 1", data: { action: "action1" } },
             { text: "Action 2", data: { action: "action2" } },
           ],
-          onSelect: (item) => {
-            console.log("Selected:", item);
-          },
+                  onSelect: (item) => {
+          // Selected: item
+        },
         },
       ],
     },
@@ -264,12 +263,11 @@ function App() {
           boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
         },
         popupConfig: {
-          enableChat: true,
           sections: [
             {
               title: "Actions",
               items: [{ text: "Do Something", data: { action: "something" } }],
-              onSelect: (item) => console.log(item),
+              onSelect: (item) => { /* item selected */ },
             },
           ],
         },
@@ -302,16 +300,16 @@ const popup = globalPopupManager.showPopup({
   text: "This is a popup message",
   boxWidth: 300,
   buttonType: "arrow",
-  onProceed: () => console.log("Proceed clicked"),
+        onProceed: () => { /* proceed clicked */ },
 });
 
 // Check popup state
 const state = globalPopupManager.getState();
-console.log("Has active popup:", state.hasActivePopup);
+// Has active popup: state.hasActivePopup
 
 // Listen for state changes
 globalPopupManager.addListener((state) => {
-  console.log("Popup state changed:", state);
+  // Popup state changed: state
 });
 
 // Close all popups
@@ -386,39 +384,7 @@ sable.registerTextAgent(
   autoStart, // Whether to start automatically (default: false)
   autoStartOnce, // Only auto-start once per session (default: true)
   beforeStart, // Optional function to run before starting
-  requiredSelector, // CSS selector that must exist for agent to run
-  endWithoutSelector // End immediately when selector disappears (default: false)
-);
-```
-
-### endWithoutSelector Feature
-
-The `endWithoutSelector` parameter allows you to control when a text agent should end when its required selector is removed from the DOM:
-
-- **`endWithoutSelector: false` (default)**: The agent will only end if the required selector disappears AND no steps have been rendered yet
-- **`endWithoutSelector: true`**: The agent will end immediately when the required selector disappears, even if steps have been rendered
-
-```javascript
-// Agent that ends immediately when target element is removed
-sable.registerTextAgent(
-  "temporary-guide",
-  steps,
-  false,
-  false,
-  null,
-  "#temp-container",
-  true
-);
-
-// Agent that continues running even after target is removed (if steps were rendered)
-sable.registerTextAgent(
-  "persistent-guide",
-  steps,
-  false,
-  false,
-  null,
-  "#persistent-container",
-  false
+  requiredSelector // CSS selector that must exist for agent to run
 );
 ```
 
@@ -482,7 +448,7 @@ try {
     bedrockApiKey
   );
 
-  console.log("Crawl Parameters:", params);
+  // Crawl Parameters: params
   // {
   //   extractDepth: "advanced",
   //   categories: ["Documentation", "Blogs"],
@@ -499,7 +465,7 @@ try {
     categories: params.categories,
   };
 } catch (error) {
-  console.error("Error:", error);
+  // Error occurred
 }
 ```
 
@@ -518,7 +484,7 @@ try {
     bedrockApiKey
   );
 
-  console.log("Search Parameters:", params);
+  // Search Parameters: params
   // {
   //   searchTopic: "news",
   //   searchDepth: "advanced",
@@ -540,7 +506,7 @@ try {
     includeAnswer: params.includeAnswer,
   };
 } catch (error) {
-  console.error("Error:", error);
+  // Error occurred
 }
 ```
 
@@ -622,7 +588,6 @@ export default async function handler(req, res) {
         .json({ error: 'Type must be either "crawl" or "search"' });
     }
   } catch (error) {
-    console.error("Error:", error);
     return res.status(500).json({
       error: "Failed to process optimization",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -680,7 +645,7 @@ interface SearchParameters {
 - `start(walkthroughId)`: Start a walkthrough by ID
 - `next()`: Go to the next step in the current walkthrough
 - `end()`: End the current walkthrough
-- `registerTextAgent(id, steps, autoStart, autoStartOnce, beforeStart, requiredSelector, endWithoutSelector)`: Register a text agent
+- `registerTextAgent(id, steps, autoStart, autoStartOnce, beforeStart, requiredSelector)`: Register a text agent
 - `startTextAgent(agentId, stepId, skipTrigger)`: Start a text agent
 - `nextTextAgentStep()`: Go to next step in current text agent
 - `previousTextAgentStep()`: Go to previous step in current text agent

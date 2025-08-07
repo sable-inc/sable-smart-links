@@ -1,23 +1,7 @@
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
-import { logCrawlBedrockQuery, logSearchBedrockQuery } from '../utils/analytics.js';
+import { logCrawlBedrockQuery, logSearchBedrockQuery } from '../utils/analytics';
+import type { CrawlParameters, SearchParameters, CrawlBedrockEventData, SearchBedrockEventData } from './types';
 import type { NextApiRequest, NextApiResponse } from 'next';
-
-// Types for the function parameters and return values
-export interface CrawlParameters {
-  extractDepth: "basic" | "advanced";
-  categories: ("Documentation" | "Blogs" | "Community" | "About" | "Contact" | "Pricing" | "Enterprise" | "Careers" | "E-Commerce" | "Media" | "People")[];
-  explanation: string;
-  otherCrawls: {url: string, instructions: string}[];
-}
-
-export interface SearchParameters {
-  searchTopic: "general" | "news" | "finance";
-  searchDepth: "basic" | "advanced";
-  timeRange: "none" | "day" | "week" | "month" | "year";
-  includeAnswer: "none" | "basic" | "advanced";
-  explanation: string;
-  otherQueries: string[];
-}
 
 interface ApiKeysResponse {
   data: {
@@ -34,13 +18,12 @@ interface ApiKeysResponse {
  */
 const fetchBedrockApiKey = async (sableApiKey: string): Promise<string> => {
   if (!sableApiKey) {
-    console.error('[SableTavilyServer] Error: Sable API key is required');
     throw new Error('Sable API key is required');
   }
-  
+
   // Use localhost in development, Vercel deployment in production
   const apiUrl = `https://sable-smart-links.vercel.app/api/keys/${sableApiKey}`;
-  
+
   try {
     const response = await fetch(apiUrl, {
       method: 'GET',
@@ -49,34 +32,25 @@ const fetchBedrockApiKey = async (sableApiKey: string): Promise<string> => {
         'Accept': 'application/json'
       }
     });
-    
+
     if (!response.ok) {
       let errorBody = '';
       try {
         errorBody = await response.text();
       } catch (textError) {
-        console.error('[SableTavilyServer] Could not read error response body:', textError);
+        throw new Error(`Failed to fetch API keys: ${response.status} ${response.statusText}\nResponse body unreadable: ${textError}`);
       }
       throw new Error(`Failed to fetch API keys: ${response.status} ${response.statusText}\nResponse body: ${errorBody}`);
     }
-    
+
     const data: ApiKeysResponse = await response.json();
-    
+
     if (!data.data?.internalKeys?.bedrock) {
-      console.error('[SableTavilyServer] Bedrock API key not found in response. Full response:', JSON.stringify(data, null, 2));
       throw new Error('Bedrock API key not found in response');
     }
-    
+
     return data.data.internalKeys.bedrock;
   } catch (error) {
-    console.error('[SableTavilyServer] fetchBedrockApiKey error details:', {
-      errorType: error?.constructor?.name,
-      errorMessage: (error as Error)?.message,
-      errorStack: (error as Error)?.stack,
-      isNetworkError: (error as Error)?.name === 'TypeError' && (error as Error)?.message?.includes('fetch'),
-      isJsonError: (error as Error)?.name === 'SyntaxError' && (error as Error)?.message?.includes('JSON'),
-    });
-    
     if (error instanceof Error) {
       throw new Error(`Failed to fetch Bedrock API key: ${error.message}`);
     }
@@ -92,18 +66,18 @@ const fetchBedrockApiKey = async (sableApiKey: string): Promise<string> => {
  * @returns Promise with crawl parameters and explanation
  */
 export const getOptimalCrawlParameters = async (
-  url: string, 
-  instructions: string, 
+  url: string,
+  instructions: string,
   sableApiKey: string
 ): Promise<CrawlParameters> => {
   const startTime = Date.now();
   let duration: number;
   let outputs: CrawlParameters | null = null;
   let error: string | null = null;
-  
+
   try {
     const bedrockApiKey = await fetchBedrockApiKey(sableApiKey);
-  
+
     const [accessKeyId, secretAccessKey] = bedrockApiKey.split(':');
     if (!accessKeyId || !secretAccessKey) throw new Error('API key must be in ACCESS_KEY:SECRET_KEY format');
 
@@ -112,22 +86,31 @@ export const getOptimalCrawlParameters = async (
       credentials: { accessKeyId, secretAccessKey }
     });
 
-    const systemPrompt = `You are an expert at optimizing Tavily crawl parameters. 
+    const systemPrompt = `You are an expert at optimizing Tavily crawl parameters based on best practices from Tavily's documentation. 
     Given a crawl query, suggest the best parameters and provide an explanation of your choices. 
 
-    You MUST ONLY respond with a JSON object in this exact format, with no extra text or explanation:
+    You MUST ONLY respond with a JSON object in this exact format, with no extra text or explanation. For categories and extractDepth, ONLY use the enumerated options:
     {
       "extractDepth": "basic"|"advanced",
       "categories": ("Documentation"|"Blogs"|"Community"|"About"|"Contact"|"Pricing"|"Enterprise"|"Careers"|"E-Commerce"|"Media"|"People")[];
       "explanation": string,
-      "otherCrawls": {url: string, instructions: string}[]
+      "otherCrawls": string[]
     }
 
     The "explanation" PARAMETER should only discuss the parameters (NOT the URL/instructions themselves or suggested crawls) in the following format: 
     - The explanation will have some markdown.
-    - Start with 'I've set the following parameters:<br>', then enumerate each choice made with an EXTREMELY CONCISE THREE WORD rationale in a conversational style (ex. '**Search Topic is finance** — X is a financial news site.<br> **Search Depth is basic** — ...<br>'). 
+    - Start with 'I've set the following parameters:<br>', then enumerate each choice made with an EXTREMELY CONCISE THREE WORD rationale in a conversational style (ex. '**Extract Depth is advanced** — Deep content analysis needed.<br> **Categories include Documentation** — Technical content focus.<br>'). 
 
-    The "otherCrawls" PARAMETER should provide up to 3 other crawls related to the original crawl (exploring different aspects or variations of it). The URL should be a valid domain for an applicable website, and the instructions should be a concise description of how Tavily's crawler should crawl the site.
+    The "otherCrawls" PARAMETER should provide up to 3 simple instructions for other crawls from the SAME URL. Each instruction should be a clear, concise statement of what the user plans to do (e.g. "Get all pages on developer documentation", "Extract all product pricing information", "Crawl all blog posts and articles"). Focus on different content types, sections, or use cases that would be valuable to crawl from the same source URL.
+
+    BEST PRACTICES TO FOLLOW:
+    - Start with limited depth (1-2 levels) and increase only if necessary
+    - Use "basic" extractDepth for simple content, "advanced" for complex analysis
+    - Choose appropriate categories based on content type
+    - Consider performance vs. coverage trade-offs
+    - Focus on specific paths when possible rather than broad crawling
+    - Use "advanced" extractDepth for RAG systems, semantic search, or comprehensive analysis
+    - Use "basic" extractDepth for simple content extraction or when performance is critical
     `;
 
     const command = new InvokeModelCommand({
@@ -138,7 +121,7 @@ export const getOptimalCrawlParameters = async (
         anthropic_version: 'bedrock-2023-05-31',
         prompt: `${systemPrompt}\n\nHuman: Suggest optimal Tavily crawl parameters for this URL: "${url}" and instructions: "${instructions}"\n\nAssistant:`,
         max_tokens_to_sample: 300,
-        temperature: 0.7,
+        temperature: 0.5,
         top_k: 250,
         top_p: 1,
         stop_sequences: ['\n\nHuman:'],
@@ -165,7 +148,7 @@ export const getOptimalCrawlParameters = async (
     const result = JSON.parse(jsonMatch[0]) as CrawlParameters;
     outputs = result;
     duration = Date.now() - startTime;
-    
+
     // Log successful analytics
     await logCrawlBedrockQuery({
       url,
@@ -174,24 +157,22 @@ export const getOptimalCrawlParameters = async (
       duration,
       error: null
     });
-    
+
     return result;
-    
+
   } catch (error) {
     duration = Date.now() - startTime;
-    error = error instanceof Error ? error.message : 'Unknown error';
-    
-    console.error('[SableTavilyServer] Error in getOptimalCrawlParameters:', error);
-    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
     // Log error analytics
     await logCrawlBedrockQuery({
       url,
       instructions,
       output: null,
       duration,
-      error
+      error: errorMessage
     });
-    
+
     throw error;
   }
 };
@@ -203,26 +184,26 @@ export const getOptimalCrawlParameters = async (
  * @returns Promise with search parameters and explanation
  */
 export const getOptimalSearchParameters = async (
-  query: string, 
+  query: string,
   sableApiKey: string
 ): Promise<SearchParameters> => {
   const startTime = Date.now();
   let duration: number;
   let outputs: SearchParameters | null = null;
   let error: string | null = null;
-  
+
   try {
     const bedrockApiKey = await fetchBedrockApiKey(sableApiKey);
-  
-  const [accessKeyId, secretAccessKey] = bedrockApiKey.split(':');
-  if (!accessKeyId || !secretAccessKey) throw new Error('API key must be in ACCESS_KEY:SECRET_KEY format');
 
-  const client = new BedrockRuntimeClient({
-    region: "us-east-1",
-    credentials: { accessKeyId, secretAccessKey }
-  });
+    const [accessKeyId, secretAccessKey] = bedrockApiKey.split(':');
+    if (!accessKeyId || !secretAccessKey) throw new Error('API key must be in ACCESS_KEY:SECRET_KEY format');
 
-  const systemPrompt = `You are an expert at optimizing Tavily search parameters. 
+    const client = new BedrockRuntimeClient({
+      region: "us-east-1",
+      credentials: { accessKeyId, secretAccessKey }
+    });
+
+    const systemPrompt = `You are an expert at optimizing Tavily search parameters. 
   Given a search query, suggest the best parameters and provide an explanation of your choices. 
 
   You MUST ONLY respond with a JSON object in this exact format, with no extra text or explanation:
@@ -242,66 +223,64 @@ export const getOptimalSearchParameters = async (
   The "otherQueries" PARAMETER should provide up to 3 other queries related to the original query (exploring different aspects or variations of it).
   `;
 
-  const command = new InvokeModelCommand({
-    modelId: 'anthropic.claude-v2:1',
-    contentType: 'application/json',
-    accept: '*/*',
-    body: JSON.stringify({
-      anthropic_version: 'bedrock-2023-05-31',
-      prompt: `${systemPrompt}\n\nHuman: Suggest optimal Tavily search parameters for this query: "${query}"\n\nAssistant:`,
-      max_tokens_to_sample: 300,
-      temperature: 0.7,
-      top_k: 250,
-      top_p: 1,
-      stop_sequences: ['\n\nHuman:'],
-    })
-  });
+    const command = new InvokeModelCommand({
+      modelId: 'anthropic.claude-v2:1',
+      contentType: 'application/json',
+      accept: '*/*',
+      body: JSON.stringify({
+        anthropic_version: 'bedrock-2023-05-31',
+        prompt: `${systemPrompt}\n\nHuman: Suggest optimal Tavily search parameters for this query: "${query}"\n\nAssistant:`,
+        max_tokens_to_sample: 300,
+        temperature: 0.5,
+        top_k: 250,
+        top_p: 1,
+        stop_sequences: ['\n\nHuman:'],
+      })
+    });
 
-  const response = await client.send(command);
-  const raw = await new Response(response.body!).text();
+    const response = await client.send(command);
+    const raw = await new Response(response.body!).text();
 
-  // Extract the completion part from the response
-  const completionMatch = /"completion":"(.*?)","stop_reason"/.exec(raw);
-  if (!completionMatch) throw new Error('Failed to extract completion from response');
+    // Extract the completion part from the response
+    const completionMatch = /"completion":"(.*?)","stop_reason"/.exec(raw);
+    if (!completionMatch) throw new Error('Failed to extract completion from response');
 
-  // Get the completion content and parse it as JSON
-  const completionContent = completionMatch[1]
-    .replace(/\\n/g, '')  // Remove newlines
-    .replace(/\\\"/g, '"') // Replace escaped quotes
-    .replace(/\\\\/g, '\\'); // Replace escaped backslashes
+    // Get the completion content and parse it as JSON
+    const completionContent = completionMatch[1]
+      .replace(/\\n/g, '')  // Remove newlines
+      .replace(/\\\"/g, '"') // Replace escaped quotes
+      .replace(/\\\\/g, '\\'); // Replace escaped backslashes
 
-  // Improved: Find the JSON object within the completion (robust to multiline/extra text)
-  const jsonMatch = completionContent.match(/{[\s\S]*}/);
-  if (!jsonMatch) throw new Error('Failed to extract JSON from completion');
+    // Improved: Find the JSON object within the completion (robust to multiline/extra text)
+    const jsonMatch = completionContent.match(/{[\s\S]*}/);
+    if (!jsonMatch) throw new Error('Failed to extract JSON from completion');
 
-  const result = JSON.parse(jsonMatch[0]) as SearchParameters;
-  outputs = result;
-  duration = Date.now() - startTime;
-  
-  // Log successful analytics
-  await logSearchBedrockQuery({
-    query,
-    output: outputs,
-    duration,
-    error: null
-  });
-  
-  return result;
-  
+    const result = JSON.parse(jsonMatch[0]) as SearchParameters;
+    outputs = result;
+    duration = Date.now() - startTime;
+
+    // Log successful analytics
+    await logSearchBedrockQuery({
+      query,
+      output: outputs,
+      duration,
+      error: null
+    });
+
+    return result;
+
   } catch (error) {
     duration = Date.now() - startTime;
-    error = error instanceof Error ? error.message : 'Unknown error';
-    
-    console.error('[SableTavilyServer] Error in getOptimalSearchParameters:', error);
-    
-      // Log error analytics
-  await logSearchBedrockQuery({
-    query,
-    output: null,
-    duration,
-    error
-  });
-    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    // Log error analytics
+    await logSearchBedrockQuery({
+      query,
+      output: null,
+      duration,
+      error: errorMessage
+    });
+
     throw error;
   }
 };
@@ -388,8 +367,7 @@ export const createSableTavilyHandler = (sableApiKey: string) => {
           return res.status(404).json({ error: 'Endpoint not found' });
       }
     } catch (error) {
-      console.error('[SableTavilyServer] Error:', error);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Failed to process request',
         details: error instanceof Error ? error.message : 'Unknown error'
       });

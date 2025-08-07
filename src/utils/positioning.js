@@ -3,7 +3,7 @@
  * This ensures consistent positioning calculations across different UI components
  */
 
-import { isBrowser, safeWindow, safeDocument } from './browserApi.js';
+import { isBrowser, safeWindow, safeDocument } from './browserAPI.js';
 
 // Track delayed positioning tasks
 const delayedPositioningTasks = new Map();
@@ -22,12 +22,12 @@ const activeObservers = new Map();
  */
 export function getElementPosition(element, padding = 0, options = {}) {
   if (!element || !isBrowser) return null;
-  
+
   const rect = element.getBoundingClientRect();
   const { left: scrollLeft, top: scrollTop } = safeWindow.getScrollPosition();
   const offsetX = options.offsetX || 0;
   const offsetY = options.offsetY || 0;
-  
+
   return {
     left: rect.left + scrollLeft - padding + offsetX,
     top: rect.top + scrollTop - padding + offsetY,
@@ -47,10 +47,10 @@ export function getElementPosition(element, padding = 0, options = {}) {
  */
 export function isElementInViewport(element) {
   if (!element || !isBrowser) return false;
-  
+
   const rect = element.getBoundingClientRect();
   const { width: viewportWidth, height: viewportHeight } = safeWindow.getViewportDimensions();
-  
+
   return (
     rect.top >= 0 &&
     rect.left >= 0 &&
@@ -78,28 +78,28 @@ export function applyPositionWithDelay(targetElement, uiElement, updatePositionF
   if (!targetElement || !uiElement || !isBrowser) {
     return null;
   }
-  
+
   // Generate a unique ID for this task
   const taskId = `task_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-  
+
   // Apply initial positioning immediately
   if (typeof updatePositionFn === 'function') {
     updatePositionFn(targetElement, uiElement);
   }
-  
+
   // Schedule a delayed positioning to ensure accuracy after rendering
   const timeoutId = setTimeout(() => {
     if (typeof updatePositionFn === 'function') {
       updatePositionFn(targetElement, uiElement);
-      
+
       // Remove from tracking map once executed
       delayedPositioningTasks.delete(taskId);
     }
   }, delay);
-  
+
   // Store the timeout ID for potential cancellation
   delayedPositioningTasks.set(taskId, timeoutId);
-  
+
   return taskId;
 }
 
@@ -107,19 +107,19 @@ export function createPositionObserver(targetElement, uiElement, updatePositionF
   if (!targetElement || !uiElement || !isBrowser || !window.MutationObserver) {
     return null;
   }
-  
+
   // Generate a unique ID for this observer
   const observerId = `obs_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-  
+
   // Create a mutation observer to watch for layout changes
   const observer = new MutationObserver((mutations) => {
     // Check if we need to update position
     let needsUpdate = false;
-    
+
     for (const mutation of mutations) {
       // If attributes changed or DOM structure changed, we might need to update
       if (
-        mutation.type === 'attributes' || 
+        mutation.type === 'attributes' ||
         mutation.type === 'childList' ||
         mutation.target === targetElement ||
         targetElement.contains(mutation.target)
@@ -128,7 +128,7 @@ export function createPositionObserver(targetElement, uiElement, updatePositionF
         break;
       }
     }
-    
+
     if (needsUpdate && typeof updatePositionFn === 'function') {
       // Use requestAnimationFrame to ensure we update in the next paint cycle
       window.requestAnimationFrame(() => {
@@ -136,7 +136,7 @@ export function createPositionObserver(targetElement, uiElement, updatePositionF
       });
     }
   });
-  
+
   // Start observing the document body for DOM changes
   observer.observe(safeDocument.body, {
     attributes: true,
@@ -144,7 +144,7 @@ export function createPositionObserver(targetElement, uiElement, updatePositionF
     subtree: true,
     characterData: true
   });
-  
+
   // Also observe the target element specifically
   if (targetElement.parentNode) {
     observer.observe(targetElement.parentNode, {
@@ -152,29 +152,29 @@ export function createPositionObserver(targetElement, uiElement, updatePositionF
       childList: true
     });
   }
-  
+
   // Apply delayed positioning to ensure accuracy after rendering
   applyPositionWithDelay(targetElement, uiElement, updatePositionFn, 50);
-  
+
   // Store the observer for later cleanup
   activeObservers.set(observerId, observer);
-  
+
   // Add resize and scroll listeners for responsive repositioning
   const handleViewportChange = () => {
     if (typeof updatePositionFn === 'function') {
       updatePositionFn(targetElement, uiElement);
     }
   };
-  
+
   safeWindow.addEventListener('resize', handleViewportChange);
   safeWindow.addEventListener('scroll', handleViewportChange);
-  
+
   // Store event listeners for cleanup
   activeObservers.set(`${observerId}_events`, {
     resize: handleViewportChange,
     scroll: handleViewportChange
   });
-  
+
   return observerId;
 }
 
@@ -184,14 +184,14 @@ export function createPositionObserver(targetElement, uiElement, updatePositionF
  */
 export function removePositionObserver(observerId) {
   if (!observerId || !isBrowser) return;
-  
+
   // Disconnect the mutation observer
   const observer = activeObservers.get(observerId);
   if (observer) {
     observer.disconnect();
     activeObservers.delete(observerId);
   }
-  
+
   // Remove event listeners
   const events = activeObservers.get(`${observerId}_events`);
   if (events) {
@@ -206,7 +206,7 @@ export function removePositionObserver(observerId) {
  */
 export function cleanupAllPositionObservers() {
   if (!isBrowser) return;
-  
+
   activeObservers.forEach((value, key) => {
     if (key.includes('_events')) {
       // Handle event listeners
@@ -217,9 +217,9 @@ export function cleanupAllPositionObservers() {
       value.disconnect();
     }
   });
-  
+
   activeObservers.clear();
-  
+
   // Clear any delayed positioning tasks
   delayedPositioningTasks.forEach((taskId) => {
     clearTimeout(taskId);
