@@ -54,7 +54,6 @@ export class MenuTriggerManager {
    * @private
    */
   async _initAfterPageLoad() {
-
     // Check if trigger button already exists in DOM
     const existingButton = document.querySelector('.sable-menu-trigger');
     if (existingButton) {
@@ -64,8 +63,6 @@ export class MenuTriggerManager {
     // Create trigger button if enabled and doesn't exist
     if (this.config.enabled && !this.triggerButtonElement) {
       await this._createTriggerButton();
-    } else if (this.config.enabled && this.triggerButtonElement) {
-    } else if (!this.config.enabled) {
     }
 
     // Set up popup state listener
@@ -88,7 +85,6 @@ export class MenuTriggerManager {
     if (document.querySelector('.sable-menu-trigger')) {
       return;
     }
-
 
     // Create button using MenuTrigger component
     const menuTrigger = new MenuTrigger({
@@ -243,7 +239,6 @@ export class MenuTriggerManager {
    * @param {Object} targetConfig - The target configuration
    */
   _watchForTargetElement(targetConfig) {
-
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         if (mutation.type === 'childList') {
@@ -358,7 +353,6 @@ export class MenuTriggerManager {
    * @private
    */
   setupPopupStateListener() {
-
     this.popupStateListener = (state) => {
       this.updateTriggerVisibility(state.hasActivePopup);
     };
@@ -391,14 +385,10 @@ export class MenuTriggerManager {
   }
 
   /**
-   * Show the menu popup using PopupStateManager
+   * Show the menu popup using PopupStateManager through GlobalPopupManager
    * @private
    */
   showMenuPopup() {
-
-    // Hide the trigger button since we're showing a popup
-    this.updateTriggerVisibility(true);
-
     // Get sections from configuration
     const sections = this.config.popupConfig?.sections || [];
 
@@ -411,7 +401,6 @@ export class MenuTriggerManager {
         width: 380,
         sections: sections,
         onClose: () => {
-          this.updateTriggerVisibility(false);
           this._menuPopupManager = null;
         }
       }
@@ -432,9 +421,6 @@ export class MenuTriggerManager {
       this._menuPopupManager.unmount();
       this._menuPopupManager = null;
     }
-
-    // Show the trigger button if it was hidden by a popup
-    this.updateTriggerVisibility(false);
 
     // Remove trigger button if it exists
     if (this.triggerButtonElement && this.triggerButtonElement.parentNode) {

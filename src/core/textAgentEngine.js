@@ -4,9 +4,8 @@
  */
 
 import { waitForElement } from '../utils/elementSelector.js';
-import { isBrowser, safeWindow, safeDocument } from '../utils/browserAPI.js';
+import { isBrowser, safeDocument } from '../utils/browserAPI.js';
 import globalPopupManager from '../ui/GlobalPopupManager.js';
-import { PopupStateManager } from '../ui/PopupStateManager.js';
 import { addEvent, debounce } from '../utils/events.js';
 import {
   logTextAgentStart,
@@ -40,19 +39,12 @@ export class TextAgentEngine {
       ...config
     };
 
-    // State management
+    // State management - agents map contains all agent state
     this.agents = new Map(); // agentId -> { steps, config, state }
-    this.activeAgentId = null; // Currently active agent
     this.observer = null; // MutationObserver for triggers
 
-    // Instance tracking
-    this.currentInstanceId = null; // Current agent instance ID
-    this.currentInstanceStartTime = null; // Timestamp when current agent instance started
-
-    // Step duration tracking
-    this.currentStepAnalyticsId = null; // MongoDB ID of current step's analytics record
-    this.currentStepStartTime = null; // Timestamp when current step started
-    this.lastRenderedStepId = null; // Track last rendered step to prevent duplicates
+    // Instance tracking per agent
+    this.agentInstances = new Map(); // agentId -> { instanceId, startTime, currentStepAnalyticsId, currentStepStartTime }
 
     // Store singleton instance
     _instance = this;
@@ -83,25 +75,12 @@ export class TextAgentEngine {
    * Calculate agent duration from instance start time
    * @private
    */
-  _calculateAgentDuration() {
-    if (this.config.debug) {
-      console.log(`[SableTextAgent] DEBUG: _calculateAgentDuration called`);
-      console.log(`[SableTextAgent] DEBUG: currentInstanceStartTime: ${this.currentInstanceStartTime}`);
-      console.log(`[SableTextAgent] DEBUG: currentInstanceId: ${this.currentInstanceId}`);
-    }
-
-    if (!this.currentInstanceStartTime) {
-      if (this.config.debug) {
-        console.log(`[SableTextAgent] DEBUG: currentInstanceStartTime is null, returning null for agentDuration`);
-      }
+  _calculateAgentDuration(agentId) {
+    const instance = this.agentInstances.get(agentId);
+    if (!instance || !instance.startTime) {
       return null;
     }
-
-    const duration = Date.now() - this.currentInstanceStartTime;
-    if (this.config.debug) {
-      console.log(`[SableTextAgent] DEBUG: Calculated agentDuration: ${duration}ms`);
-    }
-    return duration;
+    return Date.now() - instance.startTime;
   }
 
   /**
@@ -174,9 +153,6 @@ export class TextAgentEngine {
 
       if (this.config.debug) {
         console.log('[SableTextAgent] DEBUG: Received sable:textAgentStart event:', { agentId, stepId, skipTrigger });
-        console.log('[SableTextAgent] DEBUG: Event stack trace:', new Error().stack);
-        console.log('[SableTextAgent] DEBUG: Current active agent:', this.activeAgentId);
-        console.log('[SableTextAgent] DEBUG: Agent exists:', this.agents.has(agentId));
       }
 
       if (agentId && this.agents.has(agentId)) {
@@ -188,7 +164,21 @@ export class TextAgentEngine {
       }
     };
 
+    // Listen for sable:textAgentEnd events
+    this._textAgentEndHandler = (event) => {
+      const { agentId, stepId, instanceId, reason } = event.detail || {};
+
+      if (this.config.debug) {
+        console.log('[SableTextAgent] DEBUG: Received sable:textAgentEnd event:', { agentId, stepId, instanceId, reason });
+      }
+
+      if (agentId && this.agents.has(agentId)) {
+        this.end(agentId);
+      }
+    };
+
     window.addEventListener('sable:textAgentStart', this._textAgentStartHandler);
+    window.addEventListener('sable:textAgentEnd', this._textAgentEndHandler);
   }
 
   /**
@@ -204,19 +194,14 @@ export class TextAgentEngine {
     this._popupStateHandler = (state) => {
       if (this.config.debug) {
         console.log('[SableTextAgent] DEBUG: Popup state changed:', state);
-        console.log('[SableTextAgent] DEBUG: Current step tracking - analyticsId:', this.currentStepAnalyticsId, 'startTime:', this.currentStepStartTime);
       }
 
-      // If popup is no longer active and we have step tracking info, update duration
-      if (!state.hasActivePopup && this.currentStepAnalyticsId && this.currentStepStartTime) {
-        if (this.config.debug) {
-          console.log('[SableTextAgent] DEBUG: Popup closed, updating step duration');
-          console.log('[SableTextAgent] DEBUG: Step duration will be calculated for analytics ID:', this.currentStepAnalyticsId);
-        }
-        this._updatePreviousStepDuration();
-      } else if (!state.hasActivePopup) {
-        if (this.config.debug) {
-          console.log('[SableTextAgent] DEBUG: Popup closed but no step tracking info available');
+      // If popup is no longer active, update step duration for all running agents
+      if (!state.hasActivePopup) {
+        for (const [agentId, agent] of this.agents.entries()) {
+          if (agent.state.isRunning) {
+            this._updatePreviousStepDuration(agentId);
+          }
         }
       }
     };
@@ -354,7 +339,6 @@ export class TextAgentEngine {
     if (state.isRunning && stepId) {
       if (this.config.debug) {
         console.log(`[SableTextAgent] Agent "${agentId}" is already running, navigating to step "${stepId}"`);
-        console.log(`[SableTextAgent] DEBUG: Current step index: ${state.currentStepIndex}, target step: ${stepId}`);
       }
 
       // Find the target step index
@@ -380,11 +364,6 @@ export class TextAgentEngine {
           await this._renderCurrentStep(agentId, false);
         }
         return true;
-      }
-
-      if (this.config.debug) {
-        console.log(`[SableTextAgent] DEBUG: Navigating from step ${state.currentStepIndex} to step ${targetStepIndex}`);
-        console.log(`[SableTextAgent] DEBUG: Current step ID: ${agent.steps[state.currentStepIndex]?.id}, Target step ID: ${agent.steps[targetStepIndex]?.id}`);
       }
 
       // Clean up current step (similar to next() method)
@@ -418,7 +397,16 @@ export class TextAgentEngine {
     }
 
     // Generate new instance ID for this agent run
-    this.currentInstanceId = this._generateInstanceId();
+    const instanceId = this._generateInstanceId();
+    const startTime = Date.now();
+
+    // Store instance information
+    this.agentInstances.set(agentId, {
+      instanceId,
+      startTime,
+      currentStepAnalyticsId: null,
+      currentStepStartTime: null
+    });
 
     // Update state
     state.isRunning = true;
@@ -429,15 +417,13 @@ export class TextAgentEngine {
       state.currentStepIndex = 0;
     }
 
-    this.activeAgentId = agentId;
-
     // Log analytics for agent start
     const currentStep = agent.steps[state.currentStepIndex];
     if (currentStep && !isAutoStart) {
       logTextAgentStart(
         agentId,
         currentStep.id,
-        this.currentInstanceId,
+        instanceId,
         {
           skipTrigger,
           stepId
@@ -582,6 +568,7 @@ export class TextAgentEngine {
   async _renderCurrentStep(agentId, isAutoStart = false, triggerInfo = null) {
     const agent = this.agents.get(agentId);
     const { steps, state, config } = agent;
+    const instance = this.agentInstances.get(agentId);
 
     if (state.currentStepIndex < 0 || state.currentStepIndex >= steps.length) {
       this._endAgent(agentId);
@@ -593,17 +580,6 @@ export class TextAgentEngine {
     if (this.config.debug) {
       console.log(`[SableTextAgent] Rendering step ${step.id} for agent "${agentId}"${isAutoStart ? ' (auto-start)' : ''}`);
     }
-
-    // Check if we're already rendering this step to prevent duplicates
-    if (this.lastRenderedStepId === step.id && this.activeAgentId === agentId) {
-      if (this.config.debug) {
-        console.log(`[SableTextAgent] DEBUG: Step "${step.id}" is already being rendered, skipping duplicate`);
-      }
-      return;
-    }
-
-    // Update last rendered step tracking
-    this.lastRenderedStepId = step.id;
 
     // Check conditional rendering
     if (typeof step.showIf === 'function' && !step.showIf()) {
@@ -620,18 +596,10 @@ export class TextAgentEngine {
         console.log(`[SableTextAgent] DEBUG: About to log step_rendered analytics for step "${step.id}" (index: ${state.currentStepIndex})`);
       }
 
-      // Set instance start time on first step render if not already set
-      if (!this.currentInstanceStartTime) {
-        this.currentInstanceStartTime = Date.now();
-        if (this.config.debug) {
-          console.log(`[SableTextAgent] DEBUG: Set currentInstanceStartTime to ${this.currentInstanceStartTime} for first step render`);
-        }
-      }
-
       const analyticsId = await logTextAgentStepRendered(
         agentId,
         step.id,
-        this.currentInstanceId,
+        instance.instanceId,
         {
           isAutoStart,
           stepType: step.buttonType || 'popup',
@@ -639,7 +607,7 @@ export class TextAgentEngine {
           targetSelector: step.targetElement?.selector,
           ...(triggerInfo && { triggerInfo })
         },
-        this._calculateAgentDuration()
+        this._calculateAgentDuration(agentId)
       );
 
       if (this.config.debug) {
@@ -647,9 +615,9 @@ export class TextAgentEngine {
       }
 
       // Store tracking info for step duration
-      if (analyticsId) {
-        this.currentStepAnalyticsId = analyticsId;
-        this.currentStepStartTime = Date.now();
+      if (analyticsId && instance) {
+        instance.currentStepAnalyticsId = analyticsId;
+        instance.currentStepStartTime = Date.now();
 
         if (this.config.debug) {
           console.log(`[SableTextAgent] Started tracking step duration for analytics ID: ${analyticsId}`);
@@ -709,6 +677,7 @@ export class TextAgentEngine {
    */
   _createPopupForStep(agentId, step, targetElement) {
     const agent = this.agents.get(agentId);
+    const instance = this.agentInstances.get(agentId);
 
     // Get text content
     const text = typeof step.text === 'function' ? step.text() : step.text;
@@ -722,24 +691,23 @@ export class TextAgentEngine {
       boxWidth: step.boxWidth || this.config.defaultBoxWidth,
       buttonType: step.buttonType || 'arrow',
       primaryColor: step.primaryColor || this.config.primaryColor,
-      sections: this._wrapSectionCallbacks(sections, agentId),
-      includeTextBox: step.includeTextBox || false,
+      sections,
       fontSize: step.fontSize || '15px',
       parent: safeDocument?.body || document.body,
       // Add agent information for analytics logging
       agentInfo: {
         agentId,
         stepId: step.id,
-        instanceId: this.currentInstanceId,
-        agentStartTime: this.currentInstanceStartTime
+        instanceId: instance.instanceId,
+        agentStartTime: instance.startTime
       }
     };
 
     // Set up callbacks
     if (step.buttonType === 'yes-no') {
-      popupOptions.onYesNo = (isYes) => {
+      popupOptions.onYesNo = async (isYes) => {
         if (typeof step.onYesNo === 'function') {
-          step.onYesNo(isYes);
+          await step.onYesNo(isYes);
         }
         if (step.autoAdvance) {
           setTimeout(() => this.next(agentId), step.autoAdvanceDelay || 1000);
@@ -755,30 +723,6 @@ export class TextAgentEngine {
         }
       };
     }
-
-    // Add onClose callback to log analytics when user manually closes popup
-    popupOptions.onClose = () => {
-      // Log analytics for manual close
-      if (agent.state.isRunning) {
-        if (this.config.debug) {
-          console.log(`[SableTextAgent] DEBUG: Manual close detected for agent "${agentId}", step "${step.id}", instance "${this.currentInstanceId}"`);
-          console.log(`[SableTextAgent] DEBUG: About to call logTextAgentEnd with agentDuration calculation`);
-        }
-        logTextAgentEnd(
-          agentId,
-          step.id,
-          this.currentInstanceId,
-          {
-            completionReason: 'manual'
-          },
-          this._calculateAgentDuration()
-        );
-      } else {
-        if (this.config.debug) {
-          console.log(`[SableTextAgent] DEBUG: Manual close detected but agent "${agentId}" is not running`);
-        }
-      }
-    };
 
     // Create and mount popup through GlobalPopupManager
     const popupManager = globalPopupManager.showPopup(popupOptions);
@@ -796,52 +740,6 @@ export class TextAgentEngine {
     if (typeof step.callback === 'function') {
       step.callback(targetElement, this);
     }
-  }
-
-  /**
-   * Wrap section callbacks to handle restart logic
-   * @private
-   */
-  _wrapSectionCallbacks(sections, agentId) {
-    if (!Array.isArray(sections)) {
-      return sections;
-    }
-
-    return sections.map(section => {
-      if (!section || typeof section.onSelect !== 'function') {
-        return section;
-      }
-
-      const originalOnSelect = section.onSelect;
-      return {
-        ...section,
-        onSelect: (item) => {
-          // Handle restart logic
-          if (item && item._restartRequested) {
-            const restartConfig = item.restartFromStep !== undefined ?
-              item.restartFromStep : section.restartFromStep;
-
-            let stepId = null;
-            let skipTrigger = false;
-
-            if (restartConfig === null || typeof restartConfig === 'string') {
-              stepId = restartConfig;
-            } else if (typeof restartConfig === 'object') {
-              stepId = restartConfig.stepId;
-              skipTrigger = !!restartConfig.skipTrigger;
-            }
-
-            // Emit restart event
-            window.dispatchEvent(new CustomEvent('sable:textAgentStart', {
-              detail: { stepId, skipTrigger, agentId }
-            }));
-          }
-
-          // Call original handler
-          originalOnSelect(item);
-        }
-      };
-    });
   }
 
   /**
@@ -939,7 +837,7 @@ export class TextAgentEngine {
       }
 
       if (autoAdvance && type !== 'input') {
-        setTimeout(() => this.next(this.activeAgentId), delay || 1000);
+        setTimeout(() => this.next(agentId), delay || 1000);
       }
     };
 
@@ -962,7 +860,7 @@ export class TextAgentEngine {
         i++;
         setTimeout(typeNextChar, charDelay);
       } else if (autoAdvance) {
-        setTimeout(() => this.next(this.activeAgentId), 1000);
+        setTimeout(() => this.next(agentId), 1000);
       }
     };
 
@@ -972,7 +870,7 @@ export class TextAgentEngine {
   /**
    * Move to next step
    */
-  async next(agentId = this.activeAgentId) {
+  async next(agentId) {
     if (!agentId || !this.agents.has(agentId)) {
       return;
     }
@@ -995,13 +893,13 @@ export class TextAgentEngine {
         logTextAgentNext(
           agentId,
           nextStep.id,
-          this.currentInstanceId,
+          this.agentInstances.get(agentId)?.instanceId,
           {
             previousStepId: currentStep?.id,
             previousStepIndex: state.currentStepIndex - 1,
             isLastStep: false
           },
-          this._calculateAgentDuration()
+          this._calculateAgentDuration(agentId)
         );
       }
 
@@ -1013,12 +911,12 @@ export class TextAgentEngine {
         logTextAgentEnd(
           agentId,
           currentStep.id,
-          this.currentInstanceId,
+          this.agentInstances.get(agentId)?.instanceId,
           {
             stepsCompleted: steps.length,
             completionReason: 'user_finished'
           },
-          this._calculateAgentDuration()
+          this._calculateAgentDuration(agentId)
         );
       }
 
@@ -1030,7 +928,7 @@ export class TextAgentEngine {
   /**
    * Move to previous step
    */
-  async previous(agentId = this.activeAgentId) {
+  async previous(agentId) {
     if (!agentId || !this.agents.has(agentId)) {
       return;
     }
@@ -1052,12 +950,12 @@ export class TextAgentEngine {
         logTextAgentPrevious(
           agentId,
           previousStep.id,
-          this.currentInstanceId,
+          this.agentInstances.get(agentId)?.instanceId,
           {
             nextStepId: currentStep?.id,
             nextStepIndex: state.currentStepIndex + 1
           },
-          this._calculateAgentDuration()
+          this._calculateAgentDuration(agentId)
         );
       }
 
@@ -1069,22 +967,25 @@ export class TextAgentEngine {
    * Update previous step duration and reset tracking
    * @private
    */
-  _updatePreviousStepDuration() {
+  _updatePreviousStepDuration(agentId) {
+    const instance = this.agentInstances.get(agentId);
+    if (!instance) return;
+
     if (this.config.debug) {
-      console.log(`[SableTextAgent] DEBUG: _updatePreviousStepDuration called`);
-      console.log(`[SableTextAgent] DEBUG: currentStepAnalyticsId: ${this.currentStepAnalyticsId}`);
-      console.log(`[SableTextAgent] DEBUG: currentStepStartTime: ${this.currentStepStartTime}`);
+      console.log(`[SableTextAgent] DEBUG: _updatePreviousStepDuration called for agent "${agentId}"`);
+      console.log(`[SableTextAgent] DEBUG: currentStepAnalyticsId: ${instance.currentStepAnalyticsId}`);
+      console.log(`[SableTextAgent] DEBUG: currentStepStartTime: ${instance.currentStepStartTime}`);
     }
 
-    if (this.currentStepAnalyticsId && this.currentStepStartTime) {
-      const stepDuration = Date.now() - this.currentStepStartTime;
+    if (instance.currentStepAnalyticsId && instance.currentStepStartTime) {
+      const stepDuration = Date.now() - instance.currentStepStartTime;
       if (this.config.debug) {
-        console.log(`[SableTextAgent] DEBUG: Calculating step duration: ${Date.now()} - ${this.currentStepStartTime} = ${stepDuration}ms`);
+        console.log(`[SableTextAgent] DEBUG: Calculating step duration: ${Date.now()} - ${instance.currentStepStartTime} = ${stepDuration}ms`);
       }
-      updateTextAgentEventDuration(this.currentStepAnalyticsId, stepDuration);
+      updateTextAgentEventDuration(instance.currentStepAnalyticsId, stepDuration);
 
       if (this.config.debug) {
-        console.log(`[SableTextAgent] Updated step duration: ${stepDuration}ms for analytics ID: ${this.currentStepAnalyticsId}`);
+        console.log(`[SableTextAgent] Updated step duration: ${stepDuration}ms for analytics ID: ${instance.currentStepAnalyticsId}`);
       }
     } else {
       if (this.config.debug) {
@@ -1092,10 +993,9 @@ export class TextAgentEngine {
       }
     }
 
-    // Reset tracking
-    this.currentStepAnalyticsId = null;
-    this.currentStepStartTime = null;
-    this.lastRenderedStepId = null;
+    // Reset tracking≠
+    instance.currentStepAnalyticsId = null;
+    instance.currentStepStartTime = null;
   }
 
   /**
@@ -1113,7 +1013,7 @@ export class TextAgentEngine {
     const { state } = agent;
 
     // Update previous step duration before cleanup
-    this._updatePreviousStepDuration();
+    this._updatePreviousStepDuration(agentId);
 
     // Clean up trigger
     if (state.triggerCleanup) {
@@ -1128,8 +1028,6 @@ export class TextAgentEngine {
     }
   }
 
-
-
   /**
    * End an agent
    * @private
@@ -1143,7 +1041,7 @@ export class TextAgentEngine {
     if (!agent) return;
 
     // Update step duration before ending
-    this._updatePreviousStepDuration();
+    this._updatePreviousStepDuration(agentId);
 
     // Log analytics for agent end if it was running
     if (agent.state.isRunning) {
@@ -1152,13 +1050,13 @@ export class TextAgentEngine {
         logTextAgentEnd(
           agentId,
           currentStep.id,
-          this.currentInstanceId,
+          this.agentInstances.get(agentId)?.instanceId,
           {
             stepsCompleted: agent.state.currentStepIndex + 1,
             completionReason: 'agent_ended',
             hasRenderedOnce: agent.state.hasRenderedOnce
           },
-          this._calculateAgentDuration()
+          this._calculateAgentDuration(agentId)
         );
       }
     }
@@ -1177,11 +1075,8 @@ export class TextAgentEngine {
     agent.state.activePopupManager = null;
     agent.state.hasRenderedOnce = false;
 
-    if (this.activeAgentId === agentId) {
-      this.activeAgentId = null;
-      this.currentInstanceId = null; // Clear instance ID when agent ends
-      this.currentInstanceStartTime = null; // Clear instance start time when agent ends
-    }
+    // Remove instance tracking
+    this.agentInstances.delete(agentId);
 
     if (this.config.debug) {
       console.log(`[SableTextAgent] Agent "${agentId}" ended`);
@@ -1191,8 +1086,8 @@ export class TextAgentEngine {
   /**
    * End current agent
    */
-  end(agentId = this.activeAgentId) {
-    if (agentId) {
+  end(agentId) {
+    if (agentId && this.agents.has(agentId)) {
       this._endAgent(agentId);
     }
   }
@@ -1216,13 +1111,13 @@ export class TextAgentEngine {
       logTextAgentRestart(
         agentId,
         currentStep.id,
-        this.currentInstanceId,
+        this.agentInstances.get(agentId)?.instanceId,
         {
           stepId,
           skipTrigger,
           wasRunning: agent.state.isRunning
         },
-        this._calculateAgentDuration()
+        this._calculateAgentDuration(agentId)
       );
     }
 
@@ -1277,6 +1172,11 @@ export class TextAgentEngine {
       this._textAgentStartHandler = null;
     }
 
+    if (this._textAgentEndHandler && typeof window !== 'undefined') {
+      window.removeEventListener('sable:textAgentEnd', this._textAgentEndHandler);
+      this._textAgentEndHandler = null;
+    }
+
     // Remove popup state listener
     if (this._popupStateHandler) {
       globalPopupManager.removeListener(this._popupStateHandler);
@@ -1290,15 +1190,8 @@ export class TextAgentEngine {
       }
     }
 
-    // Reset step duration tracking
-    this.currentStepAnalyticsId = null;
-    this.currentStepStartTime = null;
-    this.lastRenderedStepId = null;
-    this.currentInstanceId = null;
-    this.currentInstanceStartTime = null; // Reset instance start time
-
     this.agents.clear();
-    this.activeAgentId = null;
+    this.agentInstances.clear();
     _instance = null;
   }
 }

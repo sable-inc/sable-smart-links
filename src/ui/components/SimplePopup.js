@@ -2,7 +2,7 @@
 import { ArrowButton } from './ArrowButton.js';
 import { YesNoButtons } from './YesNoButtons.js';
 import { CloseButton } from './CloseButton.js';
-import { ShortcutsAndRecents } from './ShortcutsAndRecents.js';
+import { Sections } from './Sections.js';
 import { logTextAgentEnd } from '../../utils/analytics.js';
 
 // Simple markdown parser for basic formatting
@@ -38,7 +38,6 @@ export class SimplePopup {
             primaryColor: config.primaryColor || '#FFFFFF',
             onClose: config.onClose || (() => { }),
             onPositionChange: config.onPositionChange || (() => { }),
-            includeTextBox: config.includeTextBox || false,
             fontSize: config.fontSize || '15px',
             sections: config.sections || [],
             debug: config.debug || false, // Add debug flag to config
@@ -117,6 +116,10 @@ export class SimplePopup {
             @keyframes blink {
                 from, to { border-color: transparent }
                 50% { border-color: rgba(255, 255, 255, 0.7) }
+            }
+            @keyframes pulse {
+                0%, 100% { opacity: 0.6; }
+                50% { opacity: 0.3; }
             }
         `;
         popup.appendChild(style);
@@ -202,19 +205,14 @@ export class SimplePopup {
         if (this.config.buttonType === 'arrow') {
             // Create the arrow button with click handler
             const arrowButton = new ArrowButton(() => {
-                const textInput = this.inputBox ? this.inputBox.value : '';
-                if (this.config.debug) {
-                    console.debug('[SimplePopup] Input box exists:', !!this.inputBox);
-                    console.debug('[SimplePopup] Raw input box value:', textInput);
-                }
-                // Pass the string value directly
+                // Pass empty string since there's no input box
                 if (typeof this.config.onProceed === 'function') {
                     if (this.config.debug) console.debug('function called arrow button');
                     try {
                         // Set button to loading state
                         arrowButton.setLoading(true);
                         // Call onProceed and handle Promise resolution
-                        const result = this.config.onProceed(textInput);
+                        const result = this.config.onProceed('');
                         // Handle both synchronous and asynchronous results
                         if (result instanceof Promise) {
                             result
@@ -233,7 +231,7 @@ export class SimplePopup {
                             // to ensure the loading state is visible
                             setTimeout(() => {
                                 arrowButton.setLoading(false);
-                            }, 60000);
+                            }, 600);
                         }
                     } catch (error) {
                         // Handle any synchronous errors
@@ -249,12 +247,47 @@ export class SimplePopup {
             this.arrowButton = arrowButton;
             buttonContainer.appendChild(arrowButton.render());
         } else if (this.config.buttonType === 'yes-no') {
-            // For yes/no buttons, use the original implementation
+            // Create the yes/no buttons with click handler
             const yesNoButtons = new YesNoButtons((isYes) => {
                 if (typeof this.config.onYesNo === 'function') {
-                    this.config.onYesNo(isYes);
+                    if (this.config.debug) console.debug('function called yes/no button');
+                    try {
+                        // Set buttons to loading state
+                        yesNoButtons.setLoading(true);
+                        // Call onYesNo and handle Promise resolution
+                        const result = this.config.onYesNo(isYes);
+                        // Handle both synchronous and asynchronous results
+                        if (result instanceof Promise) {
+                            result
+                                .catch(err => {
+                                    if (this.config.debug) {
+                                        console.error('Error in onYesNo:', err);
+                                    }
+                                    // Don't rethrow to prevent unhandled promise rejection
+                                })
+                                .finally(() => {
+                                    // Reset button state when done
+                                    yesNoButtons.setLoading(false);
+                                });
+                        } else {
+                            // For synchronous functions, reset after a short delay
+                            // to ensure the loading state is visible
+                            setTimeout(() => {
+                                yesNoButtons.setLoading(false);
+                            }, 600);
+                        }
+                    } catch (error) {
+                        // Handle any synchronous errors
+                        if (this.config.debug) {
+                            console.error('Error in yes/no button onYesNo:', error);
+                        }
+                        yesNoButtons.setLoading(false);
+                    }
                 }
             }, this.config.primaryColor);
+
+            // Store reference to the yes/no buttons
+            this.yesNoButtons = yesNoButtons;
             buttonContainer.appendChild(yesNoButtons.render());
         }
         // If buttonType is 'none', do not add any button to the buttonContainer or DOM
@@ -272,106 +305,16 @@ export class SimplePopup {
         }
 
         if (Array.isArray(this.config.sections) && this.config.sections.length > 0) {
-            const shortcutsAndRecents = new ShortcutsAndRecents({
+            const sections = new Sections({
                 sections: this.config.sections
             });
             // Insert after the rowContainer (which contains the text)
-            mainContainer.appendChild(shortcutsAndRecents.render());
+            mainContainer.appendChild(sections.render());
         } else if (this.config.sections !== undefined && !Array.isArray(this.config.sections)) {
             if (this.config.debug) console.warn('[SimplePopup][createContent] this.config.sections is not an array:', this.config.sections);
         }
 
-        // Add textbox if needed - always at the bottom
-        if (this.config.includeTextBox) {
-            const inputBox = document.createElement('input');
-            inputBox.type = 'text';
-            inputBox.placeholder = 'Type here...';
-            Object.assign(inputBox.style, {
-                width: '95%',
-                padding: '8px',
-                borderRadius: '6px',
-                border: '1px solid #ccc',
-                fontSize: this.config.fontSize || '15px', // Match the text font size
-                color: '#222',
-            });
 
-            // Add enter key handler
-            inputBox.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    const textInput = inputBox.value;
-                    if (typeof this.config.onProceed === 'function') {
-                        inputBox.disabled = true;
-
-                        // Call the onProceed function
-                        if (this.config.debug) console.debug('function called input box');
-
-                        // If we have an arrow button, set it to loading state too
-                        if (this.arrowButton) {
-                            this.arrowButton.setLoading(true);
-                        }
-
-                        try {
-                            // Disable the input box immediately
-                            inputBox.disabled = true;
-
-                            const result = this.config.onProceed(textInput);
-
-                            // Handle both synchronous and asynchronous results
-                            // Check if result is promise-like (has a then method)
-                            if (result && typeof result.then === 'function') {
-                                if (this.config.debug) console.log('[SimplePopup] Input box: Detected async result, waiting for completion');
-                                // For promises, wait for completion before resetting state
-                                return Promise.resolve(result)
-                                    .catch(err => {
-                                        if (this.config.debug) {
-                                            console.error('Error in onProceed:', err);
-                                        }
-                                        throw err; // Re-throw to propagate the error
-                                    })
-                                    .finally(() => {
-                                        if (this.config.debug) console.log('[SimplePopup] Input box: Async operation completed, resetting state');
-                                        // Restore the input box state when done
-                                        inputBox.disabled = false;
-
-                                        // Reset arrow button if it exists
-                                        if (this.arrowButton) {
-                                            this.arrowButton.setLoading(false);
-                                        }
-                                    });
-                            } else {
-                                if (this.config.debug) console.log('[SimplePopup] Input box: Detected synchronous result');
-                                // For synchronous functions, reset after a short delay
-                                // to make the loading state visible
-                                setTimeout(() => {
-                                    inputBox.disabled = false;
-                                    if (this.arrowButton) {
-                                        this.arrowButton.setLoading(false);
-                                    }
-                                }, 60000);
-                                return result;
-                            }
-                        } catch (error) {
-                            // Handle any synchronous errors
-                            if (this.config.debug) {
-                                console.error('Error in onProceed:', error);
-                            }
-
-                            // Reset states
-                            inputBox.disabled = false;
-                            if (this.arrowButton) {
-                                this.arrowButton.setLoading(false);
-                            }
-
-                            // Re-throw the error
-                            throw error;
-                        }
-                    }
-                }
-            });
-
-            mainContainer.appendChild(inputBox);
-            this.inputBox = inputBox;
-        }
 
         return mainContainer;
     }

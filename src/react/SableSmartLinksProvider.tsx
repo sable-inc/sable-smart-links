@@ -84,10 +84,8 @@ export interface SableSmartLinksProviderProps {
       sections?: Array<{
         title: string;
         icon?: string;
-        restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
         items: Array<{
           text: string;
-          restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
           data?: any;
         }>;
         onSelect: (item: any) => void;
@@ -227,6 +225,28 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
           
           // Provide the fresh step data methods to the original onProceed
           return originalOnProceed(textInput, freshDataUtils);
+        };
+      }
+      
+      // Wrap onYesNo to provide access to step data
+      if (processedStep.onYesNo) {
+        const originalOnYesNo = processedStep.onYesNo;
+        processedStep.onYesNo = async (isYes: boolean) => {
+          // Create fresh dataUtils with current ref data each time the function is called
+          const freshDataUtils = {
+            setStepData,
+            getStepData: (key: string) => {
+              const value = stepDataRef.current[key];
+              return value;
+            },
+            getAllStepData: () => {
+              return stepDataRef.current;
+            },
+            clearStepData
+          };
+          
+          // Provide the fresh step data methods to the original onYesNo
+          return originalOnYesNo(isYes, freshDataUtils);
         };
       }
       

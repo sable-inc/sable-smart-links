@@ -22,8 +22,6 @@ export interface SableSmartLinksConfig {
   textAgent?: {
     /** Automatically start text agent if parameter is found (default: true) */
     autoStart?: boolean;
-    /** Default state of the text agent (default: 'collapsed') */
-    defaultState?: 'expanded' | 'collapsed';
     /** Position of the text agent (default: 'right') */
     position?: 'top' | 'right' | 'bottom' | 'left';
     /** Whether to persist state across page reloads (default: true) */
@@ -122,23 +120,12 @@ export interface SableSmartLinksConfig {
         title: string;
         /** Icon to display next to items (emoji or URL) */
         icon?: string;
-        /** Optional step ID to restart the text agent from when an item in this section is selected
-         * If provided, the text agent will restart from this step when any item in this section is selected
-         * If null or undefined (default), no restart will occur
-         * @property {boolean} skipTrigger - When true, any triggers (like triggerOnTyping) for the step will be ignored
-         *                                  and the popup will be displayed immediately
-         */
-        restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+
         /** Items to display in this section */
         items: Array<{
           /** Display text for the item */
           text: string;
-          /** Optional step ID to restart the text agent from when this specific item is selected
-           * This overrides the section-level restartFromStep if provided
-           * @property {boolean} skipTrigger - When true, any triggers (like triggerOnTyping) for the step will be ignored
-           *                                  and the popup will be displayed immediately
-           */
-          restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
+
           /** Additional data needed for the handler */
           data?: any;
         }>;
@@ -293,7 +280,6 @@ export class SableSmartLinks {
   startTextAgent(agentId?: string, stepId?: string | null, skipTrigger?: boolean): Promise<boolean>;
   nextTextAgentStep(): void;
   previousTextAgentStep(): void;
-  toggleTextAgentExpand(): void;
   sendTextAgentMessage(message: string): void;
   endTextAgent(): void;
   /**
@@ -370,10 +356,8 @@ export interface TextAgentStep {
   sections?: Array<{
     title: string;
     icon?: string;
-    restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
     items: Array<{
       text: string;
-      restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
       data?: any;
     }>;
     onSelect: (item: any) => void;
@@ -385,10 +369,8 @@ export interface TextAgentStep {
   }) => Array<{
     title: string;
     icon?: string;
-    restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
     items: Array<{
       text: string;
-      restartFromStep?: string | null | { stepId: string | null; skipTrigger?: boolean };
       data?: any;
     }>;
     onSelect: (item: any) => void;
@@ -411,8 +393,13 @@ export interface TextAgentStep {
     clearStepData: () => void;
   }) => void | Promise<void>);
 
-  /** Callback function for yes/no buttons (receives boolean indicating 'yes' selection) */
-  onYesNo?: (isYes: boolean) => void;
+  /** Callback function for yes/no buttons (receives boolean indicating 'yes' selection and dataUtils for step data access) */
+  onYesNo?: ((isYes: boolean, dataUtils?: {
+    setStepData: (key: string, value: any) => void;
+    getStepData: (key: string) => any;
+    getAllStepData: () => Record<string, any>;
+    clearStepData: () => void;
+  }) => void | Promise<void>);
 
   /** Primary color for styling the popup */
   primaryColor?: string;
@@ -458,8 +445,7 @@ export interface TextAgentStep {
   /** Custom callback function called when step is executed */
   callback?: (element: HTMLElement | null, engine: any) => void;
 
-  /** Whether to include a text input box in the popup (default: false) */
-  includeTextBox?: boolean;
+
 
   /** Trigger the step when typing occurs in an input field */
   triggerOnTyping?: {

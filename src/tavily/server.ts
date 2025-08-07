@@ -101,12 +101,7 @@ export const getOptimalCrawlParameters = async (
     - The explanation will have some markdown.
     - Start with 'I've set the following parameters:<br>', then enumerate each choice made with an EXTREMELY CONCISE THREE WORD rationale in a conversational style (ex. '**Extract Depth is advanced** — Deep content analysis needed.<br> **Categories include Documentation** — Technical content focus.<br>'). 
 
-    The "otherCrawls" PARAMETER should provide up to 3 different crawl instructions for the SAME URL, exploring different aspects or approaches based on Tavily's best practices:
-    - Use different depth/breadth strategies
-    - Focus on different content types or sections
-    - Apply different extraction approaches (basic vs advanced)
-    - Consider different use cases (RAG integration, auditing, etc.)
-    Each instruction should be a concise description of how to crawl the same URL with different parameters or focus areas.
+    The "otherCrawls" PARAMETER should provide up to 3 simple instructions for other crawls from the SAME URL. Each instruction should be a clear, concise statement of what the user plans to do (e.g. "Get all pages on developer documentation", "Extract all product pricing information", "Crawl all blog posts and articles"). Focus on different content types, sections, or use cases that would be valuable to crawl from the same source URL.
 
     BEST PRACTICES TO FOLLOW:
     - Start with limited depth (1-2 levels) and increase only if necessary

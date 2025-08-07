@@ -1,7 +1,6 @@
 // Import all required components
-import { ExpandedWithShortcuts } from './components/ExpandedWithShortcuts.js';
+import { Sections } from './components/Sections.js';
 import { CloseButton } from './components/CloseButton.js';
-import { logTextAgentEnd } from '../utils/analytics.js';
 
 // PopupStateManager.js
 export class PopupStateManager {
@@ -12,15 +11,10 @@ export class PopupStateManager {
             width: config.width || 380,
             sections: config.sections || [],
             onClose: config.onClose || (() => { }),
-            // Add agent information for analytics logging
             agentInfo: config.agentInfo || null
         };
 
         // State variables
-        // Start in expanded state by default:
-        this.currentState = 'expanded';
-
-        // Dragging state
         this.position = {
             top: 240,
             left: ((window?.innerWidth ?? 1700) - (this.config.width ?? 380)) / 2,
@@ -30,7 +24,7 @@ export class PopupStateManager {
 
         // Component references
         this.components = {
-            expandedWithShortcuts: null
+            sections: null
         };
 
         // Create container
@@ -82,29 +76,17 @@ export class PopupStateManager {
             this.config.onClose();
         }
 
-        // Log analytics for manual close
+        // Broadcast close event for textAgentEngine to listen to
         if (this.config.agentInfo) {
-            if (this.config.debug) {
-                console.log(`[PopupStateManager] DEBUG: Manual close detected for agent "${this.config.agentInfo.agentId}", step "${this.config.agentInfo.stepId}", instance "${this.config.agentInfo.instanceId}"`);
-            }
-            // Calculate agentDuration fresh at the time of logging
-            const currentTime = Date.now();
-            const agentStartTime = this.config.agentInfo.agentStartTime;
-            const agentDuration = agentStartTime ? currentTime - agentStartTime : null;
-
-            logTextAgentEnd(
-                this.config.agentInfo.agentId,
-                this.config.agentInfo.stepId,
-                this.config.agentInfo.instanceId,
-                {
-                    completionReason: 'manual'
-                },
-                agentDuration
-            );
-        } else {
-            if (this.config.debug) {
-                console.log(`[PopupStateManager] DEBUG: Manual close detected but no agent info available`);
-            }
+            const closeEvent = new CustomEvent('sable:textAgentEnd', {
+                detail: {
+                    agentId: this.config.agentInfo.agentId,
+                    stepId: this.config.agentInfo.stepId,
+                    instanceId: this.config.agentInfo.instanceId,
+                    reason: 'manual'
+                }
+            });
+            window.dispatchEvent(closeEvent);
         }
 
         // Remove the popup from the DOM
@@ -123,11 +105,6 @@ export class PopupStateManager {
      */
     unmount() {
         this.handleClose();
-    }
-
-    transitionTo(newState) {
-        this.currentState = newState;
-        this.render();
     }
 
     createDragHandle() {
@@ -239,66 +216,19 @@ export class PopupStateManager {
             flexDirection: 'column',
         });
 
-        // Reset component references for current state
+        // Reset component references
         this.components = {
-            expandedWithShortcuts: null
+            sections: null
         };
 
-        let component;
-        switch (this.currentState) {
+        // Use sections directly without restartFromStep processing
+        const processedSections = this.config.sections;
 
-            case 'expanded':
-                // Process sections to handle restartFromStep
-                const processedSections = this.config.sections.map(section => {
-                    // Create a new onSelect handler that wraps the original one
-                    const originalOnSelect = section.onSelect;
-                    const wrappedOnSelect = (item) => {
-                        // Check if restart is requested (either at item or section level)
-                        if (item._restartRequested && (item.restartFromStep !== undefined || section.restartFromStep !== undefined)) {
-                            // Item-level restartFromStep takes precedence over section-level
-                            const restartConfig = item.restartFromStep !== undefined ? item.restartFromStep : section.restartFromStep;
-
-                            // Handle different formats of restartFromStep
-                            let stepId = null;
-                            let skipTrigger = false;
-
-                            if (restartConfig === null || typeof restartConfig === 'string') {
-                                // Simple string or null format
-                                stepId = restartConfig;
-                            } else if (typeof restartConfig === 'object') {
-                                // Object format with stepId and skipTrigger
-                                stepId = restartConfig.stepId;
-                                skipTrigger = !!restartConfig.skipTrigger;
-                            }
-
-                            // Emit a custom event that TextAgentEngine can listen for
-                            const restartEvent = new CustomEvent('sable:textAgentStart', {
-                                detail: { stepId, skipTrigger, agentId: this.lastActiveAgentId }
-                            });
-                            window.dispatchEvent(restartEvent);
-                        }
-
-                        // Always call the original handler
-                        originalOnSelect(item);
-                    };
-
-                    // Return a new section object with the wrapped handler
-                    return {
-                        ...section,
-                        onSelect: wrappedOnSelect
-                    };
-                });
-
-                this.components.expandedWithShortcuts = new ExpandedWithShortcuts({
-                    sections: processedSections,
-                    primaryColor: this.config.primaryColor,
-                    onSubmit: () => this.handleSubmit()
-                });
-                component = this.components.expandedWithShortcuts;
-                break;
-
-
-        }
+        this.components.sections = new Sections({
+            sections: processedSections,
+            primaryColor: this.config.primaryColor
+        });
+        const component = this.components.sections;
 
         this.container.appendChild(component.render());
     }
@@ -314,15 +244,16 @@ export class PopupStateManager {
     }
 
     /**
-     * Unmount the popup from DOM
+     * Update position of the popup
+     * @param {Object} position - New position {top, left}
      */
-    unmount() {
-        // Clean up event listeners before removing
-        if (this.cleanupDragging) {
-            this.cleanupDragging();
-        }
-        if (this.container && this.container.parentNode) {
-            this.container.parentNode.removeChild(this.container);
+    updatePosition(position) {
+        if (position && typeof position === 'object') {
+            this.position = { ...this.position, ...position };
+            Object.assign(this.container.style, {
+                top: `${this.position.top}px`,
+                left: `${this.position.left}px`
+            });
         }
     }
 }

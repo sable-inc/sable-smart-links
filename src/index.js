@@ -33,7 +33,6 @@ class SableSmartLinks {
         stepDelay: 500
       },
       textAgent: {
-        defaultState: 'collapsed',
         position: 'right',
         persistState: true
       },

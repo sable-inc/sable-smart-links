@@ -37,8 +37,8 @@ class GlobalPopupManager {
             const parent = options.parent || document.body;
             popupManager.mount(parent);
 
-            // Notify listeners
-            this.notifyListeners();
+            // Broadcast popup state change
+            this.broadcastStateChange();
 
             // Return the popup manager with wrapped methods
             const result = {
@@ -48,7 +48,7 @@ class GlobalPopupManager {
                     if (this.activePopup === popupManager) {
                         popupManager.unmount();
                         this.activePopup = null;
-                        this.notifyListeners();
+                        this.broadcastStateChange();
                     }
                 },
                 mount: (newParent) => {
@@ -89,7 +89,7 @@ class GlobalPopupManager {
 
             this.activePopup = popupManager;
             popupManager.mount(document.body);
-            this.notifyListeners();
+            this.broadcastStateChange();
 
             return {
                 popup: popupManager, // Expose the popup instance for direct access
@@ -97,7 +97,7 @@ class GlobalPopupManager {
                     if (this.activePopup === popupManager) {
                         popupManager.unmount();
                         this.activePopup = null;
-                        this.notifyListeners();
+                        this.broadcastStateChange();
                     }
                 },
                 mount: (newParent) => {
@@ -123,10 +123,8 @@ class GlobalPopupManager {
             onProceed: config.onProceed || (() => { }),
             onYesNo: config.onYesNo || (() => { }),
             primaryColor: config.primaryColor || '#FFFFFF',
-            includeTextBox: config.includeTextBox || false,
             fontSize: config.fontSize || '15px',
             sections: config.sections || [],
-            // Add agentInfo for analytics logging
             agentInfo: config.agentInfo || null,
             debug: config.debug || false
         };
@@ -162,7 +160,7 @@ class GlobalPopupManager {
                 // Update global state when popup is unmounted
                 if (this.activePopup === popupManager) {
                     this.activePopup = null;
-                    this.notifyListeners();
+                    this.broadcastStateChange();
                 }
             },
             updatePosition: (newPosition) => {
@@ -185,12 +183,12 @@ class GlobalPopupManager {
         if (this.activePopup) {
             try {
                 this.activePopup.unmount();
-                // Note: The unmount method already handles setting activePopup to null and notifying listeners
+                // Note: The unmount method already handles setting activePopup to null and broadcasting state change
             } catch (error) {
                 console.error('[GlobalPopupManager] Error closing popup:', error);
                 // If unmount failed, manually clear the state
                 this.activePopup = null;
-                this.notifyListeners();
+                this.broadcastStateChange();
             }
         }
     }
@@ -221,18 +219,29 @@ class GlobalPopupManager {
     }
 
     /**
-     * Notify all listeners of state changes
+     * Broadcast popup state changes to all listeners and dispatch events
      */
-    notifyListeners() {
+    broadcastStateChange() {
+        const state = {
+            hasActivePopup: this.hasActivePopup()
+        };
+
+        // Notify all listeners
         this.listeners.forEach(listener => {
             try {
-                listener({
-                    hasActivePopup: this.hasActivePopup()
-                });
+                listener(state);
             } catch (error) {
                 console.error('[GlobalPopupManager] Error in listener:', error);
             }
         });
+
+        // Dispatch custom event for broader system awareness
+        if (typeof window !== 'undefined') {
+            const stateEvent = new CustomEvent('sable:popupStateChange', {
+                detail: state
+            });
+            window.dispatchEvent(stateEvent);
+        }
     }
 
     /**
