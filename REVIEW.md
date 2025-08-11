@@ -23,7 +23,7 @@
 
 ### Tavily Integration
 
-- [x] `src/tavily/server.ts` (384 lines)
+- [x] `src/tavily/server.ts` (384 lines) - **MOVED TO API SERVER**
 - [x] `src/tavily/client.ts` (179 lines)
 - [x] `src/tavily/index.ts` (18 lines)
 - [x] `src/tavily/types.ts` (16 lines)

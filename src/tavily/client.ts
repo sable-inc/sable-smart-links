@@ -5,13 +5,8 @@ import type { CrawlParameters, SearchParameters, CrawlBedrockEventData, SearchBe
  * Get the base URL for API calls
  */
 const getApiBaseUrl = () => {
-  if (typeof window === 'undefined') {
-    // Server-side, use environment variable or default
-    return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
-  }
-
-  // Client-side, use current origin
-  return window.location.origin;
+  // Always use the Sable API
+  return 'https://sable-smart-links.vercel.app';
 };
 
 /**
@@ -29,7 +24,7 @@ export const getOptimalCrawlParameters = async (
   let output: CrawlParameters | null = null;
 
   try {
-    const apiUrl = `${getApiBaseUrl()}/api/sable/crawl`;
+    const apiUrl = `${getApiBaseUrl()}/api/tavily/crawl`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -42,7 +37,7 @@ export const getOptimalCrawlParameters = async (
 
     if (!response.ok) {
       if (response.status === 404) {
-        throw new Error('Sable API endpoints not configured. Please set up the API handler using createSableTavilyHandler in your pages/api/sable/[...path].ts file.');
+        throw new Error('Sable API endpoint not found. Please check the API URL configuration.');
       }
 
       const errorText = await response.text();
@@ -107,7 +102,7 @@ export const getOptimalSearchParameters = async (
   let output: SearchParameters | null = null;
 
   try {
-    const apiUrl = `${getApiBaseUrl()}/api/sable/search`;
+    const apiUrl = `${getApiBaseUrl()}/api/tavily/search`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -120,7 +115,7 @@ export const getOptimalSearchParameters = async (
 
     if (!response.ok) {
       if (response.status === 404) {
-        throw new Error('Sable API endpoints not configured. Please set up the API handler using createSableTavilyHandler in your pages/api/sable/[...path].ts file.');
+        throw new Error('Sable API endpoint not found. Please check the API URL configuration.');
       }
 
       const errorText = await response.text();

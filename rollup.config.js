@@ -15,10 +15,10 @@ const packageJson = JSON.parse(
 
 // Define external dependencies
 const external = [
-  'react', 
-  'react-dom', 
-  '@chakra-ui/react', 
-  '@emotion/react', 
+  'react',
+  'react-dom',
+  '@chakra-ui/react',
+  '@emotion/react',
   '@emotion/styled',
   'framer-motion',
   '@aws-sdk/client-bedrock-runtime',
