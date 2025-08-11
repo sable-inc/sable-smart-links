@@ -715,14 +715,6 @@ app.post('/api/analytics/walkthrough', async (req, res) => {
   }
 });
 
-
-
-
-
-
-
-
-
 // Crawl Bedrock Queries Analytics Logging
 app.post('/api/analytics/crawl-bedrock', async (req, res) => {
   try {
