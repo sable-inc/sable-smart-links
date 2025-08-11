@@ -733,9 +733,6 @@ export interface SearchBedrockEventData {
 
 export declare function getOptimalCrawlParameters(url: string, instructions: string): Promise<CrawlParameters>;
 export declare function getOptimalSearchParameters(query: string): Promise<SearchParameters>;
-export declare function getOptimalCrawlParametersServer(url: string, instructions: string): Promise<CrawlParameters>;
-export declare function getOptimalSearchParametersServer(query: string): Promise<SearchParameters>;
-export declare function createSableTavilyHandler(): any;
 
 /**
  * React components and hooks

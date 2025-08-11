@@ -186,7 +186,7 @@ export class Popup {
       textRendering: 'optimizeLegibility',
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       ...(this.config.pulse && {
-        animation: 'sable-pulse 1s ease-in-out infinite'
+        animation: 'sable-pulse 1.5s ease-in-out infinite'
       }),
     });
     this.textContainer = textDiv;
