@@ -1,5 +1,6 @@
 import Interactor from '../interactor';
 import { getOptimalCrawlParameters } from './client';
+import { crawlParams } from './constants';
 
 export async function pickTab(title: string) {
   const container = document.querySelector('.css-1dofqhu');
@@ -22,12 +23,9 @@ export async function beforeCrawlTuning() {
   const instructionsElement = Interactor.getElement('#instructions') as HTMLInputElement | HTMLTextAreaElement;
   const urlElement = Interactor.getElement('#url') as HTMLInputElement | HTMLTextAreaElement;
   if (urlElement && !urlElement.value.trim() && instructionsElement && !instructionsElement.value.trim()) {
-    // Note: crawlParams constant would need to be provided by the consuming app
-    // For now, we'll use placeholder values
-    const exampleUrl = 'https://example.com';
-    const exampleInstructions = 'Extract all product information and pricing';
-    Interactor.setInputValue(urlElement, exampleUrl);
-    Interactor.setInputValue(instructionsElement, exampleInstructions);
+    const { params } = crawlParams[Math.floor(Math.random() * crawlParams.length)];
+    Interactor.setInputValue(urlElement, params.url);
+    Interactor.setInputValue(instructionsElement, params.instructions);
   }
 }
 

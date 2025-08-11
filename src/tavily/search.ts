@@ -1,15 +1,14 @@
 import Interactor from '../interactor';
 import { getOptimalSearchParameters } from './client';
 import { pickTab } from './crawl';
+import { searchParams } from './constants';
 
 export async function beforeSearchTuning() {
   await pickTab('search');
   const queryElement = Interactor.getElement('#query') as HTMLInputElement;
   if (queryElement && !queryElement.value.trim()) {
-    // Note: searchParams constant would need to be provided by the consuming app
-    // For now, we'll use placeholder values
-    const exampleQuery = 'What are the latest developments in AI?';
-    Interactor.setInputValue(queryElement, exampleQuery);
+    const { params } = searchParams[Math.floor(Math.random() * searchParams.length)];
+    Interactor.setInputValue(queryElement, params.query);
   }
 }
 
