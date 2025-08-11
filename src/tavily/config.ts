@@ -17,7 +17,7 @@ function getTargetElementPosition(): 'right' | 'bottom' {
 
 export const sableConfig = {
   config: {
-    debug: true,
+    debug: false,
     walkthrough: {
       paramName: 'walkthrough',
       autoStart: true,
@@ -25,7 +25,7 @@ export const sableConfig = {
     },
   },
   menu: {
-    debug: true,
+    debug: false,
     enabled: true,
     position: 'bottom-left',
     text: 'Digital Expert',
