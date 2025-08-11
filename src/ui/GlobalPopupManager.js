@@ -54,6 +54,7 @@ class GlobalPopupManager {
             animateText: config.animateText !== undefined ? config.animateText : true,
             markdown: config.markdown !== undefined ? config.markdown : true,
             width: config.width || 380,
+            pulse: config.pulse || false,
             onClose: () => {
                 if (config.onClose) {
                     config.onClose();

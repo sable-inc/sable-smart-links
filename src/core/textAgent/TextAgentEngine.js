@@ -216,10 +216,18 @@ export class TextAgentEngine {
         if (this.config.debug) {
           console.log(`[SableTextAgent] DEBUG: Already on target step "${stepId}" (index: ${targetStepIndex}), skipping navigation`);
         }
-        // If skipTrigger is true and we're on the same step, render it anyway
-        if (skipTrigger) {
-          if (this.config.debug) {
-            console.log(`[SableTextAgent] DEBUG: skipTrigger is true, rendering current step anyway`);
+        // If skipTrigger is true and agent hasn't rendered yet (i.e. is auto-started), cleanup trigger and render step
+        if (skipTrigger && !state.hasRenderedOnce) {
+          if (state.triggerCleanup) {
+            if (this.config.debug) {
+              console.log(`[SableTextAgent] DEBUG: Cleaning up trigger for agent "${agentId}"`);
+              console.log(`[SableTextAgent] DEBUG: Trigger cleanup: ${state.triggerCleanup}`);
+            }
+            this.triggerManager.cleanupTrigger(state.triggerCleanup);
+            state.triggerCleanup = null;
+          }
+          if (typeof config.beforeStart === 'function') {
+            await config.beforeStart();
           }
           await this._renderCurrentStep(agentId, false);
         }
@@ -257,10 +265,9 @@ export class TextAgentEngine {
     }
 
     // Create new instance
-    const { instanceId, startTime } = this.agentManager.createInstance(agentId);
+    const { instanceId } = this.agentManager.createInstance(agentId);
 
     // Update state
-    state.isRunning = true;
     state.currentStepIndex = stepId ?
       agent.steps.findIndex(step => step.id === stepId) : 0;
 
@@ -268,23 +275,15 @@ export class TextAgentEngine {
       state.currentStepIndex = 0;
     }
 
-    // Log analytics for agent start
-    const currentStep = agent.steps[state.currentStepIndex];
-    if (currentStep && !isAutoStart) {
-      await logTextAgentStart(
-        agentId,
-        currentStep.id,
-        instanceId,
-        { skipTrigger, stepId },
-        null // agentDuration is null for start event
-      );
-    }
+    // Note: Analytics for agent start are logged in _renderCurrentStep on first render
 
     // Render first step
     if (skipTrigger) {
+      state.isRunning = true;
       await this._renderCurrentStep(agentId, isAutoStart);
     } else {
       this._setupStepTrigger(agentId, isAutoStart);
+      state.isRunning = true;
     }
 
     return true;
@@ -299,6 +298,14 @@ export class TextAgentEngine {
 
     if (!step) {
       this._endAgent(agentId);
+      return;
+    }
+
+    // Don't set up triggers for already running agents from auto-start
+    if (isAutoStart && agent.state.isRunning) {
+      if (this.config.debug) {
+        console.log(`[SableTextAgent] DEBUG: Skipping trigger setup for already running agent "${agentId}" during auto-start`);
+      }
       return;
     }
 
@@ -326,7 +333,30 @@ export class TextAgentEngine {
       return;
     }
 
+    // Don't render if already rendered once and this is an auto-start
+    if (state.hasRenderedOnce && isAutoStart) {
+      if (this.config.debug) {
+        console.log(`[SableTextAgent] DEBUG: Skipping render for agent "${agentId}" - already rendered once and is auto-start`);
+      }
+      return;
+    }
+
     const step = steps[state.currentStepIndex];
+
+    // Set startTime and log start event only on first render
+    if (!state.hasRenderedOnce) {
+      instance.startTime = Date.now();
+
+      // Log analytics for agent start
+      await logTextAgentStart(
+        agentId,
+        step.id,
+        instance.instanceId,
+        { skipTrigger: false, stepId: step.id, isAutoStart },
+        null // agentDuration is null for start event
+      );
+      agent.state.hasRenderedOnce = true; // pre-emptively set to true to prevent duplicate renders
+    }
 
     // Create agent info for analytics
     const agentInfo = {
@@ -372,7 +402,6 @@ export class TextAgentEngine {
     // Update agent state
     if (result.popupManager) {
       agent.state.activePopupManager = result.popupManager;
-      agent.state.hasRenderedOnce = true;
     }
   }
 
@@ -522,7 +551,7 @@ export class TextAgentEngine {
     this._updatePreviousStepDuration(agentId);
 
     // Log analytics for agent end if it was running
-    if (agent.state.isRunning) {
+    if (agent.state.hasRenderedOnce) {
       const currentStep = agent.steps[agent.state.currentStepIndex];
       if (currentStep) {
         logTextAgentEnd(

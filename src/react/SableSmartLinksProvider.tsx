@@ -48,7 +48,12 @@ export interface TextAgentAgentConfig {
   steps: TextAgentStep[];
   autoStart?: boolean;
   autoStartOnce?: boolean;
-  beforeStart?: () => void | Promise<void>;
+  beforeStart?: (dataUtils?: {
+    setStepData: (key: string, value: any) => void;
+    getStepData: (key: string) => any;
+    getAllStepData: () => Record<string, any>;
+    clearStepData: () => void;
+  }) => void | Promise<void>;
   requiredSelector?: string;
 }
 
@@ -87,7 +92,12 @@ export interface SableSmartLinksProviderProps {
           text: string;
           data?: any;
         }>;
-        onSelect: (item: any) => void;
+        onSelect: (item: any, dataUtils?: {
+          setStepData: (key: string, value: any) => void;
+          getStepData: (key: string) => any;
+          getAllStepData: () => Record<string, any>;
+          clearStepData: () => void;
+        }) => void;
       }>;
     };
   };
@@ -141,6 +151,17 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     };
   }, []);
 
+  // Helper function to create fresh data utilities
+  const createFreshDataUtils = () => ({
+    setStepData,
+    getStepData: (key: string) => {
+      const value = stepDataRef.current[key];
+      return value;
+    },
+    getAllStepData: () => stepDataRef.current,
+    clearStepData
+  });
+
   // Process text agent steps to inject data access
   const processTextAgentSteps = (id: string, steps: TextAgentStep[]): TextAgentStep[] => {
     return steps.map(step => {
@@ -168,15 +189,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
         const originalTextFn = processedStep.text;
         processedStep.text = () => {
           // Create fresh dataUtils with current ref data each time the function is called
-          const freshDataUtils = {
-            setStepData,
-            getStepData: (key: string) => {
-              const value = stepDataRef.current[key];
-              return value;
-            },
-            getAllStepData: () => stepDataRef.current,
-            clearStepData
-          };
+          const freshDataUtils = createFreshDataUtils();
           return originalTextFn(freshDataUtils);
         };
       }
@@ -184,7 +197,6 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
       if (processedStep.sections == null) { processedStep.sections = []; }
 
       // Handle sections property
-
       if (Array.isArray(processedStep.sections)) {
         // If sections is an array, convert it to a function that can access step data
         const originalSections = processedStep.sections;
@@ -192,12 +204,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
       } else if (typeof processedStep.sections === 'function') {
         const originalSectionsFn = processedStep.sections;
         processedStep.sections = () => {
-          const freshDataUtils = {
-            setStepData,
-            getStepData: (key: string) => stepDataRef.current[key],
-            getAllStepData: () => stepDataRef.current,
-            clearStepData
-          };
+          const freshDataUtils = createFreshDataUtils();
           return originalSectionsFn(freshDataUtils);
         };
       }
@@ -207,17 +214,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
         const originalOnProceed = processedStep.onProceed;
         processedStep.onProceed = async (textInput?: string) => {
           // Create fresh dataUtils with current ref data each time the function is called
-          const freshDataUtils = {
-            setStepData,
-            getStepData: (key: string) => {
-              const value = stepDataRef.current[key];
-              return value;
-            },
-            getAllStepData: () => {
-              return stepDataRef.current;
-            },
-            clearStepData
-          };
+          const freshDataUtils = createFreshDataUtils();
           
           // Provide the fresh step data methods to the original onProceed
           return originalOnProceed(textInput, freshDataUtils);
@@ -229,17 +226,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
         const originalOnYesNo = processedStep.onYesNo;
         processedStep.onYesNo = async (isYes: boolean) => {
           // Create fresh dataUtils with current ref data each time the function is called
-          const freshDataUtils = {
-            setStepData,
-            getStepData: (key: string) => {
-              const value = stepDataRef.current[key];
-              return value;
-            },
-            getAllStepData: () => {
-              return stepDataRef.current;
-            },
-            clearStepData
-          };
+          const freshDataUtils = createFreshDataUtils();
           
           // Provide the fresh step data methods to the original onYesNo
           return originalOnYesNo(isYes, freshDataUtils);
@@ -248,6 +235,29 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
       
       return processedStep;
     });
+  };
+
+  // Process menu configuration to inject step data access
+  const processMenuConfig = (menuConfig: NonNullable<typeof menu>) => {
+    if (!menuConfig?.popupConfig?.sections) return menuConfig;
+    
+    const processedConfig = { ...menuConfig };
+    processedConfig.popupConfig = { ...processedConfig.popupConfig };
+    if (processedConfig.popupConfig.sections) {
+      processedConfig.popupConfig.sections = processedConfig.popupConfig.sections.map(section => {
+        const processedSection = { ...section };
+        if (processedSection.onSelect) {
+          const originalOnSelect = processedSection.onSelect;
+          processedSection.onSelect = (item: any) => {
+            const freshDataUtils = createFreshDataUtils();
+            return originalOnSelect(item, freshDataUtils);
+          };
+        }
+        return processedSection;
+      });
+    }
+    
+    return processedConfig;
   };
 
   // Helper to hash steps for change detection
@@ -268,7 +278,7 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     if (!sableInstance.current) {
       const mergedConfig = {
         ...config,
-        menu: menu || config.menu
+        menu: menu ? processMenuConfig(menu) : config.menu
       };
 
       sableInstance.current = new SableSmartLinks(mergedConfig);
@@ -313,11 +323,22 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     Object.entries(textAgents).forEach(([id, agentConfig]) => {
       const { steps, autoStart, autoStartOnce, beforeStart, requiredSelector } = agentConfig;
       const processedSteps = processTextAgentSteps(id, steps);
+      
+      // Process beforeStart to provide step data access
+      let processedBeforeStart = beforeStart;
+      if (beforeStart) {
+        const originalBeforeStart = beforeStart;
+        processedBeforeStart = async () => {
+          const freshDataUtils = createFreshDataUtils();
+          return originalBeforeStart(freshDataUtils);
+        };
+      }
+      
       // Hash both steps and config
-      const stepHash = hashSteps([processedSteps, autoStart, autoStartOnce, beforeStart?.toString?.(), requiredSelector]);
+      const stepHash = hashSteps([processedSteps, autoStart, autoStartOnce, processedBeforeStart?.toString?.(), requiredSelector]);
       if (registeredTextAgents.current[id] !== stepHash) {
         if (sableInstance.current) {
-          sableInstance.current.registerTextAgent(id, processedSteps, autoStart, autoStartOnce, beforeStart, requiredSelector);
+          sableInstance.current.registerTextAgent(id, processedSteps, autoStart, autoStartOnce, processedBeforeStart, requiredSelector);
         }
         registeredTextAgents.current[id] = stepHash;
       }
@@ -428,14 +449,17 @@ export const SableSmartLinksProvider: React.FC<SableSmartLinksProviderProps> = (
     },
     startTextAgent: (agentId?: string, stepId?: string | null, skipTrigger?: boolean): Promise<boolean> => {
       if (sableInstance.current && typeof sableInstance.current.startTextAgent === 'function') {
-        const fn = sableInstance.current.startTextAgent;
-        // Check function arity to determine how many arguments to pass
-        if (fn.length >= 3) {
-          // New signature: (agentId, stepId, skipTrigger)
-          return Promise.resolve(fn.call(sableInstance.current, agentId, stepId, skipTrigger)).then((r: any) => !!r);
-        } else {
-          // Old signature: (agentId)
-          return Promise.resolve(fn.call(sableInstance.current, agentId)).then((r: any) => !!r);
+        try {
+          // Try the new signature first (agentId, stepId, skipTrigger)
+          if (agentId !== undefined || stepId !== null || skipTrigger !== undefined) {
+            return Promise.resolve(sableInstance.current.startTextAgent(agentId, stepId, skipTrigger)).then((r: any) => !!r);
+          } else {
+            // Fall back to old signature (agentId only)
+            return Promise.resolve(sableInstance.current.startTextAgent(agentId || '')).then((r: any) => !!r);
+          }
+        } catch (error) {
+          // If the new signature fails, try the old one
+          return Promise.resolve(sableInstance.current.startTextAgent(agentId || '')).then((r: any) => !!r);
         }
       }
       return Promise.resolve(false);

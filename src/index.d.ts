@@ -130,7 +130,12 @@ export interface SableSmartLinksConfig {
           data?: any;
         }>;
         /** Handler function to execute when an item in this section is selected */
-        onSelect: (item: any) => void;
+        onSelect: (item: any, dataUtils?: {
+          setStepData: (key: string, value: any) => void;
+          getStepData: (key: string) => any;
+          getAllStepData: () => Record<string, any>;
+          clearStepData: () => void;
+        }) => void;
       }>;
     };
   };
@@ -351,7 +356,12 @@ export interface PopupOptions {
       text: string;
       data?: any;
     }>;
-    onSelect: (item: any) => void;
+    onSelect: (item: any, dataUtils?: {
+      setStepData: (key: string, value: any) => void;
+      getStepData: (key: string) => any;
+      getAllStepData: () => Record<string, any>;
+      clearStepData: () => void;
+    }) => void;
   }>;
   /** Agent information for the popup */
   agentInfo?: any;
@@ -394,7 +404,12 @@ export interface TextAgentStep {
       text: string;
       data?: any;
     }>;
-    onSelect: (item: any) => void;
+    onSelect: (item: any, dataUtils?: {
+      setStepData: (key: string, value: any) => void;
+      getStepData: (key: string) => any;
+      getAllStepData: () => Record<string, any>;
+      clearStepData: () => void;
+    }) => void;
   }> | ((dataUtils?: {
     setStepData: (key: string, value: any) => void;
     getStepData: (key: string) => any;
@@ -407,7 +422,12 @@ export interface TextAgentStep {
       text: string;
       data?: any;
     }>;
-    onSelect: (item: any) => void;
+    onSelect: (item: any, dataUtils?: {
+      setStepData: (key: string, value: any) => void;
+      getStepData: (key: string) => any;
+      getAllStepData: () => Record<string, any>;
+      clearStepData: () => void;
+    }) => void;
   }>);
 
   /** Secondary text content (displayed in a different style) */
@@ -505,7 +525,12 @@ export interface TextAgentAgentConfig {
   steps: TextAgentStep[];
   autoStart?: boolean;
   autoStartOnce?: boolean;
-  beforeStart?: () => void | Promise<void>;
+  beforeStart?: (dataUtils?: {
+    setStepData: (key: string, value: any) => void;
+    getStepData: (key: string) => any;
+    getAllStepData: () => Record<string, any>;
+    clearStepData: () => void;
+  }) => void | Promise<void>;
   requiredSelector?: string;
 }
 
@@ -724,7 +749,12 @@ export interface SableSmartLinksContextType {
   endWalkthrough: () => void;
 
   // Text Agent methods
-  registerTextAgent: (id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: () => void | Promise<void>, requiredSelector?: string) => SableSmartLinksContextType;
+  registerTextAgent: (id: string, steps: TextAgentStep[], autoStart?: boolean, autoStartOnce?: boolean, beforeStart?: (dataUtils?: {
+    setStepData: (key: string, value: any) => void;
+    getStepData: (key: string) => any;
+    getAllStepData: () => Record<string, any>;
+    clearStepData: () => void;
+  }) => void | Promise<void>, requiredSelector?: string) => SableSmartLinksContextType;
   startTextAgent: (agentId?: string, stepId?: string | null, skipTrigger?: boolean) => Promise<boolean>;
   nextTextAgentStep: () => SableSmartLinksContextType;
   previousTextAgentStep: () => SableSmartLinksContextType;
@@ -787,7 +817,12 @@ export interface SableSmartLinksProviderProps {
           text: string;
           data?: any;
         }>;
-        onSelect: (item: any) => void;
+        onSelect: (item: any, dataUtils?: {
+          setStepData: (key: string, value: any) => void;
+          getStepData: (key: string) => any;
+          getAllStepData: () => Record<string, any>;
+          clearStepData: () => void;
+        }) => void;
       }>;
     };
   };

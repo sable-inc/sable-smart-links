@@ -481,30 +481,8 @@ export class WalkthroughEngine {
    * @param {Object} action - The action configuration
    */
   performAction(element, action) {
-    // Log analytics for action performed (non-blocking)
-    const steps = this.walkthroughs[this.currentWalkthrough];
-    const currentStep = steps[this.currentStep];
-    logWalkthroughStepExecuted(
-      this.currentWalkthrough,
-      this.currentStep,
-      currentStep.stepId,
-      action.selector || null,
-      this.currentInstanceId,
-      {
-        stepType: 'action',
-        actionType: action.type,
-        actionValue: action.value,
-        actionDelay: action.delay,
-        actionAutoAdvance: action.autoAdvance,
-        actionTypeEffect: action.typeEffect,
-        totalSteps: this.walkthroughs[this.currentWalkthrough].length
-      },
-      this._calculateWalkthroughDuration()
-    ).catch(error => {
-      if (this.config.debug) {
-        console.warn(`[SableWalkthrough] Failed to log action analytics:`, error);
-      }
-    });
+    // Note: Analytics for step execution are already logged in executeStep()
+    // No need to log duplicate step_executed events here
 
     switch (action.type) {
       case 'click':

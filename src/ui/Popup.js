@@ -33,6 +33,7 @@ export class Popup {
       animateText: config.animateText !== undefined ? config.animateText : true,
       markdown: config.markdown !== undefined ? config.markdown : true,
       width: config.width || 380,
+      pulse: config.pulse || false,
     };
     this.position = config.position || { top: 200, left: (window.innerWidth - (config.width ?? 300)) / 2 };
     this.container = this.createContainer();
@@ -141,6 +142,18 @@ export class Popup {
   }
 
   createContent() {
+    // Add CSS keyframes for pulse animation if not already added
+    if (this.config.pulse && !document.getElementById('sable-pulse-keyframes')) {
+      const style = document.createElement('style');
+      style.id = 'sable-pulse-keyframes';
+      style.textContent = `
+        @keyframes sable-pulse {
+          0%, 100% { opacity: 0.8; }
+          50% { opacity: 0.5; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
     const main = document.createElement('div');
     Object.assign(main.style, {
       display: 'flex',
@@ -172,6 +185,9 @@ export class Popup {
       lineHeight: '1.5',
       textRendering: 'optimizeLegibility',
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      ...(this.config.pulse && {
+        animation: 'sable-pulse 1s ease-in-out infinite'
+      }),
     });
     this.textContainer = textDiv;
     let buttonDiv = null;

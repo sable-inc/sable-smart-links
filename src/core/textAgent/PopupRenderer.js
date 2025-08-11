@@ -80,7 +80,8 @@ export class PopupRenderer {
       sections,
       fontSize: step.fontSize || '15px',
       parent: safeDocument?.body || document.body,
-      agentInfo
+      agentInfo,
+      pulse: step.pulse || false
     };
 
     // Set up callbacks
