@@ -6,39 +6,6 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 
-// Analytics logging functions
-const logCrawlBedrockQuery = async (data) => {
-  try {
-    const database = await connectToMongoDB();
-    await database.collection('crawlBedrockQueries').insertOne({
-      input: { url: data.url, instructions: data.instructions },
-      output: data.output,
-      duration: data.duration,
-      error: data.error,
-      timestamp: new Date(),
-      createdAt: new Date()
-    });
-  } catch (error) {
-    console.error('Failed to log crawl Bedrock query:', error);
-  }
-};
-
-const logSearchBedrockQuery = async (data) => {
-  try {
-    const database = await connectToMongoDB();
-    await database.collection('searchBedrockQueries').insertOne({
-      input: { query: data.query },
-      output: data.output,
-      duration: data.duration,
-      error: data.error,
-      timestamp: new Date(),
-      createdAt: new Date()
-    });
-  } catch (error) {
-    console.error('Failed to log search Bedrock query:', error);
-  }
-};
-
 // Load environment variables
 dotenv.config();
 
@@ -265,29 +232,11 @@ const getOptimalCrawlParameters = async (url, instructions, sableApiKey) => {
     outputs = result;
     duration = Date.now() - startTime;
 
-    // Log successful analytics
-    await logCrawlBedrockQuery({
-      url,
-      instructions,
-      output: outputs,
-      duration,
-      error: null
-    });
-
     return result;
 
   } catch (error) {
     duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-    // Log error analytics
-    await logCrawlBedrockQuery({
-      url,
-      instructions,
-      output: null,
-      duration,
-      error: errorMessage
-    });
 
     throw error;
   }
@@ -372,27 +321,11 @@ const getOptimalSearchParameters = async (query, sableApiKey) => {
     outputs = result;
     duration = Date.now() - startTime;
 
-    // Log successful analytics
-    await logSearchBedrockQuery({
-      query,
-      output: outputs,
-      duration,
-      error: null
-    });
-
     return result;
 
   } catch (error) {
     duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-    // Log error analytics
-    await logSearchBedrockQuery({
-      query,
-      output: null,
-      duration,
-      error: errorMessage
-    });
 
     throw error;
   }

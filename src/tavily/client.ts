@@ -61,11 +61,29 @@ export const getOptimalCrawlParameters = async (
     output = crawlParams;
     duration = Date.now() - startTime;
 
+    // Log successful analytics
+    await logCrawlBedrockQuery({
+      url,
+      instructions,
+      output,
+      duration,
+      error: null
+    });
+
     return crawlParams;
 
   } catch (error) {
     duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    // Log error analytics
+    await logCrawlBedrockQuery({
+      url,
+      instructions,
+      output: null,
+      duration,
+      error: errorMessage
+    });
 
     throw error;
   }
@@ -123,11 +141,27 @@ export const getOptimalSearchParameters = async (
     output = searchParams;
     duration = Date.now() - startTime;
 
+    // Log successful analytics
+    await logSearchBedrockQuery({
+      query,
+      output,
+      duration,
+      error: null
+    });
+
     return searchParams;
 
   } catch (error) {
     duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    // Log error analytics
+    await logSearchBedrockQuery({
+      query,
+      output: null,
+      duration,
+      error: errorMessage
+    });
 
     throw error;
   }
